@@ -162,6 +162,15 @@
     (is (= (count (:filters query)) 1))
     (is (= (count (:pattern query)) 2))))
 
+(deftest test-build-query-3
+  (let [res (.toString (build-query (defquery
+                                      (query-set-vars [:?y])
+                                      (query-set-type :select)
+                                      (query-set-pattern
+                                       (make-pattern [[:?y :?x :?p]]))
+                                      (query-set-filters [(make-filter :> :?y (d 2))]))))]
+    (= res "SELECT  ?y\nWHERE\n  { ?y  ?x  ?p .\n    FILTER ( ?y > \"2\"^^<http://www.w3.org/2001/XMLSchema#int> )\n  }\n")))
+
 (deftest test-optional
   (let [is-optional (optional [:foo])]
     (is (:optional (meta (first is-optional))))))

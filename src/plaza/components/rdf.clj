@@ -10,7 +10,7 @@
            (com.hp.hpl.jena.datatypes.xsd XSDDatatype)
            (com.hp.hpl.jena.datatypes.xsd.impl XMLLiteralType)
            (com.hp.hpl.jena.query QueryFactory)
-           (com.hp.hpl.jena.sparql.syntax Element ElementGroup ElementOptional)
+           (com.hp.hpl.jena.sparql.syntax Element ElementGroup ElementOptional ElementFilter)
            (com.hp.hpl.jena.graph Node Triple)
            (com.hp.hpl.jena.sparql.expr E_Str E_Lang E_Datatype E_Bound E_IsIRI E_IsURI E_IsBlank E_IsLiteral E_GreaterThanOrEqual E_GreaterThan
                                         E_LessThanOrEqual E_LessThan E_NotEquals E_Equals E_Subtract E_Add E_Multiply E_Divide)))
@@ -523,6 +523,13 @@
   ([vars]
      (fn [query] (query-set-vars query vars))))
 
+(defn query-set-filters
+  "Set a collection of filters for the query"
+  ([query filters]
+     (assoc query :filters filters))
+  ([filters]
+     (fn [query] (query-set-filters query filters))))
+
 (defn query-remove-var
   "Removes a var from the collection of vars in the query"
   ([query var]
@@ -805,7 +812,12 @@
            built-pattern (do
                            (when (not (.isEmpty (:optional built-patterns)))
                              (.addElement (:building built-patterns) (ElementOptional. (:optional built-patterns))))
-                           (:building built-patterns))]
+                           (:building built-patterns))
+           built-filters (loop [bfs (map (fn [f] (build-filter f)) (if (nil? (:filters query)) [] (:filters query)))]
+                           (if (not (empty? bfs))
+                             (let [bf (first bfs)]
+                               (.addElement built-pattern (ElementFilter. bf))
+                               (recur (rest bfs)))))]
        (do
          (loop [idx 0]
            (when (< idx (count (:vars query)))

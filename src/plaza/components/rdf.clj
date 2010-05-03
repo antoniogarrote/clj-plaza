@@ -170,7 +170,7 @@
         (= "boolean" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDboolean
         (= "byte" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDbyte
         (= "date" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDdate
-        (= "dateTime" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDdateTime
+        (= "datetime" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDdateTime
         (= "decimal" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDdecimal
         (= "double" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDdouble
         (= "float" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDfloat
@@ -581,30 +581,47 @@
 (defn- is-filter-expr
   "Tests if one Jena expression is a filter expression"
   ([expr]
-     (= (class expr) com.hp.hpl.jena.sparql.syntax.ElementFilter)))
+     (or (instance? com.hp.hpl.jena.sparql.expr.ExprFunction expr)
+         (instance? com.hp.hpl.jena.sparql.syntax.ElementFilter expr))))
 
 (defn- is-var-expr
   "Tests if one Jena expression is a var expression"
   ([expr]
      (= (class expr) com.hp.hpl.jena.sparql.expr.ExprVar)))
 
-(declare parse-filter-expr)
 
+(defn- parse-literal-lexical
+  ([lit]
+     (let [parts-a (.split lit "\\^\\^")
+           val-a (aget parts-a 0)
+           datatype (if (= (alength parts-a) 2) (aget (.split (aget (.split (aget parts-a 1) "<") 1) ">") 0) "http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral")
+           parts-b (.split val-a "@")
+           val (let [val-tmp (aget parts-b 0)]
+                 (if (and (.startsWith val-tmp "\"")
+                          (.endsWith val-tmp "\""))
+                   (aget (.split (aget (.split val-tmp "\"") 1) "\"") 0)
+                   val-tmp))
+           lang-tag (if (= (alength parts-b) 2) (aget parts-b 1) nil)]
+       (if (nil? lang-tag)
+         (rdf-typed-literal val datatype)
+         (rdf-literal val lang-tag)))))
+
+(declare parse-filter-expr)
 (defn- parse-next-filter-expr
   ([expr]
      (cond
       (is-var-expr expr) (keyword (.toString expr))
       (is-filter-expr expr) (parse-filter-expr expr)
-      true (.toString expr))))
+      true (parse-literal-lexical (.toString expr)))))
 
-(defn parse-filter-expr-2
+(defn- parse-filter-expr-2
   ([expr symbol]
      {:expression (keyword symbol)
       :kind :two-parts
       :args [(parse-next-filter-expr (.. expr (getArg 1)))
              (parse-next-filter-expr (.. expr (getArg 2)))]}))
 
-(defn parse-filter-expr-1
+(defn- parse-filter-expr-1
   ([expr symbol]
      {:expression (keyword symbol)
       :kind :one-part
@@ -620,10 +637,9 @@
 
 
 
-(defn build-filter-two-parts
+(defn- build-filter-two-parts
   "Builds a filter with two parts"
   ([expression arg-0 arg-1]
-     (println (str "EXPRESSION " expression))
      (cond
       (= expression :>=) (new com.hp.hpl.jena.sparql.expr.E_GreaterThanOrEqual arg-0 arg-1)
       (= expression :>) (new com.hp.hpl.jena.sparql.expr.E_GreaterThan arg-0 arg-1)
@@ -636,7 +652,7 @@
       (= expression :*) (new com.hp.hpl.jena.sparql.expr.E_Multiply arg-0 arg-1)
       (= expression :div) (new com.hp.hpl.jena.sparql.expr.E_Divide arg-0 arg-1))))
 
-(defn build-filter-one-part
+(defn- build-filter-one-part
   ([expression arg]
      (cond
       (= expression :str) (new com.hp.hpl.jena.sparql.expr.E_Str arg)
@@ -649,9 +665,8 @@
       (= expression :isLiteral) (new com.hp.hpl.jena.sparql.expr.E_IsLiteral arg))))
 
 (declare build-filter)
-(defn build-filter-arg
+(defn- build-filter-arg
   ([arg]
-     (println (str "ARG: " (keyword-to-string arg) " " arg ))
     (cond
      (keyword? arg) (new com.hp.hpl.jena.sparql.expr.ExprVar (.replace (keyword-to-string arg) "?" ""))
      (map? arg) (build-filter arg)
@@ -667,7 +682,7 @@
                               (build-filter-arg (first (:args filter)))))))
 
 
-(defn parse-filter-expr
+(defn- parse-filter-expr
   "Parses a filter expression"
   ([expr]
      (cond

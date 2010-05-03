@@ -272,3 +272,8 @@
         gt-2 (.toString (build-filter (make-filter :> :?x (make-filter :bound :?y))))]
     (is (= gt "( ?x > \"3\"^^xsd:int )"))
     (is (= gt-2 "( ?x > bound(?y) )"))))
+
+(deftest test-build-filters-3
+  (let [*tq* "PREFIX  dc:   <http://purl.org/dc/elements/1.1/>\nPREFIX  a:    <http://www.w3.org/2000/10/annotation-ns#>\nPREFIX  xsd:  <http://www.w3.org/2001/XMLSchema#>\n\nSELECT  ?annot\nWHERE\n  { ?annot  a:annotates  <http://www.w3.org/TR/rdf-sparql-query/> ;\n            dc:date      ?date .\n    FILTER ( bound(?date) < \"2005-01-01T00:00:00Z\"^^xsd:dateTime )\n  }\n"
+        res (.toString (build-filter (first (:filters (sparql-to-query *tq*)))))]
+    (is (= res "( bound(?date) < \"2005-01-01T00:00:00Z\"^^xsd:dateTime )"))))

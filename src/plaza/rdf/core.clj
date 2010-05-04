@@ -131,6 +131,30 @@
            (.createResource @*rdf-model* (keyword-to-string uri))
            (.createResource @*rdf-model* (str *rdf-ns* (keyword-to-string uri))))))
 
+(defn is-blank-node
+  "Checks if a RDF resource"
+  ([resource]
+     (if (or (string? resource)
+             (keyword? resource))
+       false
+       (.isAnon resource))))
+
+(defn blank-node
+  ([]
+     (.createResource @*rdf-model* (com.hp.hpl.jena.rdf.model.AnonId.)))
+  ([id]
+     (let [anon-id (keyword-to-string id)]
+       (.createResource @*rdf-model* (com.hp.hpl.jena.rdf.model.AnonId. anon-id)))))
+
+(defn b
+  ([] (blank-node))
+  ([id] (blank-node id)))
+
+
+(defn blank-node-id
+  ([b]
+     (keyword (.toString (.getId b)))))
+
 (defn resource-uri
   "Returns the URI of a resource (subject, predicate or object)"
   ([resource]
@@ -216,9 +240,11 @@
      (if (coll? subject)
        (let [[rdf-ns local] subject]
          (rdf-resource rdf-ns local))
-       (if (.startsWith (keyword-to-string subject) "?")
-         (keyword subject)
-         (rdf-resource subject)))))
+       (if (is-blank-node subject)
+         subject
+         (if (.startsWith (keyword-to-string subject) "?")
+           (keyword subject)
+           (rdf-resource subject))))))
 
 (defn triple-predicate
   "Defines the predicate of a statement"
@@ -226,9 +252,11 @@
      (if (coll? predicate)
        (let [[rdf-ns local] predicate]
          (rdf-property rdf-ns local))
-       (if (.startsWith (keyword-to-string predicate) "?")
-         (keyword predicate)
-         (rdf-property predicate)))))
+       (if (is-blank-node predicate)
+         (throw (Exception. "Blank node cannot be predicate in a model"))
+         (if (.startsWith (keyword-to-string predicate) "?")
+           (keyword predicate)
+           (rdf-property predicate))))))
 
 (defn triple-object
   "Defines the object of a statement"

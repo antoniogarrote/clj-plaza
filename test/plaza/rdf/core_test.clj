@@ -179,3 +179,21 @@
         _m (with-model m (document-to-model :xml (java.io.ByteArrayInputStream. (.getBytes *test-xml*))))
         res (find-resource-uris m)]
     (is (= (count res) 2))))
+
+(deftest test-blank-node
+  (let [b1 (blank-node)
+        b2 (b)
+        b3 (blank-node :a)
+        b4 (b :a)]
+    (is (is-blank-node b1))
+    (is (is-blank-node b2))
+    (is (is-blank-node b3))
+    (is (is-blank-node b4))
+    (is (= :a (keyword (blank-node-id b3))))
+    (is (= :a (keyword (blank-node-id b4))))))
+
+(deftest test-blank-node-is
+  (is (not (is-blank-node :?a)))
+  (is (not (is-blank-node (d 2))))
+  (is (not (is-blank-node (l "test"))))
+  (is (not (is-blank-node (rdf-resource "http://test.com/Test")))))

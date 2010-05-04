@@ -99,12 +99,31 @@
          false))))
 
 (defn is-variable?
-  "Matches a literal with a certain literal value"
+  "Matches a variable"
   ([]
      (fn [triple atom]
        (cond (= (class atom) clojure.lang.Keyword)
              true
              true false))))
+
+(defn is-blank-node?
+  "Matches a blank node"
+  ([]
+     (fn [triple atom]
+       (if (or (string? atom)
+               (keyword? atom))
+         false
+         (.isAnon atom)))))
+
+(defn blank-node?
+  "Matches a blank node with a certain id"
+  ([id]
+     (fn [triple atom]
+       (if (or (string? atom)
+               (keyword? atom))
+         false
+         (if  (.isAnon atom)
+           (= (keyword-to-string id) (.toString (.getId atom))))))))
 
 (defn is-resource?
   "Matches a literal with a certain literal value"

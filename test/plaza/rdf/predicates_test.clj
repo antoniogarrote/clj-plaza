@@ -74,6 +74,16 @@
   (is (check (qname-prefix? :rdf) (triple-subject rdf:Property)))
   (is (not (check (qname-prefix? :rdf) (triple-subject rdfs:Class)))))
 
+(deftest test-filters-9
+  (let [tps (make-triples [[(b :a) :p (b) ] [:d :e (l "hola" "es")]])
+        result-1 (filter (triple? (subject? (blank-node? :a)))
+                         tps)
+        result-2 (filter (triple? (object? (is-blank-node?)))
+                         tps)]
+    (is (= 1 (count result-1)))
+    (is (= 1 (count result-2)))))
+
+
 (deftest test-predicate-2
   (is (check (datatype? :int) (d 1)))
   (is (not (check (datatype? :int) (d 2.0))))

@@ -56,3 +56,11 @@
                     (conj acum item)))
              []
              seq)))
+
+;; (grab-document-url "http://hamish.blogs.com/mishmash/bib-take1.xml")
+(defn grab-document-url
+  "Retrieves an input stream from a remote URL"
+  ([url]
+     (let [url (java.net.URL. url)
+           conn (.openConnection url)]
+       (.getInputStream conn))))

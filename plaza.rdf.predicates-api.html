@@ -1,0 +1,405 @@
+<html>
+  <head>
+    <title>plaza.rdf.predicates API reference (clj-plaza)</title>
+    <link href="static/favicon.png" rel="icon" />
+    <link href="static/favicon.png" rel="shortcut icon" />
+    <link media="all" type="text/css" href="static/clojure.css" rel="stylesheet" />
+    <link media="all" type="text/css" href="static/wiki.css" rel="stylesheet" />
+    <link media="all" type="text/css" href="static/internal.css" rel="stylesheet" />
+    <!-- TODO: are we using these (from clojure.org)? If so, add the files -->
+    <script src="file/view/code_highlighter.js" type="text/javascript"></script>
+    <script src="file/view/clojure.js" type="text/javascript"></script>
+    <style>.menuWrapper{height: 36px;}</style>
+    <!--[if lte IE 6]>
+    <link rel="stylesheet" href="http://www.wikispaces.com/_/2009051601/s/internal_ie.css" type="text/css" />
+    <![endif]-->
+  </head>
+<!--
+This document was auto-generated from the source by the clojure autodoc system.
+To report errors or ask questions about the overall documentation structure, formatting,
+etc., contact Tom Faulhaber (google mail name: tomfaulhaber).
+For errors in the documentation of a particular namespace, contact the author of that
+namespace.
+-->
+  <body>
+    <div id="AllContentContainer">
+      <div id="Header">
+	<a id="Logo" href="index.html"><img alt="Clojure" height="100" width="100" src="static/clojure-icon.gif" /></a>
+	<h1><a title="page header title" id="page-header" href="index.html">clj-plaza distributed semantic systems library</a></h1>
+      </div>
+      <div id="leftcolumn"><div style="text-align: center;"></div>
+<div class="menu">
+  <div class="WikiCustomNav WikiElement wiki">
+    <a class="wiki_link" href="index.html">Overview</a><br />
+    <a class="wiki_link" href="api-index.html">API Index</a><br />
+    <a class="wiki_link" href="#">Namespaces:</a>
+    <ul id="left-sidebar-list">
+      <li><a href="plaza.core-api.html" class="wiki_link">plaza.core</a></li><li><a href="plaza.rdf.core-api.html" class="wiki_link">plaza.rdf.core</a></li><li><a href="plaza.rdf.predicates-api.html" class="wiki_link">plaza.rdf.predicates</a></li><li><a href="plaza.rdf.sparql-api.html" class="wiki_link">plaza.rdf.sparql</a></li><li><a href="plaza.utils-api.html" class="wiki_link">plaza.utils</a></li>
+    </ul>
+  </div>
+</div>
+</div>
+      <div id="rightcolumn">
+	<div id="Content">
+	  <div class="contentBox"><div class="innerContentBox">
+              <div id="content_view" class="wiki wikiPage">
+                <div id="right-sidebar"><div id="toc">
+  <h1 class="nopad">Table of Contents</h1>
+  <div style="margin-left: 1em;" class="toc-section">
+    <a href="#toc0">Overview</a>
+    <div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/and?">and?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/blank-node?">blank-node?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/check">check</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/datatype?">datatype?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/is-blank-node?">is-blank-node?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/is-literal?">is-literal?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/is-optional?">is-optional?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/is-resource?">is-resource?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/is-variable?">is-variable?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/literal-fn?">literal-fn?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/literal-value?">literal-value?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/literal?">literal?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/not?">not?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/object-and?">object-and?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/object-or?">object-or?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/object?">object?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/or?">or?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/predicate-and?">predicate-and?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/predicate-or?">predicate-or?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/predicate?">predicate?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/qname-local?">qname-local?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/qname-prefix?">qname-prefix?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/subject-and?">subject-and?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/subject-or?">subject-or?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/subject?">subject?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/triple-and?">triple-and?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/triple-or?">triple-or?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/triple?">triple?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/uri?">uri?</a>
+    </div>
+    <br />
+  </div>
+</div>
+</div>
+                <div id="content-tag"><h1 id="overview">API for <span id="namespace-name">plaza.rdf.predicates</span></h1>
+by <span id="author">Unknown</span><br />
+<br />Usage:
+<pre>
+(ns your-namespace
+  (:require <span id="long-name">plaza.rdf.predicates</span>))
+</pre><pre>
+</pre><h2>Overview</h2>
+<pre id="namespace-docstr"></pre>
+<br />
+<h2>Public Variables and Functions</h2>
+<div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/and?">and?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (and? &amp; preds)
+</pre>
+  <pre id="var-docstr">Applies and to a series of matchers</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/blank-node?">blank-node?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (blank-node? id)
+</pre>
+  <pre id="var-docstr">Matches a blank node with a certain id</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/check">check</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (check predicate val)
+</pre>
+  <pre id="var-docstr">Applies a predicate to a concrete value</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/datatype?">datatype?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (datatype? data-uri)
+</pre>
+  <pre id="var-docstr">Matches the value or the value and language of a literal</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/is-blank-node?">is-blank-node?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (is-blank-node?)
+</pre>
+  <pre id="var-docstr">Matches a blank node</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/is-literal?">is-literal?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (is-literal?)
+</pre>
+  <pre id="var-docstr">Matches a literal with a certain literal value</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/is-optional?">is-optional?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (is-optional?)
+</pre>
+  <pre id="var-docstr">Checks if a triple is an optional part of a query</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/is-resource?">is-resource?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (is-resource?)
+</pre>
+  <pre id="var-docstr">Matches a literal with a certain literal value</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/is-variable?">is-variable?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (is-variable?)
+</pre>
+  <pre id="var-docstr">Matches a variable</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/literal-fn?">literal-fn?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (literal-fn? f)
+</pre>
+  <pre id="var-docstr">Applies a custom predicate function to a literal</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/literal-value?">literal-value?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (literal-value? lit)
+</pre>
+  <pre id="var-docstr">Matches a literal with a certain literal value</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/literal?">literal?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (literal? val)
+       (literal? val lang)
+</pre>
+  <pre id="var-docstr">Matches the value or the value and language of a literal</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/not?">not?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (not? pred)
+</pre>
+  <pre id="var-docstr">Negates a clause query</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/object-and?">object-and?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (object-and? &amp; conditions)
+</pre>
+  <pre id="var-docstr">Checks a condition over the object of a triple</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/object-or?">object-or?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (object-or? &amp; conditions)
+</pre>
+  <pre id="var-docstr">Checks a condition over the object of a triple</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/object?">object?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (object? condition)
+</pre>
+  <pre id="var-docstr">Checks a condition over the object of a triple</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/or?">or?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (or? &amp; preds)
+</pre>
+  <pre id="var-docstr">Applies or to a series of matchers</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/predicate-and?">predicate-and?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (predicate-and? &amp; conditions)
+</pre>
+  <pre id="var-docstr">Checks a condition over the predicate of a triple</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/predicate-or?">predicate-or?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (predicate-or? &amp; conditions)
+</pre>
+  <pre id="var-docstr">Checks a condition over the predicate of a triple</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/predicate?">predicate?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (predicate? condition)
+</pre>
+  <pre id="var-docstr">Checks a condition over the predicate of a triple</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/qname-local?">qname-local?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (qname-local? local)
+</pre>
+  <pre id="var-docstr">Matches a URI or curie against a triple atom</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/qname-prefix?">qname-prefix?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (qname-prefix? prefix)
+</pre>
+  <pre id="var-docstr">Matches a URI or curie against a triple atom</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/subject-and?">subject-and?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (subject-and? &amp; conditions)
+</pre>
+  <pre id="var-docstr">Checks a condition over the subject of a triple</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/subject-or?">subject-or?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (subject-or? &amp; conditions)
+</pre>
+  <pre id="var-docstr">Checks a condition over the subject of a triple</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/subject?">subject?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (subject? condition)
+</pre>
+  <pre id="var-docstr">Checks a condition over the subject of a triple</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/triple-and?">triple-and?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (triple-and? &amp; conds)
+</pre>
+  <pre id="var-docstr">Checks if one triple matches a set of conditions</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/triple-or?">triple-or?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (triple-or? &amp; conds)
+</pre>
+  <pre id="var-docstr">Checks if one triple matches a set of conditions</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/triple?">triple?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (triple? cond)
+</pre>
+  <pre id="var-docstr">Checks if one triple matches a set of conditions</pre>
+  
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/uri?">uri?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (uri? ns local)
+       (uri? uri)
+</pre>
+  <pre id="var-docstr">Matches a URI or curie against a triple atom</pre>
+  
+</div>
+
+
+</div>
+              </div>
+            </div>
+          </div>
+	</div>
+	<div id="foot">
+	  <div style="text-align: center;" id="copyright">2010 (c) Antonio Garrote, under the MIT license</div>
+	</div>
+      </div>
+      <div id="DesignedBy">Logo &amp; site design by <a title="Visit Tom Hickey's website." href="http://www.tomhickey.com">Tom Hickey</a>.<br />
+      Clojure auto-documentation system by Tom Faulhaber.</div>
+    </div>
+    <!-- /AllContentContainer -->
+  </body>
+
+</html>

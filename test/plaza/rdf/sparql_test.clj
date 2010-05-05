@@ -106,3 +106,8 @@
         results (model-query-triples model query)]
 
     (is (= (count results) 2))))
+
+(deftest test-collect-vars
+  (is (= (set (pattern-collect-vars (make-pattern [[:?a :?b (l "test")] [:a :?b (d 2)]])))  (set [:?a :?b])))
+  (is (= (set (pattern-collect-vars (make-pattern [[?s ?p ?o]]))) (set [:?s :?p :?o]))))
+

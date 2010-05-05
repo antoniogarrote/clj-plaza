@@ -252,26 +252,28 @@
 (defn triple-subject
   "Defines a subject for a statement"
   ([subject]
-     (if (coll? subject)
-       (let [[rdf-ns local] subject]
-         (rdf-resource rdf-ns local))
-       (if (is-blank-node subject)
-         subject
-         (if (.startsWith (keyword-to-string subject) "?")
-           (keyword subject)
-           (rdf-resource subject))))))
+     (if (is-resource subject) subject
+         (if (coll? subject)
+           (let [[rdf-ns local] subject]
+             (rdf-resource rdf-ns local))
+           (if (is-blank-node subject)
+             subject
+             (if (.startsWith (keyword-to-string subject) "?")
+               (keyword subject)
+               (rdf-resource subject)))))))
 
 (defn triple-predicate
   "Defines the predicate of a statement"
   ([predicate]
-     (if (coll? predicate)
-       (let [[rdf-ns local] predicate]
-         (rdf-property rdf-ns local))
-       (if (is-blank-node predicate)
-         (throw (Exception. "Blank node cannot be predicate in a model"))
-         (if (.startsWith (keyword-to-string predicate) "?")
-           (keyword predicate)
-           (rdf-property predicate))))))
+     (if (is-resource predicate) predicate
+         (if (coll? predicate)
+           (let [[rdf-ns local] predicate]
+             (rdf-property rdf-ns local))
+           (if (is-blank-node predicate)
+             (throw (Exception. "Blank node cannot be predicate in a model"))
+             (if (.startsWith (keyword-to-string predicate) "?")
+               (keyword predicate)
+               (rdf-property predicate)))))))
 
 (defn triple-object
   "Defines the object of a statement"

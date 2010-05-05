@@ -21,6 +21,34 @@
 ;;;                  SPARQL                     ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; common variable names
+(def ?s :?s)
+(def ?p :?p)
+(def ?o :?o)
+(def ?a :?a)
+(def ?b :?b)
+(def ?c :?c)
+(def ?d :?d)
+(def ?e :?e)
+(def ?f :?f)
+(def ?g :?g)
+(def ?h :?h)
+(def ?i :?i)
+(def ?j :?j)
+(def ?k :?k)
+(def ?l :?l)
+(def ?m :?m)
+(def ?n :?n)
+(def ?q :?q)
+(def ?r :?r)
+(def ?t :?t)
+(def ?u :?u)
+(def ?v :?v)
+(def ?w :?w)
+(def ?x :?x)
+(def ?y :?y)
+(def ?z :?z)
+
 (defn make-pattern
   "Builds a new pattern representation"
   ([triples]
@@ -121,8 +149,35 @@
 (defn- is-var-expr
   "Tests if one Jena expression is a var expression"
   ([expr]
-     (= (class expr) com.hp.hpl.jena.sparql.expr.ExprVar)))
+     (or (and (keyword? expr)
+              (.startsWith (keyword-to-string expr) "?"))
+         (= (class expr) com.hp.hpl.jena.sparql.expr.ExprVar))))
 
+(defn- var-to-keyword
+  ([v]
+     (if (keyword? v)
+       v
+       (let [s (.getVarName v)]
+         (if (.startsWith s "?")
+           (keyword s)
+           (keyword (str "?" s)))))))
+
+(defn pattern-collect-vars
+  "Returns an array with all the vars in a pattern"
+  ([pattern]
+     (reduce (fn [acum [s p o]]
+               (let [extrf   (fn [rs atom]
+                               (if (is-var-expr atom)
+                                 (let [katom (var-to-keyword atom)]
+                                   (if (some #(= katom %1) rs)
+                                     rs
+                                     (conj rs katom)))
+                                 rs))
+                     acump   (extrf acum s)
+                     acumpp  (extrf acump p)
+                     acumppp (extrf acumpp o)]
+                 acumppp))
+             [] pattern)))
 
 (defn- parse-literal-lexical
   ([lit]
@@ -358,6 +413,33 @@
                                           (= :select (:kind query)) com.hp.hpl.jena.query.Query/QueryTypeSelect))
          built-query))))
 
+;; Querying a model
+
+(defn- process-model-query-result
+  "Transforms a query result into a dicitionary of bindings"
+  ([result]
+     (let [vars (iterator-seq (.varNames result))]
+       (reduce (fn [acum item] (assoc acum (keyword (str "?" item)) (.get result item))) {} vars))))
+
+(defn model-query
+  "Queries a model and returns a map of bindings"
+  ([model query]
+     (let [;_model (println (str "MODEL: " (model-to-format model :ttl)))
+           ;_test (println (.toString (build-query query)))
+           qexec (QueryExecutionFactory/create (.toString (build-query query)) @model)
+;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
+           results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
+           ;_results (println (str "RESULTS " results))]
+       (map #(process-model-query-result %1) results))))
+
+(declare pattern-bind)
+(defn model-query-triples
+  "Queries a model and returns a list of triple sets with results binding variables in que query pattern"
+  ([model query]
+     (let [results (model-query model query)]
+       (map #(pattern-bind (:pattern query) %1) results))))
+
+
 ;; Triples <-> Pattern transformations
 
 
@@ -381,25 +463,13 @@
                  [sp pp op])))
            pattern))))
 
-(defn- process-model-query-result
-  "Transforms a query result into a dicitionary of bindings"
-  ([result]
-     (let [vars (iterator-seq (.varNames result))]
-       (reduce (fn [acum item] (assoc acum (keyword (str "?" item)) (.get result item))) {} vars))))
-
-(defn model-query
-  "Queries a model and returns a map of bindings"
-  ([model query]
-     (let [;_model (println (str "MODEL: " (model-to-format model :ttl)))
-           ;_test (println (.toString (build-query query)))
-           qexec (QueryExecutionFactory/create (.toString (build-query query)) @model)
-;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
-           results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
-           ;_results (println (str "RESULTS " results))]
-       (map #(process-model-query-result %1) results))))
-
-(defn model-query-triples
-  "Queries a model and returns a map of bindings"
-  ([model query]
-     (let [results (model-query model query)]
-       (map #(pattern-bind (:pattern query) %1) results))))
+(defn pattern-apply
+  "Applies a pattern to a set of triples"
+  ([triples pattern]
+     (let [vars (pattern-collect-vars pattern)
+           query (defquery
+                   (query-set-pattern pattern)
+                   (query-set-type :select)
+                   (query-set-vars vars))]
+       (model-query-triples (defmodel (model-add-triples triples))
+                            query))))

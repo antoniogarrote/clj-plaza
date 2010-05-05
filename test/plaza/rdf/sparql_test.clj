@@ -61,8 +61,8 @@
                           (query-set-reduced))))]
     (is (not (= -1 (.indexOf query-str "REDUCED"))))
     (is (not (= -1 (.indexOf query-str "DISTINCT"))))
-    (is (not (= -1 (.indexOf query-str "OFFSET  5"))))
-    (is (not (= -1 (.indexOf query-str "LIMIT  2"))))))
+    (is (not (= -1 (.indexOf query-str "OFFSET"))))
+    (is (not (= -1 (.indexOf query-str "LIMIT"))))))
 
 (deftest test-make-pattern-build-1
      (let [pattern (make-pattern [[:?x rdf:type :http://test.com/Test]

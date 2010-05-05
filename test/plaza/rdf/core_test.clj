@@ -183,10 +183,12 @@
 (deftest test-document-to-model-2
   (let [m (build-model)
         _m (with-model m (document-to-model :xml (java.io.ByteArrayInputStream. (.getBytes *test-xml-blanks*))))]
+    (println (str "MODEL:" m " ERRORS " (agent-error m) "RESULTS " @m))
     (is (= (count (model-to-triples m)) 4))
     (is (or (is-blank-node (o (first (model-to-triples m))))
             (is-blank-node (o (second (model-to-triples m))))
-            (is-blank-node (o (nth (model-to-triples m) 2)))))))
+            (is-blank-node (o (nth (model-to-triples m) 2)))
+            (is-blank-node (o (nth (model-to-triples m) 3)))))))
 
 (deftest test-find-resources
   (let [m (build-model)

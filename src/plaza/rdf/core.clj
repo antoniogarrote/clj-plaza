@@ -15,6 +15,10 @@
            (com.hp.hpl.jena.sparql.expr E_Str E_Lang E_Datatype E_Bound E_IsIRI E_IsURI E_IsBlank E_IsLiteral E_GreaterThanOrEqual E_GreaterThan
                                         E_LessThanOrEqual E_LessThan E_NotEquals E_Equals E_Subtract E_Add E_Multiply E_Divide)))
 
+;; Loading RDFa java
+
+(Class/forName "net.rootdev.javardfa.RDFaReader")
+
 
 ;; Axiomatic vocabulary
 
@@ -38,6 +42,10 @@
   ([]
      (agent (ModelFactory/createDefaultModel))))
 
+(defn test-rdfa
+  ([url kind]
+     (let [m (ModelFactory/createDefaultModel)]
+       (.read m url kind))))
 
 ;;; Root bindings
 
@@ -360,16 +368,28 @@
            (= (.toLowerCase (keyword-to-string format)) "ntriple") "N-TRIPLE"
            (= (.toLowerCase (keyword-to-string format)) "n3") "N3"
            (= (.toLowerCase (keyword-to-string format)) "ttl") "TURTLE"
-           (= (.toLowerCase (keyword-to-string format)) "turtle") "TTL")))
+           (= (.toLowerCase (keyword-to-string format)) "turtle") "TTL"
+           (= (.toLowerCase (keyword-to-string format)) "xhtml") "XHTML"
+           (= (.toLowerCase (keyword-to-string format)) "html") "HTML")))
 
 (defn document-to-model
   "Adds a set of triples read from a serialized document into a model"
   ([format stream]
      (let [format (parse-format format)]
        (do
-         (send *rdf-model* (fn [ag] (.read ag stream (find-ns-registry *rdf-ns*) format)))
-         (await *rdf-model*)
-         *rdf-model*))))
+         (send *rdf-model* (fn [ag] (if (string? stream)
+                                      (.read ag stream format)
+                                      (.read ag stream *rdf-ns* format))
+                             ag))
+         (loop [should-continue true]
+           (let [res (await-for 200 *rdf-model*)]
+             (if (nil? res)
+               (if (agent-error *rdf-model*)
+                 (throw (Exception. (str "Exception parsing document with format " format)))
+                 (recur (await-for 200 *rdf-model*)))
+               (if (= res false)
+                 (recur (await-for 200 *rdf-model*))
+                 *rdf-model*))))))))
 
 
 (defn model-to-format

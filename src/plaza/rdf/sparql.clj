@@ -98,6 +98,62 @@
   ([filters]
      (fn [query] (query-set-filters query filters))))
 
+(defn query-set-limit
+  "Sets a limit in the number of results"
+  ([query limit]
+     (assoc query :limit limit))
+  ([limit]
+     (fn [query] (query-set-limit limit))))
+
+(defn query-unset-limit
+  "Removes the limit constrain in the number of results"
+  ([query]
+     (dissoc query :limit))
+  ([]
+     (fn [query] (query-unset-limit))))
+
+(defn query-set-distinct
+  "Sets a distinct contrain in the results"
+  ([query]
+     (assoc query :distinct true))
+  ([]
+     (fn [query] (query-set-distinct))))
+
+(defn query-unset-distinct
+  "Removes the distinct constrain in the results"
+  ([query]
+     (dissoc query :distinct))
+  ([]
+     (fn [query] (query-unset-distinct))))
+
+(defn query-set-reduced
+  "Sets a reduced constrain in the results"
+  ([query]
+     (assoc query :reduced true))
+  ([]
+     (fn [query] (query-set-reduced))))
+
+(defn query-unset-reduced
+  "Removes the reduced constrain in the number results"
+  ([query]
+     (dissoc query :reduced))
+  ([]
+     (fn [query] (query-unset-reduced))))
+
+(defn query-set-offset
+  "Sets an offset in the results"
+  ([query offset]
+     (assoc query :offset offset))
+  ([offset]
+     (fn [query] (query-set-offset offset))))
+
+(defn query-unset-offset
+  "Removes the offset constraint in the results"
+  ([query]
+     (dissoc query :offset))
+  ([]
+     (fn [query] (query-unset-offset))))
+
 (defn query-remove-var
   "Removes a var from the collection of vars in the query"
   ([query var]
@@ -411,6 +467,14 @@
                                           (= :construct (:kind query)) com.hp.hpl.jena.query.Query/QueryTypeConstruct
                                           (= :describe (:kind query)) com.hp.hpl.jena.query.Query/QueryTypeDescribe
                                           (= :select (:kind query)) com.hp.hpl.jena.query.Query/QueryTypeSelect))
+         (when (:limit query)
+           (.setLimit built-query (:limit query)))
+         (when (:offset query)
+           (.setOffset built-query (:offset query)))
+         (when (:distinct query)
+           (.setDistinct built-query true))
+         (when (:reduced query)
+           (.setReduced built-query true))
          built-query))))
 
 ;; Querying a model

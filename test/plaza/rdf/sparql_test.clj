@@ -49,6 +49,21 @@
     (= res "SELECT  ?y\nWHERE\n  { ?y  ?x  ?p .\n    FILTER ( ?y > \"2\"^^<http://www.w3.org/2001/XMLSchema#int> )\n  }\n")))
 
 
+(deftest test-build-query-4
+  (let [query-str (str (build-query
+                        (defquery
+                          (query-set-vars [?a])
+                          (query-set-pattern (make-pattern [[:a :b :c]]))
+                          (query-set-type :select)
+                          (query-set-limit 2)
+                          (query-set-distinct)
+                          (query-set-offset 5)
+                          (query-set-reduced))))]
+    (is (not (= -1 (.indexOf query-str "REDUCED"))))
+    (is (not (= -1 (.indexOf query-str "DISTINCT"))))
+    (is (not (= -1 (.indexOf query-str "OFFSET  5"))))
+    (is (not (= -1 (.indexOf query-str "LIMIT  2"))))))
+
 (deftest test-make-pattern-build-1
      (let [pattern (make-pattern [[:?x rdf:type :http://test.com/Test]
                                   (optional [:?y :?z (d 2)])])

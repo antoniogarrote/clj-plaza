@@ -1,3 +1,7 @@
+;; @author Antonio Garote
+;; @email antoniogarrote@gmail.com
+;; @date 29.04.2010
+
 (ns plaza.utils)
 
 (defn keyword-to-string

@@ -76,6 +76,13 @@
   `(binding [*rdf-model* ~model]
      ~@rest))
 
+(defmacro defmodel
+  "Sets up the default model for a set of forms and returns the model"
+  [& rest]
+  `(binding [*rdf-model* (build-model)]
+     ~@rest
+     *rdf-model*))
+
 ;;; Namespaces
 
 ;; Dictionaries for data
@@ -172,6 +179,14 @@
   "Returns the local part of the qname of the resource"
   ([resource]
      (.getLocalName resource)))
+
+(defn is-resource
+  "Matches a literal with a certain literal value"
+  ([atom]
+     (cond (or (= (class atom) com.hp.hpl.jena.rdf.model.impl.ResourceImpl)
+               (= (class atom) com.hp.hpl.jena.rdf.model.impl.PropertyImpl))
+           true
+           true false)))
 
 (defn rdf-literal
   "Creates a new rdf literal"
@@ -337,27 +352,39 @@
 
 ;; Models IO
 
+(defn- parse-format
+  ([format]
+     (cond (= (.toLowerCase (keyword-to-string format)) "xml") "RDF/XML"
+           (= (.toLowerCase (keyword-to-string format)) "ntriple") "N-TRIPLE"
+           (= (.toLowerCase (keyword-to-string format)) "n3") "N3"
+           (= (.toLowerCase (keyword-to-string format)) "ttl") "TURTLE"
+           (= (.toLowerCase (keyword-to-string format)) "turtle") "TTL")))
+
 (defn document-to-model
   "Adds a set of triples read from a serialized document into a model"
   ([format stream]
-     (let [format (cond (= (.toLowerCase (keyword-to-string format)) "xml") "RDF/XML"
-                        (= (.toLowerCase (keyword-to-string format)) "ntriple") "N-TRIPLE"
-                        (= (.toLowerCase (keyword-to-string format)) "n3") "N3"
-                        (= (.toLowerCase (keyword-to-string format)) "ttl") "TURTLE"
-                        (= (.toLowerCase (keyword-to-string format)) "turtle") "TTL")]
+     (let [format (parse-format format)]
        (do
          (send *rdf-model* (fn [ag] (.read ag stream (find-ns-registry *rdf-ns*) format)))
          (await *rdf-model*)
          *rdf-model*))))
 
-(defn out
+
+(defn model-to-format
   "Writes a model using the chosen format"
   ([]
-     (.write @*rdf-model* *out* "N-TRIPLE"))
+     (.write @*rdf-model* *out* (parse-format :ntriple)))
   ([format]
-     (.write @*rdf-model* *out* format))
-  ([format model]
-     (.write model *out* format)))
+     (.write @*rdf-model* *out* (parse-format format)))
+  ([model format]
+     (.write @model *out* (parse-format format))))
+
+(defn triples-to-format
+  "Writes a set of triple using the "
+  ([triples & args]
+     (with-model (build-model)
+       (model-add-triples triples)
+       (apply model-to-format args))))
 
 ;; model manipulation predicates
 (defn subject-from-triple

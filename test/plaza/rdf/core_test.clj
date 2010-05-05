@@ -15,6 +15,18 @@
   </rdf:Description>
 </rdf:RDF>")
 
+(def *test-xml-blanks* "<?xml version=\"1.0\"?>
+<rdf:RDF xmlns:csf=\"http://schemas.microsoft.com/connectedservices/pm#\" xmlns:owl=\"http://www.w3.org/2002/07/owl#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\">
+    <rdf:Description rdf:about=\"urn:upn_abc\">
+        <csf:Phone>
+            <rdf:Description>
+                <csf:Phone-Home-Primary>425-555-0111</csf:Phone-Home-Primary>
+                <csf:Phone-Mobile-Other>425-555-0114</csf:Phone-Mobile-Other>
+                <csf:Phone-Office-Other>425-555-0115</csf:Phone-Office-Other>
+              </rdf:Description>
+        </csf:Phone>
+     </rdf:Description>
+</rdf:RDF>")
 
 (deftest test-create-model
   (is clojure.lang.Agent (build-model)))
@@ -167,6 +179,14 @@
   (let [m (build-model)
         _m (with-model m (document-to-model :xml (java.io.ByteArrayInputStream. (.getBytes *test-xml*))))]
     (is (= (count (model-to-triples m)) 3))))
+
+(deftest test-document-to-model-2
+  (let [m (build-model)
+        _m (with-model m (document-to-model :xml (java.io.ByteArrayInputStream. (.getBytes *test-xml-blanks*))))]
+    (is (= (count (model-to-triples m)) 4))
+    (is (or (is-blank-node (o (first (model-to-triples m))))
+            (is-blank-node (o (second (model-to-triples m))))
+            (is-blank-node (o (nth (model-to-triples m) 2)))))))
 
 (deftest test-find-resources
   (let [m (build-model)

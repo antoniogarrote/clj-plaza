@@ -9,8 +9,9 @@
            (com.hp.hpl.jena.reasoner.rulesys RDFSRuleReasonerFactory)
            (com.hp.hpl.jena.vocabulary ReasonerVocabulary)
            (com.hp.hpl.jena.datatypes.xsd XSDDatatype)
+           (com.hp.hpl.jena.sparql.core Var)
            (com.hp.hpl.jena.datatypes.xsd.impl XMLLiteralType)
-           (com.hp.hpl.jena.query QueryFactory)
+           (com.hp.hpl.jena.query QueryFactory QueryExecutionFactory DatasetFactory)
            (com.hp.hpl.jena.sparql.syntax Element ElementGroup ElementOptional ElementFilter)
            (com.hp.hpl.jena.graph Node Triple)
            (com.hp.hpl.jena.sparql.expr E_Str E_Lang E_Datatype E_Bound E_IsIRI E_IsURI E_IsBlank E_IsLiteral E_GreaterThanOrEqual E_GreaterThan
@@ -308,10 +309,10 @@
   "Transforms a query atom (subject, predicate or object) in the suitable Jena object for a Jena query"
   ([atom]
      (if (keyword? atom)
-       (Node/createVariable (keyword-to-variable atom))
+       (Var/alloc (keyword-to-variable atom))
        (if (= (class atom) com.hp.hpl.jena.rdf.model.impl.LiteralImpl)
-         (Node/createLiteral (.toString atom))
-         (Node/createURI (.toString atom))))))
+         (Node/createLiteral (.getLexicalForm atom) (.getLanguage atom) (.getDatatype atom))
+         (Node/createURI (str (if (is-resource atom) atom (rdf-resource atom))))))))
 
 (defn build-query
   "Transforms a query representation into a Jena Query object"
@@ -379,3 +380,26 @@
                  (optional [sp pp op])
                  [sp pp op])))
            pattern))))
+
+(defn- process-model-query-result
+  "Transforms a query result into a dicitionary of bindings"
+  ([result]
+     (let [vars (iterator-seq (.varNames result))]
+       (reduce (fn [acum item] (assoc acum (keyword (str "?" item)) (.get result item))) {} vars))))
+
+(defn model-query
+  "Queries a model and returns a map of bindings"
+  ([model query]
+     (let [;_model (println (str "MODEL: " (model-to-format model :ttl)))
+           ;_test (println (.toString (build-query query)))
+           qexec (QueryExecutionFactory/create (.toString (build-query query)) @model)
+;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
+           results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
+           ;_results (println (str "RESULTS " results))]
+       (map #(process-model-query-result %1) results))))
+
+(defn model-query-triples
+  "Queries a model and returns a map of bindings"
+  ([model query]
+     (let [results (model-query model query)]
+       (map #(pattern-bind (:pattern query) %1) results))))

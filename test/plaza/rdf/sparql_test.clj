@@ -87,3 +87,22 @@
   (let [*tq* "PREFIX  dc:   <http://purl.org/dc/elements/1.1/>\nPREFIX  a:    <http://www.w3.org/2000/10/annotation-ns#>\nPREFIX  xsd:  <http://www.w3.org/2001/XMLSchema#>\n\nSELECT  ?annot\nWHERE\n  { ?annot  a:annotates  <http://www.w3.org/TR/rdf-sparql-query/> ;\n            dc:date      ?date .\n    FILTER ( bound(?date) < \"2005-01-01T00:00:00Z\"^^xsd:dateTime )\n  }\n"
         res (.toString (build-filter (first (:filters (sparql-to-query *tq*)))))]
     (is (= res "( bound(?date) < \"2005-01-01T00:00:00Z\"^^xsd:dateTime )"))))
+
+(deftest test-go-back-query
+  (let [query (defquery
+                (query-set-type :select)
+                (query-set-vars [:?x])
+                (query-set-pattern
+                 (make-pattern [[:?x "a" (d 2)]])))
+
+        triples (make-triples [[:m :a (d 2)]
+                               [:n :b (d 2)]
+                               [:o :a (d 2)]
+                               [:p :a (d 3)]])
+
+        model (defmodel
+                (model-add-triples triples))
+
+        results (model-query-triples model query)]
+
+    (is (= (count results) 2))))

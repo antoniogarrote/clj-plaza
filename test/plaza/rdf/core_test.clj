@@ -166,6 +166,13 @@
     (with-model m (model-add-triples (make-triples [[:a :b :c] [:d :e :f] [:g [:h :i :j :k]]])))
     (is (= 4 (.size (.toList (.listStatements @m)))))))
 
+(deftest test-remove-triples-1
+  (let [m (defmodel
+             (model-add-triples (make-triples [[:a :b (d 2)]]))
+             (model-add-triples (make-triples [[:e :f (l "test")]])))]
+    (do (with-model m (model-remove-triples (make-triples [[:a :b (d 2)]])))
+        (= 1 (count (model-to-triples m))))))
+
 (deftest test-optional
   (let [is-optional (optional [:foo])]
     (is (:optional (meta (first is-optional))))))
@@ -177,13 +184,12 @@
 
 (deftest test-document-to-model-1
   (let [m (build-model)
-        _m (with-model m (document-to-model :xml (java.io.ByteArrayInputStream. (.getBytes *test-xml*))))]
+        _m (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes *test-xml*)) :xml))]
     (is (= (count (model-to-triples m)) 3))))
 
 (deftest test-document-to-model-2
   (let [m (build-model)
-        _m (with-model m (document-to-model :xml (java.io.ByteArrayInputStream. (.getBytes *test-xml-blanks*))))]
-    (println (str "MODEL:" m " ERRORS " (agent-error m) "RESULTS " @m))
+        _m (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes *test-xml-blanks*)) :xml))]
     (is (= (count (model-to-triples m)) 4))
     (is (or (is-blank-node (o (first (model-to-triples m))))
             (is-blank-node (o (second (model-to-triples m))))
@@ -192,13 +198,13 @@
 
 (deftest test-find-resources
   (let [m (build-model)
-        _m (with-model m (document-to-model :xml (java.io.ByteArrayInputStream. (.getBytes *test-xml*))))
+        _m (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes *test-xml*)) :xml))
         res (find-resources m)]
     (is (= (count res) 2))))
 
 (deftest test-find-resource-uris
   (let [m (build-model)
-        _m (with-model m (document-to-model :xml (java.io.ByteArrayInputStream. (.getBytes *test-xml*))))
+        _m (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes *test-xml*)) :xml))
         res (find-resource-uris m)]
     (is (= (count res) 2))))
 

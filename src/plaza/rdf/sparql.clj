@@ -522,7 +522,7 @@
                    op (if (get binding-map o)
                         (triple-object (get binding-map o))
                         o)]
-               (if (check (is-optional?) t)
+               (if (triple-check-apply (is-optional?) t)
                  (optional [sp pp op])
                  [sp pp op])))
            pattern))))
@@ -537,3 +537,8 @@
                    (query-set-vars vars))]
        (model-query-triples (defmodel (model-add-triples triples))
                             query))))
+
+(defn query-to-string
+  "Returns the strin representation of a query"
+  ([query]
+     (str (build-query query))))

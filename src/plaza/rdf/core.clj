@@ -42,10 +42,6 @@
   ([]
      (agent (ModelFactory/createDefaultModel))))
 
-(defn test-rdfa
-  ([url kind]
-     (let [m (ModelFactory/createDefaultModel)]
-       (.read m url kind))))
 
 ;;; Root bindings
 
@@ -241,6 +237,27 @@
   ([val] (rdf-typed-literal val))
   ([val dt] (rdf-typed-literal val dt)))
 
+(defn rdf-date
+  "Creates a new RDF date"
+  ([]
+     (rdf-date (java.util.Date.)))
+  ([d]
+     (if (instance? java.util.Date d)
+       (rdf-date (+ 1900 (.getYear d)) (.getMonth d) (.getDate d))
+       (if (instance? java.util.Calendar d)
+         (rdf-typed-literal d)
+         (throw (Exception. (str "Don't know how to build a date from " d))))))
+  ([y m d]
+     (let [c (java.util.Calendar/getInstance)]
+       (do (.set c y m d)
+           (rdf-typed-literal c)))))
+
+(defn date
+  "Shortcut for rdf-date"
+  ([& args]
+     (apply rdf-date args)))
+
+
 (defn literal-value
   "Returns the value of a literal"
   ([lit] (.getValue lit)))
@@ -293,7 +310,8 @@
 (defn rdf-triple
   "Parses a RDF triple"
   ([to-parse]
-     (if (coll? (first to-parse))
+     (if (and (coll? (first to-parse))
+              (= (count (first to-parse)) 3))
        (map #(rdf-triple %1) to-parse)
        (if (= (count to-parse) 3)
          (let [[s p o] to-parse]
@@ -303,6 +321,38 @@
          (let [[s ts] to-parse
                c      (fold-list ts)]
            (vec (map (fn [po] (rdf-triple [s (nth po 0) (nth po 1)]))  c)))))))
+
+(defn- rdf-clone-resource
+  ([res]
+     (rdf-resource (resource-uri res))))
+
+(defn- rdf-clone-property
+  ([prop]
+     (rdf-property (str prop))))
+
+(defn- rdf-clone-literal
+  ([lit] (if (= (.getLanguage lit) "")
+           (rdf-typed-literal (literal-value lit) (literal-datatype-uri lit))
+           (rdf-literal (literal-value lit) (literal-language lit)))))
+
+(defn- rdf-clone-property
+  ([res]
+     (rdf-resource (resource-uri res))))
+
+(defn- rdf-clone-blank-node
+  ([blank]
+     (blank-node (blank-node-id blank))))
+
+(defn rdf-clone
+  "Clones a triple component"
+  ([rdf-obj]
+     (cond
+      (keyword? rdf-obj) rdf-obj ;variable
+      (is-blank-node rdf-obj) (rdf-clone-blank-node rdf-obj)
+      (instance? com.hp.hpl.jena.rdf.model.Literal rdf-obj) (rdf-clone-literal rdf-obj) ;literal
+      (instance? com.hp.hpl.jena.rdf.model.impl.ResourceImpl rdf-obj) (rdf-clone-resource rdf-obj) ;resource
+      (instance? com.hp.hpl.jena.rdf.model.impl.PropertyImpl rdf-obj) (rdf-clone-property rdf-obj) ;property
+      )))
 
 (defn make-triples
   "Builds a new collection of triples"
@@ -318,15 +368,34 @@
        {:triples true})))
 
 
-(defn model-add-triples
-  "Add a collection of triples to a model"
+(defn- check-triples
+  "Ensures a set of triples is built"
   ([ts]
-     (let [mts (if (:triples (meta ts)) ts (make-triples ts))]
+    (if (:triples (meta ts)) ts (make-triples ts))))
+
+(defn model-add-triples
+  "Adds a collection of triples to a model"
+  ([ts]
+     (let [mts (check-triples ts)]
        (loop [acum mts]
          (when (not (empty? acum))
            (let [[ms mp mo] (first acum)]
              (do
                (send *rdf-model* (fn [ag] (do (.add ag ms mp mo) ag)))
+               (await *rdf-model*)
+               (recur (rest acum)))))))))
+
+(defn model-remove-triples
+  "Removes a collection of triples to a model"
+  ([ts]
+     (let [mts (check-triples ts)]
+       (loop [acum mts]
+         (when (not (empty? acum))
+           (let [[ms mp mo] (first acum)]
+             (do
+               (send *rdf-model* (fn [ag] (do
+                                            (.remove ag (first (iterator-seq (.listStatements ag ms mp mo))))
+                                            ag)))
                (await *rdf-model*)
                (recur (rest acum)))))))))
 
@@ -374,7 +443,7 @@
 
 (defn document-to-model
   "Adds a set of triples read from a serialized document into a model"
-  ([format stream]
+  ([stream format]
      (let [format (parse-format format)]
        (do
          (send *rdf-model* (fn [ag] (if (string? stream)
@@ -499,3 +568,4 @@
                  t-o)
                t))
            triples))))
+

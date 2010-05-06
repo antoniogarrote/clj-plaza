@@ -18,10 +18,40 @@
 
 ;; model value extraction
 
-(defn check
+(defn triple-check-apply
   "Applies a predicate to a concrete value"
   ([predicate val]
      (predicate val val)))
+
+(defn tca
+  "Shortcut for triple-check-apply"
+  ([& args]
+     (apply triple-check-apply args)))
+
+;; model testing
+(declare triple-and?)
+
+(defn triple-check
+  "Checks if one triple matches a set of conditions"
+  ([cond]
+     (fn [triple] ((triple-and? cond) triple))))
+
+(defn tc
+  "Shortcut for triple-check"
+  ([& args]
+     (apply triple-check args)))
+
+(defn triple-transform
+  "Accepts a single argument function that will receive a triple and transform it"
+  ([f]
+     (fn [triple atom] (f triple))))
+
+(defn tt
+  "Shortcut for triple-transform"
+  ([& args]
+     (apply triple-transform args)))
+
+;; predicates
 
 (defn uri?
   "Matches a URI or curie against a triple atom"
@@ -162,11 +192,6 @@
   ([& conds]
      (fn [triple] ((apply and? conds) triple triple))))
 
-(defn triple?
-  "Checks if one triple matches a set of conditions"
-  ([cond]
-     (fn [triple] ((triple-and? cond) triple))))
-
 (defn subject-and?
   "Checks a condition over the subject of a triple"
   ([& conditions]
@@ -225,3 +250,19 @@
   ([& conditions]
      (fn [triple atom]
        ((apply or? conditions) triple (nth triple 2)))))
+
+(defn regex?
+  "Checks if a value matches a ceratin regular expression"
+  ([regex]
+     (fn [triple atom]
+       (not (empty? (re-find regex (str atom)))))))
+
+(defn fn-apply?
+  "Applies a function to a value"
+  ([f]
+     (fn [triple atom] (f atom))))
+
+(defn fn-triple-apply?
+  "Applies a function to a value"
+  ([f]
+     (fn [triple atom] (f triple))))

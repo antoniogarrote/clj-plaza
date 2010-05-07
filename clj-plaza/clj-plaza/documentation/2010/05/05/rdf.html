@@ -4,15 +4,15 @@
     <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
     <title>working with RDF</title>
     <meta content="Antonio Garrrote Hern&aacute;ndez" name="author" />
-   <link href="/clj-plaza/css/screen.css" rel="stylesheet" type="text/css" />
-   <link href="/clj-plaza/css/syntax.css" rel="stylesheet" type="text/css" />
+   <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+   <link href="/css/syntax.css" rel="stylesheet" type="text/css" />
  </head>
 
   <body>
     <div id="site">
       <div id="sidebar">
         <div id="title">
-          <p><a href="/"><img src="/clj-plaza/images/logo.png" alt="" /></a></p>
+          <p><a href="/"><img src="/images/logo.png" alt="" /></a></p>
           <p><a href="/">clj-plaza</a></p>
         </div>
         <p>
@@ -103,7 +103,7 @@ should be only used when setting the environment at the start of the application
 </div><p>Sometimes you need to build a graph where there is a lot of different properties relating to the same<br />
 resource. For instance, if you need to describe a graph like:</p>
 <div id="img_wrapper">
-<p><img src="/clj-plaza/images/diag1.png"></img></p>
+<p><img src="/images/diag1.png"></img></p>
 </div>
 <p>You can describe it using a collection of pairs of property &#8211; object, associated to the same subject:</p>
 <div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">make-triples</span> <span class="p">[[</span><span class="nv">:a</span> <span class="p">[</span><span class="nv">:p</span> <span class="nv">:b</span>
@@ -338,7 +338,7 @@ and it can be transformed back into a triple set <em>binding</em> all the variab
 <p>A pattern can also be <em>applied</em> to a triple set or model to obtain a collection of triple sets where<br />
 the pattern variables have been bound to values from the triple set.</p>
 <div id="img_wrapper">
-<p><img src="/clj-plaza/images/rels.png"></img></p>
+<p><img src="/images/rels.png"></img></p>
 </div>
 <h2 id="pattern_building">Building patterns</h2>
 <p>A pattern can be built using the <code>make-pattern</code> function in the<br />

@@ -7,7 +7,15 @@
    <link href="/clj-plaza/css/screen.css" rel="stylesheet" type="text/css" />
    <link href="/clj-plaza/css/syntax.css" rel="stylesheet" type="text/css" />
  </head>
-
+<script type="text/javascript">
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+try {
+var pageTracker = _gat._getTracker("UA-15922180-1");
+pageTracker._trackPageview();
+} catch(err) {}</script>
   <body>
     <div id="site">
       <div id="sidebar">
@@ -309,7 +317,7 @@ expressive:</p>
                           <span class="p">(</span><span class="nf">object?</span> <span class="p">(</span><span class="nf">and?</span>  <span class="p">(</span><span class="nf">is-literal?</span><span class="p">)</span>
                                             <span class="p">(</span><span class="nf">regex?</span> <span class="o">#</span><span class="s">&quot;test[a-z]*&quot;</span><span class="p">)))))</span>
           <span class="nv">*ts*</span><span class="p">)</span>
- 
+
 </code></pre>
 </div><p>Two special predicates are <code>fn-apply?</code> and <code>fn-triple-apply?</code> that receive a<br />
 lambda function as an argument returning a boolean value and pass as the only argument the current<br />

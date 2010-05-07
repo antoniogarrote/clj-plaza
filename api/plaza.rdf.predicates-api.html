@@ -1,11 +1,11 @@
 <html>
   <head>
     <title>plaza.rdf.predicates API reference (clj-plaza)</title>
-    <link href="static/favicon.png" rel="icon" />
-    <link href="static/favicon.png" rel="shortcut icon" />
-    <link media="all" type="text/css" href="static/clojure.css" rel="stylesheet" />
-    <link media="all" type="text/css" href="static/wiki.css" rel="stylesheet" />
-    <link media="all" type="text/css" href="static/internal.css" rel="stylesheet" />
+    <link href="/api/static/favicon.png" rel="icon" />
+    <link href="/api/static/favicon.png" rel="shortcut icon" />
+    <link media="all" type="text/css" href="/api/static/clojure.css" rel="stylesheet" />
+    <link media="all" type="text/css" href="/api/static/wiki.css" rel="stylesheet" />
+    <link media="all" type="text/css" href="/api/static/internal.css" rel="stylesheet" />
     <!-- TODO: are we using these (from clojure.org)? If so, add the files -->
     <script src="file/view/code_highlighter.js" type="text/javascript"></script>
     <script src="file/view/clojure.js" type="text/javascript"></script>
@@ -24,17 +24,17 @@ namespace.
   <body>
     <div id="AllContentContainer">
       <div id="Header">
-	<a id="Logo" href="index.html"><img alt="Clojure" height="100" width="100" src="static/clojure-icon.gif" /></a>
-	<h1><a title="page header title" id="page-header" href="index.html">clj-plaza distributed semantic systems library</a></h1>
+	<a id="Logo" href="/api/index.html"><img alt="Clojure" height="100" width="100" src="static/clojure-icon.gif" /></a>
+	<h1><a title="page header title" id="page-header" href="/api/index.html">clj-plaza distributed semantic computing library</a></h1>
       </div>
       <div id="leftcolumn"><div style="text-align: center;"></div>
 <div class="menu">
   <div class="WikiCustomNav WikiElement wiki">
-    <a class="wiki_link" href="index.html">Overview</a><br />
-    <a class="wiki_link" href="api-index.html">API Index</a><br />
+    <a class="wiki_link" href="/api/index.html">Overview</a><br />
+    <a class="wiki_link" href="/api/api-index.html">API Index</a><br />
     <a class="wiki_link" href="#">Namespaces:</a>
     <ul id="left-sidebar-list">
-      <li><a href="plaza.core-api.html" class="wiki_link">plaza.core</a></li><li><a href="plaza.rdf.core-api.html" class="wiki_link">plaza.rdf.core</a></li><li><a href="plaza.rdf.predicates-api.html" class="wiki_link">plaza.rdf.predicates</a></li><li><a href="plaza.rdf.sparql-api.html" class="wiki_link">plaza.rdf.sparql</a></li><li><a href="plaza.utils-api.html" class="wiki_link">plaza.utils</a></li>
+      <li><a href="/api/plaza.core-api.html" class="wiki_link">plaza.core</a></li><li><a href="/api/plaza.rdf.core-api.html" class="wiki_link">plaza.rdf.core</a></li><li><a href="/api/plaza.rdf.predicates-api.html" class="wiki_link">plaza.rdf.predicates</a></li><li><a href="/api/plaza.rdf.sparql-api.html" class="wiki_link">plaza.rdf.sparql</a></li><li><a href="/api/plaza.utils-api.html" class="wiki_link">plaza.utils</a></li>
     </ul>
   </div>
 </div>
@@ -52,9 +52,11 @@ namespace.
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.predicates/blank-node?">blank-node?</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
-      <a href="#plaza.rdf.predicates/check">check</a>
-    </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.predicates/datatype?">datatype?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/fn-apply?">fn-apply?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/fn-triple-apply?">fn-triple-apply?</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.predicates/is-blank-node?">is-blank-node?</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
@@ -92,17 +94,29 @@ namespace.
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.predicates/qname-prefix?">qname-prefix?</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/regex?">regex?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.predicates/subject-and?">subject-and?</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.predicates/subject-or?">subject-or?</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.predicates/subject?">subject?</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/tc">tc</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/tca">tca</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.predicates/triple-and?">triple-and?</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/triple-check">triple-check</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/triple-check-apply">triple-check-apply</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.predicates/triple-or?">triple-or?</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
-      <a href="#plaza.rdf.predicates/triple?">triple?</a>
+      <a href="#plaza.rdf.predicates/triple-transform">triple-transform</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.predicates/tt">tt</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.predicates/uri?">uri?</a>
     </div>
@@ -129,7 +143,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (and? &amp; preds)
 </pre>
   <pre id="var-docstr">Applies and to a series of matchers</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -138,16 +152,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (blank-node? id)
 </pre>
   <pre id="var-docstr">Matches a blank node with a certain id</pre>
-  
-</div><div id="var-entry">
-  <br />
-  <hr />
-  <h2 id="plaza.rdf.predicates/check">check</h2>
-  <span id="var-type">function</span><br />
-  <pre id="var-usage">Usage: (check predicate val)
-</pre>
-  <pre id="var-docstr">Applies a predicate to a concrete value</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -156,7 +161,25 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (datatype? data-uri)
 </pre>
   <pre id="var-docstr">Matches the value or the value and language of a literal</pre>
-  
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/fn-apply?">fn-apply?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (fn-apply? f)
+</pre>
+  <pre id="var-docstr">Applies a function to a value</pre>
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/fn-triple-apply?">fn-triple-apply?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (fn-triple-apply? f)
+</pre>
+  <pre id="var-docstr">Applies a function to a value</pre>
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -165,7 +188,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (is-blank-node?)
 </pre>
   <pre id="var-docstr">Matches a blank node</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -174,7 +197,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (is-literal?)
 </pre>
   <pre id="var-docstr">Matches a literal with a certain literal value</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -183,7 +206,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (is-optional?)
 </pre>
   <pre id="var-docstr">Checks if a triple is an optional part of a query</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -192,7 +215,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (is-resource?)
 </pre>
   <pre id="var-docstr">Matches a literal with a certain literal value</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -201,7 +224,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (is-variable?)
 </pre>
   <pre id="var-docstr">Matches a variable</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -210,7 +233,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (literal-fn? f)
 </pre>
   <pre id="var-docstr">Applies a custom predicate function to a literal</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -219,7 +242,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (literal-value? lit)
 </pre>
   <pre id="var-docstr">Matches a literal with a certain literal value</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -229,7 +252,7 @@ by <span id="author">Unknown</span><br />
        (literal? val lang)
 </pre>
   <pre id="var-docstr">Matches the value or the value and language of a literal</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -238,7 +261,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (not? pred)
 </pre>
   <pre id="var-docstr">Negates a clause query</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -247,7 +270,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (object-and? &amp; conditions)
 </pre>
   <pre id="var-docstr">Checks a condition over the object of a triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -256,7 +279,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (object-or? &amp; conditions)
 </pre>
   <pre id="var-docstr">Checks a condition over the object of a triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -265,7 +288,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (object? condition)
 </pre>
   <pre id="var-docstr">Checks a condition over the object of a triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -274,7 +297,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (or? &amp; preds)
 </pre>
   <pre id="var-docstr">Applies or to a series of matchers</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -283,7 +306,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (predicate-and? &amp; conditions)
 </pre>
   <pre id="var-docstr">Checks a condition over the predicate of a triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -292,7 +315,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (predicate-or? &amp; conditions)
 </pre>
   <pre id="var-docstr">Checks a condition over the predicate of a triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -301,7 +324,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (predicate? condition)
 </pre>
   <pre id="var-docstr">Checks a condition over the predicate of a triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -310,7 +333,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (qname-local? local)
 </pre>
   <pre id="var-docstr">Matches a URI or curie against a triple atom</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -319,7 +342,16 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (qname-prefix? prefix)
 </pre>
   <pre id="var-docstr">Matches a URI or curie against a triple atom</pre>
-  
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/regex?">regex?</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (regex? regex)
+</pre>
+  <pre id="var-docstr">Checks if a value matches a ceratin regular expression</pre>
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -328,7 +360,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (subject-and? &amp; conditions)
 </pre>
   <pre id="var-docstr">Checks a condition over the subject of a triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -337,7 +369,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (subject-or? &amp; conditions)
 </pre>
   <pre id="var-docstr">Checks a condition over the subject of a triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -346,7 +378,25 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (subject? condition)
 </pre>
   <pre id="var-docstr">Checks a condition over the subject of a triple</pre>
-  
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/tc">tc</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (tc &amp; args)
+</pre>
+  <pre id="var-docstr">Shortcut for triple-check</pre>
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/tca">tca</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (tca &amp; args)
+</pre>
+  <pre id="var-docstr">Shortcut for triple-check-apply</pre>
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -355,7 +405,25 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (triple-and? &amp; conds)
 </pre>
   <pre id="var-docstr">Checks if one triple matches a set of conditions</pre>
-  
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/triple-check">triple-check</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (triple-check cond)
+</pre>
+  <pre id="var-docstr">Checks if one triple matches a set of conditions</pre>
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/triple-check-apply">triple-check-apply</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (triple-check-apply predicate val)
+</pre>
+  <pre id="var-docstr">Applies a predicate to a concrete value</pre>
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -364,16 +432,25 @@ by <span id="author">Unknown</span><br />
   <pre id="var-usage">Usage: (triple-or? &amp; conds)
 </pre>
   <pre id="var-docstr">Checks if one triple matches a set of conditions</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
-  <h2 id="plaza.rdf.predicates/triple?">triple?</h2>
+  <h2 id="plaza.rdf.predicates/triple-transform">triple-transform</h2>
   <span id="var-type">function</span><br />
-  <pre id="var-usage">Usage: (triple? cond)
+  <pre id="var-usage">Usage: (triple-transform f)
 </pre>
-  <pre id="var-docstr">Checks if one triple matches a set of conditions</pre>
-  
+  <pre id="var-docstr">Accepts a single argument function that will receive a triple and transform it</pre>
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.predicates/tt">tt</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (tt &amp; args)
+</pre>
+  <pre id="var-docstr">Shortcut for triple-transform</pre>
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -383,7 +460,7 @@ by <span id="author">Unknown</span><br />
        (uri? uri)
 </pre>
   <pre id="var-docstr">Matches a URI or curie against a triple atom</pre>
-  
+
 </div>
 
 

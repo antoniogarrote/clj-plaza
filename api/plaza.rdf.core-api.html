@@ -1,11 +1,11 @@
 <html>
   <head>
     <title>plaza.rdf.core API reference (clj-plaza)</title>
-    <link href="static/favicon.png" rel="icon" />
-    <link href="static/favicon.png" rel="shortcut icon" />
-    <link media="all" type="text/css" href="static/clojure.css" rel="stylesheet" />
-    <link media="all" type="text/css" href="static/wiki.css" rel="stylesheet" />
-    <link media="all" type="text/css" href="static/internal.css" rel="stylesheet" />
+    <link href="/api/static/favicon.png" rel="icon" />
+    <link href="/api/static/favicon.png" rel="shortcut icon" />
+    <link media="all" type="text/css" href="/api/static/clojure.css" rel="stylesheet" />
+    <link media="all" type="text/css" href="/api/static/wiki.css" rel="stylesheet" />
+    <link media="all" type="text/css" href="/api/static/internal.css" rel="stylesheet" />
     <!-- TODO: are we using these (from clojure.org)? If so, add the files -->
     <script src="file/view/code_highlighter.js" type="text/javascript"></script>
     <script src="file/view/clojure.js" type="text/javascript"></script>
@@ -24,17 +24,17 @@ namespace.
   <body>
     <div id="AllContentContainer">
       <div id="Header">
-	<a id="Logo" href="index.html"><img alt="Clojure" height="100" width="100" src="static/clojure-icon.gif" /></a>
-	<h1><a title="page header title" id="page-header" href="index.html">clj-plaza distributed semantic systems library</a></h1>
+	<a id="Logo" href="/api/index.html"><img alt="Clojure" height="100" width="100" src="static/clojure-icon.gif" /></a>
+	<h1><a title="page header title" id="page-header" href="/api/index.html">clj-plaza distributed semantic computing library</a></h1>
       </div>
       <div id="leftcolumn"><div style="text-align: center;"></div>
 <div class="menu">
   <div class="WikiCustomNav WikiElement wiki">
-    <a class="wiki_link" href="index.html">Overview</a><br />
-    <a class="wiki_link" href="api-index.html">API Index</a><br />
+    <a class="wiki_link" href="/api/index.html">Overview</a><br />
+    <a class="wiki_link" href="/api/api-index.html">API Index</a><br />
     <a class="wiki_link" href="#">Namespaces:</a>
     <ul id="left-sidebar-list">
-      <li><a href="plaza.core-api.html" class="wiki_link">plaza.core</a></li><li><a href="plaza.rdf.core-api.html" class="wiki_link">plaza.rdf.core</a></li><li><a href="plaza.rdf.predicates-api.html" class="wiki_link">plaza.rdf.predicates</a></li><li><a href="plaza.rdf.sparql-api.html" class="wiki_link">plaza.rdf.sparql</a></li><li><a href="plaza.utils-api.html" class="wiki_link">plaza.utils</a></li>
+      <li><a href="/api/plaza.core-api.html" class="wiki_link">plaza.core</a></li><li><a href="/api/plaza.rdf.core-api.html" class="wiki_link">plaza.rdf.core</a></li><li><a href="/api/plaza.rdf.predicates-api.html" class="wiki_link">plaza.rdf.predicates</a></li><li><a href="/api/plaza.rdf.sparql-api.html" class="wiki_link">plaza.rdf.sparql</a></li><li><a href="/api/plaza.utils-api.html" class="wiki_link">plaza.utils</a></li>
     </ul>
   </div>
 </div>
@@ -55,6 +55,8 @@ namespace.
       <a href="#plaza.rdf.core/build-model">build-model</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.core/d">d</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.core/date">date</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.core/defmodel">defmodel</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
@@ -92,6 +94,8 @@ namespace.
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.core/model-add-triples">model-add-triples</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.core/model-remove-triples">model-remove-triples</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.core/model-to-format">model-to-format</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.core/model-to-triples">model-to-triples</a>
@@ -107,6 +111,10 @@ namespace.
       <a href="#plaza.rdf.core/p">p</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.core/predicate-from-triple">predicate-from-triple</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.core/rdf-clone">rdf-clone</a>
+    </div><div style="margin-left: 1em;" class="toc-entry">
+      <a href="#plaza.rdf.core/rdf-date">rdf-date</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
       <a href="#plaza.rdf.core/rdf-literal">rdf-literal</a>
     </div><div style="margin-left: 1em;" class="toc-entry">
@@ -171,7 +179,7 @@ by <span id="author">Unknown</span><br />
   <pre id="var-docstr">Alters the root binding for the default model. This function
 should only be used when setting up the application, with-model
 macro should be used by default</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -182,7 +190,7 @@ macro should be used by default</pre>
   <pre id="var-docstr">Alters the root binding for the default model. This function
 should only be used when setting up the application, with-rdf-ns
 macro should be used by default</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -191,7 +199,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (build-model)
 </pre>
   <pre id="var-docstr">Creates a new model to store triples</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -201,7 +209,16 @@ macro should be used by default</pre>
        (d val dt)
 </pre>
   <pre id="var-docstr">shorthand for rdf-typed-literal</pre>
-  
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.core/date">date</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (date &amp; args)
+</pre>
+  <pre id="var-docstr">Shortcut for rdf-date</pre>
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -210,16 +227,16 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (defmodel &amp; rest)
 </pre>
   <pre id="var-docstr">Sets up the default model for a set of forms and returns the model</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
   <h2 id="plaza.rdf.core/document-to-model">document-to-model</h2>
   <span id="var-type">function</span><br />
-  <pre id="var-usage">Usage: (document-to-model format stream)
+  <pre id="var-usage">Usage: (document-to-model stream format)
 </pre>
   <pre id="var-docstr">Adds a set of triples read from a serialized document into a model</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -228,7 +245,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (expand-ns ns local)
 </pre>
   <pre id="var-docstr">Provided a pair [ns local] tries to expand the ns with the information in the rdf-ns registry</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -237,7 +254,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (find-datatype literal)
 </pre>
   <pre id="var-docstr">Finds the right datatype object from the string representation</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -246,7 +263,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (find-ns-registry ns)
 </pre>
   <pre id="var-docstr">Checks if a provided namespace has an associated uri in the registry of namespaces</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -255,7 +272,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (find-ns-registry-by-uri uri)
 </pre>
   <pre id="var-docstr">Checks if a provided namespace has an associated uri in the registry of namespaces</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -264,7 +281,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (find-resource-uris model-or-triples)
 </pre>
   <pre id="var-docstr">Retrieves the resource uris (collections triples with the same subject) inside a model or triple set</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -273,7 +290,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (find-resources model-or-triples)
 </pre>
   <pre id="var-docstr">Retrieves the resources (collections triples with the same subject) inside a model or triple set</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -282,7 +299,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (is-blank-node resource)
 </pre>
   <pre id="var-docstr">Checks if a RDF resource</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -291,7 +308,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (is-model obj)
 </pre>
   <pre id="var-docstr">Checks if an object is a model</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -300,7 +317,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (is-resource atom)
 </pre>
   <pre id="var-docstr">Matches a literal with a certain literal value</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -310,7 +327,7 @@ macro should be used by default</pre>
        (l lit lang)
 </pre>
   <pre id="var-docstr">shorthand for rdf-literal</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -319,7 +336,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (literal-datatype-uri lit)
 </pre>
   <pre id="var-docstr">Returns the datatype URI associated to this literal</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -328,7 +345,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (literal-language lit)
 </pre>
   <pre id="var-docstr">Returns the language of a literal</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -337,7 +354,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (literal-lexical-form lit)
 </pre>
   <pre id="var-docstr">Returns the lexical form associated to this literal</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -346,7 +363,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (literal-value lit)
 </pre>
   <pre id="var-docstr">Returns the value of a literal</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -355,7 +372,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (make-triples ts)
 </pre>
   <pre id="var-docstr">Builds a new collection of triples</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -363,8 +380,17 @@ macro should be used by default</pre>
   <span id="var-type">function</span><br />
   <pre id="var-usage">Usage: (model-add-triples ts)
 </pre>
-  <pre id="var-docstr">Add a collection of triples to a model</pre>
-  
+  <pre id="var-docstr">Adds a collection of triples to a model</pre>
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.core/model-remove-triples">model-remove-triples</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (model-remove-triples ts)
+</pre>
+  <pre id="var-docstr">Removes a collection of triples to a model</pre>
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -375,7 +401,7 @@ macro should be used by default</pre>
        (model-to-format model format)
 </pre>
   <pre id="var-docstr">Writes a model using the chosen format</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -384,7 +410,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (model-to-triples model)
 </pre>
   <pre id="var-docstr">Extracts the triples stored into a model</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -393,7 +419,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (o t)
 </pre>
   <pre id="var-docstr">Shortcut for object-from-triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -402,7 +428,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (object-from-triple [s p o])
 </pre>
   <pre id="var-docstr">Extract the object from a triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -411,7 +437,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (opt &amp; args)
 </pre>
   <pre id="var-docstr">A shortcut for optional</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -420,7 +446,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (optional &amp; triples)
 </pre>
   <pre id="var-docstr">Marks the provided list of triples as optional triples in a query</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -429,7 +455,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (p t)
 </pre>
   <pre id="var-docstr">Shortcut for predicate-from-triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -438,7 +464,27 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (predicate-from-triple [s p o])
 </pre>
   <pre id="var-docstr">Extract the predicate from a triple</pre>
-  
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.core/rdf-clone">rdf-clone</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (rdf-clone rdf-obj)
+</pre>
+  <pre id="var-docstr">Clones a triple component</pre>
+
+</div><div id="var-entry">
+  <br />
+  <hr />
+  <h2 id="plaza.rdf.core/rdf-date">rdf-date</h2>
+  <span id="var-type">function</span><br />
+  <pre id="var-usage">Usage: (rdf-date)
+       (rdf-date d)
+       (rdf-date y m d)
+</pre>
+  <pre id="var-docstr">Creates a new RDF date</pre>
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -448,7 +494,7 @@ macro should be used by default</pre>
        (rdf-literal lit lang)
 </pre>
   <pre id="var-docstr">Creates a new rdf literal</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -458,7 +504,7 @@ macro should be used by default</pre>
        (rdf-property uri)
 </pre>
   <pre id="var-docstr">Creates a new rdf property</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -468,7 +514,7 @@ macro should be used by default</pre>
        (rdf-resource uri)
 </pre>
   <pre id="var-docstr">Creates a new rdf resource</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -477,7 +523,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (rdf-triple to-parse)
 </pre>
   <pre id="var-docstr">Parses a RDF triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -487,7 +533,7 @@ macro should be used by default</pre>
        (rdf-typed-literal lit type)
 </pre>
   <pre id="var-docstr">Creates a new rdf literal with an associated type</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -496,7 +542,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (register-rdf-ns ns uri)
 </pre>
   <pre id="var-docstr">Add a registered namespace to the registry of namespaces</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -505,7 +551,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (reset-model)
 </pre>
   <pre id="var-docstr">Resets the root model with a fresh model object</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -514,7 +560,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (resource-qname-local resource)
 </pre>
   <pre id="var-docstr">Returns the local part of the qname of the resource</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -523,7 +569,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (resource-qname-prefix resource)
 </pre>
   <pre id="var-docstr">Returns the prefix part of the qname of the resource</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -532,7 +578,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (resource-uri resource)
 </pre>
   <pre id="var-docstr">Returns the URI of a resource (subject, predicate or object)</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -541,7 +587,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (s t)
 </pre>
   <pre id="var-docstr">Shortcut for subject-from-triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -550,7 +596,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (subject-from-triple [s p o])
 </pre>
   <pre id="var-docstr">Extract the subject from a triple</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -559,7 +605,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (triple-object literal)
 </pre>
   <pre id="var-docstr">Defines the object of a statement</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -568,7 +614,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (triple-predicate predicate)
 </pre>
   <pre id="var-docstr">Defines the predicate of a statement</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -577,7 +623,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (triple-subject subject)
 </pre>
   <pre id="var-docstr">Defines a subject for a statement</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -586,7 +632,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (triples-abstraction triples matcher-fn abstraction-map)
 </pre>
   <pre id="var-docstr">Transforms a set of triples into a pattern replacing some components with variables</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -595,7 +641,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (triples-to-format triples &amp; args)
 </pre>
   <pre id="var-docstr">Writes a set of triple using the </pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -604,7 +650,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (with-model model &amp; rest)
 </pre>
   <pre id="var-docstr">Sets up the default model for a set of forms</pre>
-  
+
 </div><div id="var-entry">
   <br />
   <hr />
@@ -613,7 +659,7 @@ macro should be used by default</pre>
   <pre id="var-usage">Usage: (with-rdf-ns ns &amp; rest)
 </pre>
   <pre id="var-docstr">Sets up the default namespace for a set of forms</pre>
-  
+
 </div>
 
 

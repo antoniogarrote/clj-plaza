@@ -421,7 +421,7 @@
   ([atom]
      (if (keyword? atom)
        (Var/alloc (keyword-to-variable atom))
-       (if (= (class atom) com.hp.hpl.jena.rdf.model.impl.LiteralImpl)
+       (if (instance? com.hp.hpl.jena.rdf.model.impl.LiteralImpl atom)
          (Node/createLiteral (.getLexicalForm atom) (.getLanguage atom) (.getDatatype atom))
          (Node/createURI (str (if (is-resource atom) atom (rdf-resource atom))))))))
 
@@ -488,13 +488,14 @@
 (defn model-query
   "Queries a model and returns a map of bindings"
   ([model query]
+     (model-critical-read model
      (let [;_model (println (str "MODEL: " (model-to-format model :ttl)))
            ;_test (println (.toString (build-query query)))
-           qexec (QueryExecutionFactory/create (.toString (build-query query)) @model)
+           qexec (QueryExecutionFactory/create (.toString (build-query query)) model)
 ;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
            results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
            ;_results (println (str "RESULTS " results))]
-       (map #(process-model-query-result %1) results))))
+       (map #(process-model-query-result %1) results)))))
 
 (declare pattern-bind)
 (defn model-query-triples
@@ -542,3 +543,14 @@
   "Returns the strin representation of a query"
   ([query]
      (str (build-query query))))
+
+(defn model-pattern-apply
+  "Applies a pattern to a Model returning triples"
+  ([model pattern]
+     (let [vars (pattern-collect-vars pattern)
+           query (defquery
+                   (query-set-pattern pattern)
+                   (query-set-type :select)
+                   (query-set-vars vars))]
+       (model-query-triples model
+                            query))))

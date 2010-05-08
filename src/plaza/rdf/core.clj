@@ -9,6 +9,7 @@
            (com.hp.hpl.jena.vocabulary ReasonerVocabulary)
            (com.hp.hpl.jena.datatypes.xsd XSDDatatype)
            (com.hp.hpl.jena.datatypes.xsd.impl XMLLiteralType)
+           (com.hp.hpl.jena.shared Lock)
            (com.hp.hpl.jena.query QueryFactory)
            (com.hp.hpl.jena.sparql.syntax Element ElementGroup ElementOptional ElementFilter)
            (com.hp.hpl.jena.graph Node Triple)
@@ -40,7 +41,7 @@
 (defn build-model
   "Creates a new model to store triples"
   ([]
-     (agent (ModelFactory/createDefaultModel))))
+     (ModelFactory/createDefaultModel)))
 
 
 ;;; Root bindings
@@ -128,19 +129,27 @@
   "Resets the root model with a fresh model object"
   ([] (alter-root-model (build-model))))
 
+(declare is-property)
+(declare is-resource)
 (defn rdf-property
   "Creates a new rdf property"
-  ([ns local] (.createProperty @*rdf-model* (expand-ns ns local)))
-  ([uri] (if (.startsWith (keyword-to-string uri) "http://")
-           (.createProperty @*rdf-model* (keyword-to-string uri))
-           (.createProperty @*rdf-model* *rdf-ns* (keyword-to-string uri)))))
+  ([ns local] (.createProperty *rdf-model* (expand-ns ns local)))
+  ([uri] (if (is-property uri)
+           uri
+           (if (is-resource uri)
+             (.createProperty *rdf-model* (str uri))
+             (if (.startsWith (keyword-to-string uri) "http://")
+               (.createProperty *rdf-model* (keyword-to-string uri))
+               (.createProperty *rdf-model* *rdf-ns* (keyword-to-string uri)))))))
 
 (defn rdf-resource
   "Creates a new rdf resource"
-  ([ns local] (.createResource @*rdf-model* (expand-ns ns local)))
-  ([uri] (if (.startsWith (keyword-to-string uri) "http://")
-           (.createResource @*rdf-model* (keyword-to-string uri))
-           (.createResource @*rdf-model* (str *rdf-ns* (keyword-to-string uri))))))
+  ([ns local] (.createResource *rdf-model* (expand-ns ns local)))
+  ([uri] (if (is-resource uri)
+           uri
+           (if (.startsWith (keyword-to-string uri) "http://")
+             (.createResource *rdf-model* (keyword-to-string uri))
+             (.createResource *rdf-model* (str *rdf-ns* (keyword-to-string uri)))))))
 
 (defn is-blank-node
   "Checks if a RDF resource"
@@ -152,10 +161,10 @@
 
 (defn blank-node
   ([]
-     (.createResource @*rdf-model* (com.hp.hpl.jena.rdf.model.AnonId.)))
+     (.createResource *rdf-model* (com.hp.hpl.jena.rdf.model.AnonId.)))
   ([id]
      (let [anon-id (keyword-to-string id)]
-       (.createResource @*rdf-model* (com.hp.hpl.jena.rdf.model.AnonId. anon-id)))))
+       (.createResource *rdf-model* (com.hp.hpl.jena.rdf.model.AnonId. anon-id)))))
 
 (defn b
   ([] (blank-node))
@@ -187,15 +196,20 @@
 (defn is-resource
   "Matches a literal with a certain literal value"
   ([atom]
-     (cond (or (= (class atom) com.hp.hpl.jena.rdf.model.impl.ResourceImpl)
-               (= (class atom) com.hp.hpl.jena.rdf.model.impl.PropertyImpl))
+     (cond (or (instance? com.hp.hpl.jena.rdf.model.impl.ResourceImpl atom)
+               (instance? com.hp.hpl.jena.rdf.model.impl.PropertyImpl atom))
            true
            true false)))
 
+(defn is-property
+  "Matches a literal with a certain literal value"
+  ([atom]
+     (instance? com.hp.hpl.jena.rdf.model.impl.PropertyImpl atom)))
+
 (defn rdf-literal
   "Creates a new rdf literal"
-  ([lit] (.createLiteral @*rdf-model* lit true))
-  ([lit lang] (.createLiteral @*rdf-model* lit lang)))
+  ([lit] (.createLiteral *rdf-model* lit true))
+  ([lit lang] (.createLiteral *rdf-model* lit lang)))
 
 (defn l
   "shorthand for rdf-literal"
@@ -228,9 +242,9 @@
 
 (defn rdf-typed-literal
   "Creates a new rdf literal with an associated type"
-  ([lit] (.createTypedLiteral @*rdf-model* lit))
+  ([lit] (.createTypedLiteral *rdf-model* lit))
   ([lit type] (let [dt (find-datatype type)]
-                (.createTypedLiteral @*rdf-model* lit dt))))
+                (.createTypedLiteral *rdf-model* lit dt))))
 
 (defn d
   "shorthand for rdf-typed-literal"
@@ -347,7 +361,7 @@
   "Clones a triple component"
   ([rdf-obj]
      (cond
-      (keyword? rdf-obj) rdf-obj ;variable
+      (keyword? rdf-obj) rdf-obj        ;variable
       (is-blank-node rdf-obj) (rdf-clone-blank-node rdf-obj)
       (instance? com.hp.hpl.jena.rdf.model.Literal rdf-obj) (rdf-clone-literal rdf-obj) ;literal
       (instance? com.hp.hpl.jena.rdf.model.impl.ResourceImpl rdf-obj) (rdf-clone-resource rdf-obj) ;resource
@@ -371,63 +385,69 @@
 (defn- check-triples
   "Ensures a set of triples is built"
   ([ts]
-    (if (:triples (meta ts)) ts (make-triples ts))))
+     (if (:triples (meta ts)) ts (make-triples ts))))
+
+(defmacro model-critical-write [m & body]
+  `(do (.enterCriticalSection ~m Lock/WRITE)
+       (let [res# (do ~@body)]
+         (.leaveCriticalSection ~m)
+         res#)))
+
+(defmacro model-critical-read [m & body]
+  `(do (.enterCriticalSection ~m Lock/READ)
+       (let [res# (do ~@body)]
+         (.leaveCriticalSection ~m)
+         res#)))
 
 (defn model-add-triples
   "Adds a collection of triples to a model"
   ([ts]
      (let [mts (check-triples ts)]
-       (loop [acum mts]
-         (when (not (empty? acum))
-           (let [[ms mp mo] (first acum)]
-             (do
-               (send *rdf-model* (fn [ag] (do (.add ag ms mp mo) ag)))
-               (await *rdf-model*)
-               (recur (rest acum)))))))))
+       (model-critical-write
+        *rdf-model*
+        (loop [acum mts]
+          (when (not (empty? acum))
+            (let [[ms mp mo] (first acum)]
+              (.add *rdf-model* ms (rdf-property mp) mo)
+              (recur (rest acum)))))))))
 
 (defn model-remove-triples
   "Removes a collection of triples to a model"
   ([ts]
      (let [mts (check-triples ts)]
-       (loop [acum mts]
-         (when (not (empty? acum))
-           (let [[ms mp mo] (first acum)]
-             (do
-               (send *rdf-model* (fn [ag] (do
-                                            (.remove ag (first (iterator-seq (.listStatements ag ms mp mo))))
-                                            ag)))
-               (await *rdf-model*)
-               (recur (rest acum)))))))))
+       (model-critical-write
+        *rdf-model*
+        (loop [acum mts]
+          (when (not (empty? acum))
+            (let [[ms mp mo] (first acum)]
+              (.remove *rdf-model* (first (iterator-seq (.listStatements *rdf-model* ms (rdf-property mp) mo))))
+              (recur (rest acum)))))))))
 
 (defn is-model
   "Checks if an object is a model"
   ([obj]
-     (or (= (class obj) com.hp.hpl.jena.rdf.model.impl.ModelCom)
-         (if (= (class obj) clojure.lang.Agent)
-           (= (class @obj) com.hp.hpl.jena.rdf.model.impl.ModelCom)
-           false))))
+     (instance? com.hp.hpl.jena.rdf.model.impl.ModelCom obj)))
 
 
 (defn model-to-triples
   "Extracts the triples stored into a model"
   ([model]
-     (if (is-model model)
-       (let [model-it (.listStatements @model)]
-         (loop [should-continue (.hasNext model-it)
-                acum []]
-           (if should-continue
-             (let [st (.nextStatement model-it)
-                   subject (.getSubject st)
-                   predicate (.getPredicate st)
-                   object (let [node (.getObject st)]
-                            (cond
-                             (.isLiteral node) (.as node com.hp.hpl.jena.rdf.model.Literal)
-                             true              (.as node com.hp.hpl.jena.rdf.model.Resource)))]
-               (recur (.hasNext model-it)
-                      (conj acum [subject predicate object])))
-             acum)))
-       ;; we have already received triples
-       model)))
+     (model-critical-read model
+      (if (is-model model)
+        (let [model-it (.listStatements model)]
+          (loop [should-continue (.hasNext model-it)
+                 acum []]
+            (if should-continue
+              (let [st (.nextStatement model-it)
+                    subject (.getSubject st)
+                    predicate (.getPredicate st)
+                    object (let [node (.getObject st)]
+                             (cond
+                              (.isLiteral node) (.as node com.hp.hpl.jena.rdf.model.Literal)
+                              true              (.as node com.hp.hpl.jena.rdf.model.Resource)))]
+                (recur (.hasNext model-it)
+                       (conj acum [subject predicate object])))
+              acum)))))))
 
 ;; Models IO
 
@@ -445,30 +465,22 @@
   "Adds a set of triples read from a serialized document into a model"
   ([stream format]
      (let [format (parse-format format)]
-       (do
-         (send *rdf-model* (fn [ag] (if (string? stream)
-                                      (.read ag stream format)
-                                      (.read ag stream *rdf-ns* format))
-                             ag))
-         (loop [should-continue true]
-           (let [res (await-for 200 *rdf-model*)]
-             (if (nil? res)
-               (if (agent-error *rdf-model*)
-                 (throw (Exception. (str "Exception parsing document with format " format)))
-                 (recur (await-for 200 *rdf-model*)))
-               (if (= res false)
-                 (recur (await-for 200 *rdf-model*))
-                 *rdf-model*))))))))
+       (model-critical-write
+        *rdf-model*
+        (if (string? stream)
+          (.read *rdf-model* stream format)
+          (.read *rdf-model* stream *rdf-ns* format)))
+       *rdf-model*)))
 
 
 (defn model-to-format
   "Writes a model using the chosen format"
   ([]
-     (.write @*rdf-model* *out* (parse-format :ntriple)))
+     (model-critical-read *rdf-model* (.write *rdf-model* *out* (parse-format :ntriple))))
   ([format]
-     (.write @*rdf-model* *out* (parse-format format)))
+     (model-critical-read *rdf-model* (.write *rdf-model* *out* (parse-format format))))
   ([model format]
-     (.write @model *out* (parse-format format))))
+     (model-critical-read model (.write model *out* (parse-format format)))))
 
 (defn triples-to-format
   "Writes a set of triple using the "

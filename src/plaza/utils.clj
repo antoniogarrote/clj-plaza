@@ -56,8 +56,8 @@
   ([seq]
      (reduce (fn [acum item]
                (if (and (coll? item) (coll? (first item)))
-                    (vec (concat acum item))
-                    (conj acum item)))
+                 (vec (concat acum item))
+                 (conj acum item)))
              []
              seq)))
 
@@ -68,3 +68,17 @@
      (let [url (java.net.URL. url)
            conn (.openConnection url)]
        (.getInputStream conn))))
+
+(defn probe-agent!
+  ([agent error-text should-clean]
+     (loop [should-continue true]
+       (let [res (await-for 200 agent)]
+         (if (nil? res)
+           (if (agent-errors agent)
+             (do (when should-clean
+                   (clear-agent-errors agent))
+                 (throw (Exception. error-text)))
+             (recur (await-for 200 agent)))
+           (if (= res false)
+             (recur (await-for 200 agent))
+             agent))))))

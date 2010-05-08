@@ -29,7 +29,7 @@
 </rdf:RDF>")
 
 (deftest test-create-model
-  (is clojure.lang.Agent (build-model)))
+  (is-model (build-model)))
 
 
 (deftest test-with-rdf-ns
@@ -159,12 +159,12 @@
 (deftest test-add-triples
   (let [m (build-model)]
     (with-model m (model-add-triples [[:a :b :c] [:d :e :f] [:g [:h :i :j :k]]]))
-    (is (= 4 (.size (.toList (.listStatements @m)))))))
+    (is (= 4 (.size (.toList (.listStatements m)))))))
 
 (deftest test-add-triples-2
   (let [m (build-model)]
     (with-model m (model-add-triples (make-triples [[:a :b :c] [:d :e :f] [:g [:h :i :j :k]]])))
-    (is (= 4 (.size (.toList (.listStatements @m)))))))
+    (is (= 4 (.size (.toList (.listStatements m)))))))
 
 (deftest test-remove-triples-1
   (let [m (defmodel

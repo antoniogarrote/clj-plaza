@@ -126,3 +126,14 @@
   (is (= (set (pattern-collect-vars (make-pattern [[:?a :?b (l "test")] [:a :?b (d 2)]])))  (set [:?a :?b])))
   (is (= (set (pattern-collect-vars (make-pattern [[?s ?p ?o]]))) (set [:?s :?p :?o]))))
 
+
+
+(deftest test-has-meta-pattern
+  (is (:pattern (meta (make-pattern [[?a ?b ?c]])))))
+
+(deftest test-model-pattern-apply-checks-meta
+  (let [m (defmodel (model-add-triples [[:a :b :c] [:a :b :e]]))
+        result (model-pattern-apply m [[?s ?p :c]])]
+    (is (= 1 (count result)))
+    (is (= 1 (count (first result))))
+    (is (not (keyword? (nth (first (first result)) 2))))))

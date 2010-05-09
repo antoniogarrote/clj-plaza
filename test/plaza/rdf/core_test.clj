@@ -225,3 +225,6 @@
   (is (not (is-blank-node (d 2))))
   (is (not (is-blank-node (l "test"))))
   (is (not (is-blank-node (rdf-resource "http://test.com/Test")))))
+
+(deftest test-has-meta
+  (is (:triples (meta (make-triples [[:a :b :c]])))))

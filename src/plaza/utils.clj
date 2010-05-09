@@ -54,12 +54,15 @@
 
 (defn flatten-1
   ([seq]
-     (reduce (fn [acum item]
-               (if (and (coll? item) (coll? (first item)))
-                 (vec (concat acum item))
-                 (conj acum item)))
-             []
-             seq)))
+     (let [old-meta (meta seq)]
+       (with-meta
+         (reduce (fn [acum item]
+                   (if (and (coll? item) (coll? (first item)))
+                     (vec (concat acum item))
+                     (conj acum item)))
+                 []
+                 seq)
+         old-meta))))
 
 ;; (grab-document-url "http://hamish.blogs.com/mishmash/bib-take1.xml")
 (defn grab-document-url
@@ -71,14 +74,15 @@
 
 (defn probe-agent!
   ([agent error-text should-clean]
-     (loop [should-continue true]
+     (loop []
        (let [res (await-for 200 agent)]
          (if (nil? res)
            (if (agent-errors agent)
              (do (when should-clean
                    (clear-agent-errors agent))
                  (throw (Exception. error-text)))
-             (recur (await-for 200 agent)))
-           (if (= res false)
-             (recur (await-for 200 agent))
-             agent))))))
+             (recur))
+           (do
+             (if (= res false)
+               (recur)
+               agent)))))))

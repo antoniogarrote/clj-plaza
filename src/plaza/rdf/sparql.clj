@@ -52,15 +52,17 @@
 (defn make-pattern
   "Builds a new pattern representation"
   ([triples]
-     (flatten-1
-      (map
-       (fn [triple]
-         (let [tmp (rdf-triple triple)
-               optional (:optional (meta triple))]
-           (if (coll? (first tmp))
-             (map #(with-meta %1 {:optional optional}) tmp)
-             (with-meta tmp {:optional optional}))))
-       triples))))
+     (with-meta
+       (flatten-1
+        (map
+         (fn [triple]
+           (let [tmp (rdf-triple triple)
+                 optional (:optional (meta triple))]
+             (if (coll? (first tmp))
+               (map #(with-meta %1 {:optional optional}) tmp)
+               (with-meta tmp {:optional optional}))))
+         triples))
+       {:pattern true})))
 
 ;; (defn make-query
 ;;   "Builds a new query representation"
@@ -489,13 +491,13 @@
   "Queries a model and returns a map of bindings"
   ([model query]
      (model-critical-read model
-     (let [;_model (println (str "MODEL: " (model-to-format model :ttl)))
-           ;_test (println (.toString (build-query query)))
-           qexec (QueryExecutionFactory/create (.toString (build-query query)) model)
-;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
-           results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
-           ;_results (println (str "RESULTS " results))]
-       (map #(process-model-query-result %1) results)))))
+                          (let [ ;_model (println (str "MODEL: " (model-to-format model :ttl)))
+                                        ;_test (println (.toString (build-query query)))
+                                qexec (QueryExecutionFactory/create (.toString (build-query query)) model)
+                                        ;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
+                                results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
+                                        ;_results (println (str "RESULTS " results))]
+                            (map #(process-model-query-result %1) results)))))
 
 (declare pattern-bind)
 (defn model-query-triples
@@ -546,8 +548,9 @@
 
 (defn model-pattern-apply
   "Applies a pattern to a Model returning triples"
-  ([model pattern]
-     (let [vars (pattern-collect-vars pattern)
+  ([model pattern-or-vector]
+     (let [pattern (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
+           vars (pattern-collect-vars pattern)
            query (defquery
                    (query-set-pattern pattern)
                    (query-set-type :select)

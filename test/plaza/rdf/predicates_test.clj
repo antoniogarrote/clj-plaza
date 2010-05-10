@@ -1,6 +1,9 @@
 (ns plaza.rdf.predicates-test
   (:use [plaza.rdf core predicates] :reload-all)
+  (:use [plaza.rdf.implementations jena] :reload-all)
   (:use [clojure.test]))
+
+(init-jena-framework)
 
 ;; rdf/xml used in the tests
 (def *test-xml* "<rdf:RDF

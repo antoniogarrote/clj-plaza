@@ -4,17 +4,7 @@
 
 (ns plaza.rdf.predicates
   (:use (plaza utils)
-        (plaza.rdf core))
-  (:import (com.hp.hpl.jena.rdf.model ModelFactory)
-           (com.hp.hpl.jena.reasoner.rulesys RDFSRuleReasonerFactory)
-           (com.hp.hpl.jena.vocabulary ReasonerVocabulary)
-           (com.hp.hpl.jena.datatypes.xsd XSDDatatype)
-           (com.hp.hpl.jena.datatypes.xsd.impl XMLLiteralType)
-           (com.hp.hpl.jena.query QueryFactory)
-           (com.hp.hpl.jena.sparql.syntax Element ElementGroup ElementOptional ElementFilter)
-           (com.hp.hpl.jena.graph Node Triple)
-           (com.hp.hpl.jena.sparql.expr E_Str E_Lang E_Datatype E_Bound E_IsIRI E_IsURI E_IsBlank E_IsLiteral E_GreaterThanOrEqual E_GreaterThan
-                                        E_LessThanOrEqual E_LessThan E_NotEquals E_Equals E_Subtract E_Add E_Multiply E_Divide)))
+        (plaza.rdf core sparql)))
 
 ;; model value extraction
 
@@ -59,45 +49,46 @@
      (uri? (expand-ns ns local)))
   ([uri]
      (fn [triple atom]
-       (cond (or (= (class atom) clojure.lang.Keyword)
-                 (= (class atom) com.hp.hpl.jena.rdf.model.impl.LiteralImpl))
+       (cond (or (instance? clojure.lang.Keyword atom)
+                 (is-literal atom))
              false
              true
-             (= (.getURI atom) uri)))))
+             (= (resource-id atom) uri)))))
 
 (defn qname-prefix?
   "Matches a URI or curie against a triple atom"
   ([prefix]
      (fn [triple atom]
-       (cond (or (= (class atom) clojure.lang.Keyword)
-                 (= (class atom) com.hp.hpl.jena.rdf.model.impl.LiteralImpl))
+       (cond (or (instance? clojure.lang.Keyword)
+                 (is-literal atom))
              false
              true
-             (= (.getNameSpace atom) (if (nil? (find-ns-registry prefix)) (keyword-to-string prefix) (find-ns-registry prefix)))))))
+             (= (qname-prefix atom) (if (nil? (find-ns-registry prefix)) (keyword-to-string prefix) (find-ns-registry prefix)))))))
 
 (defn qname-local?
   "Matches a URI or curie against a triple atom"
   ([local]
      (fn [triple atom]
-       (cond (or (= (class atom) clojure.lang.Keyword)
-                 (= (class atom) com.hp.hpl.jena.rdf.model.impl.LiteralImpl))
+       (cond (or (instance? clojure.lang.Keyword atom)
+                 (is-literal atom))
              false
              true
-             (= (.getLocalName atom) (keyword-to-string local))))))
+             (= (qname-local atom) (keyword-to-string local))))))
 
 (defn literal-value?
   "Matches a literal with a certain literal value"
   ([lit]
      (fn [triple atom]
-       (cond (= (class atom) com.hp.hpl.jena.rdf.model.impl.LiteralImpl)
-             (= (.toString atom) (.toString lit))
+       (cond (is-literal atom)
+             (= (literal-lexical-form atom) (str lit))
              true false))))
 
 (defn is-literal?
   "Matches a literal with a certain literal value"
   ([]
      (fn [triple atom]
-       (cond (= (class atom) com.hp.hpl.jena.rdf.model.impl.LiteralImpl)
+       (cond (and (instance? plaza.rdf.core.RDFResource atom)
+                  (is-literal atom))
              true
              true false))))
 
@@ -109,12 +100,14 @@
   "Matches the value or the value and language of a literal"
   ([val]
      (fn [triple atom]
-       (if (= (class atom) com.hp.hpl.jena.rdf.model.impl.LiteralImpl)
+       (if (and (instance? plaza.rdf.core.RDFResource atom)
+                (is-literal atom))
          (= (literal-value atom) val)
          false)))
   ([val lang]
      (fn [triple atom]
-       (if (= (class atom) com.hp.hpl.jena.rdf.model.impl.LiteralImpl)
+       (if (and (instance? plaza.rdf.core.RDFResource atom)
+                (is-literal atom))
          (and (= (literal-value atom) val)
               (= (literal-language atom) lang))
          false))))
@@ -124,17 +117,16 @@
   "Matches the value or the value and language of a literal"
   ([data-uri]
      (fn [triple atom]
-       (if (= (class atom) com.hp.hpl.jena.rdf.model.impl.LiteralImpl)
-         (= (find-datatype (literal-datatype-uri atom)) (find-datatype data-uri))
+       (if (and (instance? plaza.rdf.core.RDFResource atom)
+                (is-literal atom))
+         (= (find-datatype *rdf-model* (literal-datatype-uri atom)) (find-datatype *rdf-model* data-uri))
          false))))
 
 (defn is-variable?
   "Matches a variable"
   ([]
      (fn [triple atom]
-       (cond (= (class atom) clojure.lang.Keyword)
-             true
-             true false))))
+       (is-var-expr *sparql-framework* atom))))
 
 (defn is-blank-node?
   "Matches a blank node"
@@ -143,7 +135,7 @@
        (if (or (string? atom)
                (keyword? atom))
          false
-         (.isAnon atom)))))
+         (is-blank atom)))))
 
 (defn blank-node?
   "Matches a blank node with a certain id"
@@ -152,16 +144,17 @@
        (if (or (string? atom)
                (keyword? atom))
          false
-         (if  (.isAnon atom)
-           (= (keyword-to-string id) (.toString (.getId atom))))))))
+         (if  (and (instance? plaza.rdf.core.RDFResource atom)
+                   (is-blank atom))
+           (= (keyword-to-string id) (str (resource-id atom)))
+           false)))))
 
 (defn is-resource?
   "Matches a literal with a certain literal value"
   ([]
      (fn [triple atom]
-       (cond (= (class atom) com.hp.hpl.jena.rdf.model.impl.ResourceImpl)
-             true
-             true false))))
+       (and (instance? plaza.rdf.core.RDFResource atom)
+            (is-resource atom)))))
 
 (defn is-optional?
   "Checks if a triple is an optional part of a query"

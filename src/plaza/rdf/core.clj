@@ -2,24 +2,9 @@
 ;; @email antoniogarrote@gmail.com
 ;; @date 30.04.2010
 
+
 (ns plaza.rdf.core
-  (:use [plaza.utils])
-  (:import (com.hp.hpl.jena.rdf.model ModelFactory)
-           (com.hp.hpl.jena.reasoner.rulesys RDFSRuleReasonerFactory)
-           (com.hp.hpl.jena.vocabulary ReasonerVocabulary)
-           (com.hp.hpl.jena.datatypes.xsd XSDDatatype)
-           (com.hp.hpl.jena.datatypes.xsd.impl XMLLiteralType)
-           (com.hp.hpl.jena.shared Lock)
-           (com.hp.hpl.jena.query QueryFactory)
-           (com.hp.hpl.jena.sparql.syntax Element ElementGroup ElementOptional ElementFilter)
-           (com.hp.hpl.jena.graph Node Triple)
-           (com.hp.hpl.jena.sparql.expr E_Str E_Lang E_Datatype E_Bound E_IsIRI E_IsURI E_IsBlank E_IsLiteral E_GreaterThanOrEqual E_GreaterThan
-                                        E_LessThanOrEqual E_LessThan E_NotEquals E_Equals E_Subtract E_Add E_Multiply E_Divide)))
-
-;; Loading RDFa java
-
-(Class/forName "net.rootdev.javardfa.RDFaReader")
-
+  (:use (plaza utils)))
 
 ;; Axiomatic vocabulary
 
@@ -34,21 +19,74 @@
 (def rdfs:range "http://www.w3.org/2000/01/rdf-schema#range")
 (def rdfs:Class "http://www.w3.org/2000/01/rdf-schema#Class")
 
+;; RDF model components
+
+(defprotocol RDFNode
+  "Common queries for objects that can be inserted in a RDF graph"
+  (to-string [resource] "Canonical String representation of this node")
+  (is-blank [resource] "Returns true if this resource is a blank node")
+  (is-resource [resource] "Returns true if this resource is not a literal or datatype literal")
+  (is-property [resource] "Returns true if this resource is a RDF property")
+  (is-literal [resource] "Returns true if this resource is a RDF literal"))
+
+(defprotocol RDFResource
+  "Any object that can be inserted in a RDF graph"
+  (resource-id [resource] "Returns some ID identifying the resource: URI, blank node ID..")
+  (qname-prefix [resource] "Returns the prefix part of the qname of this resource, returns '_' if it is a blank node")
+  (qname-local [resource] "Returns the local part of the qname of this resource, returns '_' if it is a blank node")
+  (literal-value [resource] "Returns the value of this literal")
+  (literal-language [resource] "Returns the language of this literal")
+  (literal-datatype-uri [resource] "Returns the datatype-uri of this literal datatype")
+  (literal-datatype-obj [resource] "Returns an objectual representation of this datatype")
+  (literal-lexical-form [resource] "Returns the lexical form of this literal"))
+
+(defprotocol RDFDatatypeMapper
+  "Maps a keyword value or a URI to the right datatype object"
+  (find-datatype [literal lit] "Finds the type for the literal representation"))
+
+(defprotocol JavaObjectWrapper
+  "Allows to retrieve the wrapped object"
+  (to-java [wrapper] "Returns the object wrapper by this type object"))
+
+;; RDF model
+
+(defprotocol RDFModel
+  "Operations for the manipulation of RDF"
+  (create-resource [model ns local] [model uri] "Creates a new RDF resource statement")
+  (create-property [model ns local] [model uri] "Creates a new RDF property statement")
+  (create-blank-node [model] [model id] "Creates a new RDF blank node")
+  (create-literal [model lit] [model lit lang] "Creates a new RDF literal")
+  (create-typed-literal [model lit] [model lit type] "Creates a new RDF typed literal")
+  (critical-write [model f] "Applies a function within a write lock")
+  (critical-read [model f] "Applies a function within a read lock")
+  (add-triples [model triples] "Add some triples to the model")
+  (remove-triples [model triples] "Remove triples from the model")
+  (walk-triples [model f] "iterates through the triples of the model")
+  (load-stream [model stream format] "Load triples from a stream")
+  (output-string  [model format] "Outputs the triples to a string")
+  (query [model query] "Queries this model using the provided query and returns a map of bindings")
+  (query-triples [model query] "Queries this model using the provided query and returns a list of graphs"))
+
+
 
 ;;; Declaration of a model
 
+(defmulti build-model
+  (fn [& options] [(first options)]))
 
-(defn build-model
-  "Creates a new model to store triples"
-  ([]
-     (ModelFactory/createDefaultModel)))
+(defmethod build-model [nil]
+  ([& options] (throw (Exception. "Some implementation must be loaded"))))
+
+(defmethod build-model :default
+  ([& options] (throw (Exception. "Some implementation must be loaded"))))
+
 
 
 ;;; Root bindings
 
 
 ;; The root *rdf-model* that will be used by default
-(def *rdf-model* (build-model))
+(def *rdf-model* nil)
 
 ;; The root *namespace* that will be used by default
 (def *rdf-ns* "http://plaza.org/ontologies/")
@@ -129,27 +167,15 @@
   "Resets the root model with a fresh model object"
   ([] (alter-root-model (build-model))))
 
-(declare is-property)
-(declare is-resource)
 (defn rdf-property
   "Creates a new rdf property"
-  ([ns local] (.createProperty *rdf-model* (expand-ns ns local)))
-  ([uri] (if (is-property uri)
-           uri
-           (if (is-resource uri)
-             (.createProperty *rdf-model* (str uri))
-             (if (.startsWith (keyword-to-string uri) "http://")
-               (.createProperty *rdf-model* (keyword-to-string uri))
-               (.createProperty *rdf-model* *rdf-ns* (keyword-to-string uri)))))))
+  ([ns local] (create-property *rdf-model* (expand-ns ns local)))
+  ([uri] (create-property *rdf-model* uri)))
 
 (defn rdf-resource
   "Creates a new rdf resource"
-  ([ns local] (.createResource *rdf-model* (expand-ns ns local)))
-  ([uri] (if (is-resource uri)
-           uri
-           (if (.startsWith (keyword-to-string uri) "http://")
-             (.createResource *rdf-model* (keyword-to-string uri))
-             (.createResource *rdf-model* (str *rdf-ns* (keyword-to-string uri)))))))
+  ([ns local] (create-resource *rdf-model* (expand-ns ns local)))
+  ([uri] (create-resource *rdf-model* uri)))
 
 (defn is-blank-node
   "Checks if a RDF resource"
@@ -157,14 +183,14 @@
      (if (or (string? resource)
              (keyword? resource))
        false
-       (.isAnon resource))))
+       (is-blank resource))))
 
 (defn blank-node
   ([]
-     (.createResource *rdf-model* (com.hp.hpl.jena.rdf.model.AnonId.)))
+     (create-blank-node *rdf-model*))
   ([id]
      (let [anon-id (keyword-to-string id)]
-       (.createResource *rdf-model* (com.hp.hpl.jena.rdf.model.AnonId. anon-id)))))
+       (create-blank-node *rdf-model* anon-id))))
 
 (defn b
   ([] (blank-node))
@@ -173,78 +199,22 @@
 
 (defn blank-node-id
   ([b]
-     (keyword (.toString (.getId b)))))
-
-(defn resource-uri
-  "Returns the URI of a resource (subject, predicate or object)"
-  ([resource]
-     (let [tmp (.getURI resource)]
-       (if (nil? tmp)
-         (.toString (.getId resource))
-         tmp))))
-
-(defn resource-qname-prefix
-  "Returns the prefix part of the qname of the resource"
-  ([resource]
-     (.getNameSpace resource)))
-
-(defn resource-qname-local
-  "Returns the local part of the qname of the resource"
-  ([resource]
-     (.getLocalName resource)))
-
-(defn is-resource
-  "Matches a literal with a certain literal value"
-  ([atom]
-     (cond (or (instance? com.hp.hpl.jena.rdf.model.impl.ResourceImpl atom)
-               (instance? com.hp.hpl.jena.rdf.model.impl.PropertyImpl atom))
-           true
-           true false)))
-
-(defn is-property
-  "Matches a literal with a certain literal value"
-  ([atom]
-     (instance? com.hp.hpl.jena.rdf.model.impl.PropertyImpl atom)))
+     (keyword (str (resource-id b)))))
 
 (defn rdf-literal
   "Creates a new rdf literal"
-  ([lit] (.createLiteral *rdf-model* lit true))
-  ([lit lang] (.createLiteral *rdf-model* lit lang)))
+  ([lit] (create-literal *rdf-model* lit true))
+  ([lit lang] (create-literal *rdf-model* lit lang)))
 
 (defn l
   "shorthand for rdf-literal"
   ([lit] (rdf-literal lit))
   ([lit lang] (rdf-literal lit lang)))
 
-
-(defn find-datatype
-  "Finds the right datatype object from the string representation"
-  ([literal]
-     (let [lit (let [literal-str (keyword-to-string literal)]
-                 (if (.startsWith literal-str "http://")
-                   (aget (.split literal-str "#") 1)
-                   literal))]
-       (cond
-        (= "xmlliteral" (.toLowerCase (keyword-to-string lit))) XMLLiteralType/theXMLLiteralType
-        (= "anyuri" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDanyURI
-        (= "boolean" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDboolean
-        (= "byte" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDbyte
-        (= "date" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDdate
-        (= "datetime" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDdateTime
-        (= "decimal" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDdecimal
-        (= "double" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDdouble
-        (= "float" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDfloat
-        (= "int" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDint
-        (= "integer" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDinteger
-        (= "long" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDlong
-        (= "string" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDstring))))
-
-
 (defn rdf-typed-literal
   "Creates a new rdf literal with an associated type"
-  ([lit] (.createTypedLiteral *rdf-model* lit))
-  ([lit type] (let [dt (find-datatype type)]
-                (.createTypedLiteral *rdf-model* lit dt))))
+  ([lit] (create-typed-literal *rdf-model* lit))
+  ([lit type] (create-typed-literal *rdf-model* lit type)))
 
 (defn d
   "shorthand for rdf-typed-literal"
@@ -271,40 +241,26 @@
   ([& args]
      (apply rdf-date args)))
 
-
-(defn literal-value
-  "Returns the value of a literal"
-  ([lit] (.getValue lit)))
-
-(defn literal-language
-  "Returns the language of a literal"
-  ([lit] (.getLanguage lit)))
-
-(defn literal-datatype-uri
-  "Returns the datatype URI associated to this literal"
-  ([lit] (.getDatatypeURI lit)))
-
-(defn literal-lexical-form
-  "Returns the lexical form associated to this literal"
-  ([lit] (.getLexicalForm lit)))
-
 (defn triple-subject
   "Defines a subject for a statement"
   ([subject]
-     (if (is-resource subject) subject
-         (if (coll? subject)
-           (let [[rdf-ns local] subject]
-             (rdf-resource rdf-ns local))
-           (if (is-blank-node subject)
-             subject
-             (if (.startsWith (keyword-to-string subject) "?")
-               (keyword subject)
-               (rdf-resource subject)))))))
+     (if (and (instance? plaza.rdf.core.RDFResource subject)
+              (is-resource subject))
+       subject
+       (if (coll? subject)
+         (let [[rdf-ns local] subject]
+           (rdf-resource rdf-ns local))
+         (if (is-blank-node subject)
+           subject
+           (if (.startsWith (keyword-to-string subject) "?")
+             (keyword subject)
+             (rdf-resource subject)))))))
 
 (defn triple-predicate
   "Defines the predicate of a statement"
   ([predicate]
-     (if (is-resource predicate) predicate
+     (if (and (instance? plaza.rdf.core.RDFResource predicate)
+              (is-resource predicate)) predicate
          (if (coll? predicate)
            (let [[rdf-ns local] predicate]
              (rdf-property rdf-ns local))
@@ -317,7 +273,8 @@
 (defn triple-object
   "Defines the object of a statement"
   ([literal]
-     (if (instance? com.hp.hpl.jena.rdf.model.Literal literal)
+     (if (and (instance? plaza.rdf.core.RDFResource literal)
+              (is-literal literal))
        literal
        (triple-subject literal))))
 
@@ -338,20 +295,20 @@
 
 (defn- rdf-clone-resource
   ([res]
-     (rdf-resource (resource-uri res))))
+     (rdf-resource (resource-id res))))
 
 (defn- rdf-clone-property
   ([prop]
      (rdf-property (str prop))))
 
 (defn- rdf-clone-literal
-  ([lit] (if (= (.getLanguage lit) "")
-           (rdf-typed-literal (literal-value lit) (literal-datatype-uri lit))
+  ([lit] (if (= (literal-language lit) "")
+           (rdf-typed-literal (literal-value lit) (literal-datatype-obj lit))
            (rdf-literal (literal-value lit) (literal-language lit)))))
 
 (defn- rdf-clone-property
   ([res]
-     (rdf-resource (resource-uri res))))
+     (rdf-resource (resource-id res))))
 
 (defn- rdf-clone-blank-node
   ([blank]
@@ -363,9 +320,9 @@
      (cond
       (keyword? rdf-obj) rdf-obj        ;variable
       (is-blank-node rdf-obj) (rdf-clone-blank-node rdf-obj)
-      (instance? com.hp.hpl.jena.rdf.model.Literal rdf-obj) (rdf-clone-literal rdf-obj) ;literal
-      (instance? com.hp.hpl.jena.rdf.model.impl.ResourceImpl rdf-obj) (rdf-clone-resource rdf-obj) ;resource
-      (instance? com.hp.hpl.jena.rdf.model.impl.PropertyImpl rdf-obj) (rdf-clone-property rdf-obj) ;property
+      (is-literal rdf-obj) (rdf-clone-literal rdf-obj) ;literal
+      (is-property rdf-obj) (rdf-clone-property rdf-obj) ;property
+      (is-resource rdf-obj) (rdf-clone-resource rdf-obj) ;resource
       )))
 
 (defn make-triples
@@ -388,99 +345,51 @@
      (if (:triples (meta ts)) ts (make-triples ts))))
 
 (defmacro model-critical-write [m & body]
-  `(do (.enterCriticalSection ~m Lock/WRITE)
-       (let [res# (do ~@body)]
-         (.leaveCriticalSection ~m)
-         res#)))
+  `(critical-write ~m (fn [] ~@body)))
 
 (defmacro model-critical-read [m & body]
-  `(do (.enterCriticalSection ~m Lock/READ)
-       (let [res# (do ~@body)]
-         (.leaveCriticalSection ~m)
-         res#)))
+  `(critical-read ~m (fn [] ~@body)))
 
 (defn model-add-triples
   "Adds a collection of triples to a model"
   ([ts]
      (let [mts (check-triples ts)]
-       (model-critical-write
-        *rdf-model*
-        (loop [acum mts]
-          (when (not (empty? acum))
-            (let [[ms mp mo] (first acum)]
-              (.add *rdf-model* ms (rdf-property mp) mo)
-              (recur (rest acum)))))))))
+       (add-triples *rdf-model* mts))))
 
 (defn model-remove-triples
   "Removes a collection of triples to a model"
   ([ts]
      (let [mts (check-triples ts)]
-       (model-critical-write
-        *rdf-model*
-        (loop [acum mts]
-          (when (not (empty? acum))
-            (let [[ms mp mo] (first acum)]
-              (.remove *rdf-model* (first (iterator-seq (.listStatements *rdf-model* ms (rdf-property mp) mo))))
-              (recur (rest acum)))))))))
+       (remove-triples *rdf-model* mts))))
 
 (defn is-model
   "Checks if an object is a model"
   ([obj]
-     (instance? com.hp.hpl.jena.rdf.model.impl.ModelCom obj)))
+     (instance? plaza.rdf.core.RDFModel obj)))
 
-
+;;;@todo
 (defn model-to-triples
   "Extracts the triples stored into a model"
   ([model]
-     (model-critical-read model
-      (if (is-model model)
-        (let [model-it (.listStatements model)]
-          (loop [should-continue (.hasNext model-it)
-                 acum []]
-            (if should-continue
-              (let [st (.nextStatement model-it)
-                    subject (.getSubject st)
-                    predicate (.getPredicate st)
-                    object (let [node (.getObject st)]
-                             (cond
-                              (.isLiteral node) (.as node com.hp.hpl.jena.rdf.model.Literal)
-                              true              (.as node com.hp.hpl.jena.rdf.model.Resource)))]
-                (recur (.hasNext model-it)
-                       (conj acum [subject predicate object])))
-              acum)))))))
+     (with-meta (walk-triples model (fn [s p o] [s p o])) {:triples true})))
 
 ;; Models IO
-
-(defn- parse-format
-  ([format]
-     (cond (= (.toLowerCase (keyword-to-string format)) "xml") "RDF/XML"
-           (= (.toLowerCase (keyword-to-string format)) "ntriple") "N-TRIPLE"
-           (= (.toLowerCase (keyword-to-string format)) "n3") "N3"
-           (= (.toLowerCase (keyword-to-string format)) "ttl") "TURTLE"
-           (= (.toLowerCase (keyword-to-string format)) "turtle") "TTL"
-           (= (.toLowerCase (keyword-to-string format)) "xhtml") "XHTML"
-           (= (.toLowerCase (keyword-to-string format)) "html") "HTML")))
 
 (defn document-to-model
   "Adds a set of triples read from a serialized document into a model"
   ([stream format]
-     (let [format (parse-format format)]
-       (model-critical-write
-        *rdf-model*
-        (if (string? stream)
-          (.read *rdf-model* stream format)
-          (.read *rdf-model* stream *rdf-ns* format)))
-       *rdf-model*)))
+     (load-stream *rdf-model* stream format)))
 
 
 (defn model-to-format
   "Writes a model using the chosen format"
   ([]
-     (model-critical-read *rdf-model* (.write *rdf-model* *out* (parse-format :ntriple))))
+     (output-string *rdf-model* :ntriple))
   ([format]
-     (model-critical-read *rdf-model* (.write *rdf-model* *out* (parse-format format))))
+     (output-string *rdf-model* format))
   ([model format]
-     (model-critical-read model (.write model *out* (parse-format format)))))
+     (output-string model format)))
+
 
 (defn triples-to-format
   "Writes a set of triple using the "
@@ -526,7 +435,7 @@
               idx 0]
          (if (< idx max)
            (let [t (nth triples idx)
-                 key (.toString (subject-from-triple t))
+                 key (to-string (subject-from-triple t))
                  acump (if (get acum key) (assoc acum key (conj (get acum key) t)) (assoc acum key [t]))]
              (recur acump max (+ idx 1)))
            (vals acum))))))
@@ -540,7 +449,7 @@
               idx 0]
          (if (< idx max)
            (let [t (nth triples idx)
-                 key (.toString (subject-from-triple t))
+                 key (to-string (subject-from-triple t))
                  acump (if (empty? (filter #(= key %1) acum)) (conj acum key) acum)]
              (recur acump max (+ idx 1)))
            acum)))))

@@ -52,6 +52,17 @@
              (println (str to-show))
              (recur (+ 1 count))))))))
 
+(defn collect-java-implemented-interfaces
+  ([obj]
+     (let [is (.. obj getClass getInterfaces)
+           max (alength is)]
+       (loop [count 0
+              acum []]
+         (if (< count max)
+           (recur (+ count 1)
+                  (conj acum (aget is count)))
+           acum)))))
+
 (defn flatten-1
   ([seq]
      (let [old-meta (meta seq)]

@@ -19,32 +19,11 @@
 ;  (swap [ts pattern triples] "Atomically retrieves some triples from the triple space, matching the provided pattern, and replace them with new triples")
 ;  (notify [ts op pattern] "Blocks until some other process performs an op operation in the triple space matching the provided pattern"))
 
-;(deftype FooTripleSpace [] TripleSpace
-;  (rd [this pattern] :foo)
-;  (rdb [this pattern] :foo)
-;  (in [this pattern] :foo)
-;  (inb [this pattern] :foo)
-;  (out [this triples] :foo)
-;  (swap [this pattern triples] :foor)
-;  (notify [this op pattern] :foo))
-
 (deftype FooTripleSpace [] TripleSpace
   (in [this pattern] :foo)
   (inb [this pattern] :foo)
   (out [this triples] :foo)
   (show [this] :foo))
-
-
-;(defprotocol P
-;  (foo [x])
-;  (bar-me [x] [x y]))
-;
-;(deftype Foo [a b c]
-;  P
-;  (foo [x] a)
-;  (bar-me [x] b)
-;  (bar-me [x y] (+ c y)))
-
 
 
 (deftype BasicTripleSpace [identifier ts-agent]

@@ -1,6 +1,6 @@
-(ns plaza.rdf.core-test
+(ns plaza.rdf.core-test-sesame
   (:use [plaza.rdf core] :reload-all)
-  (:use [plaza.rdf.implementations jena] :reload-all)
+  (:use [plaza.rdf.implementations sesame] :reload-all)
   (:use [clojure.test]))
 
 ;; rdf/xml used in the tests
@@ -29,14 +29,14 @@
      </rdf:Description>
 </rdf:RDF>")
 
-;; we'll test with jena
-(init-jena-framework)
+;; we'll test with Sesame
+(init-sesame-framework)
 
-(deftest test-create-model-jena
-  (is-model (build-model :jena)))
+(deftest test-create-model-sesame
+  (is-model (build-model :sesame)))
 
 
-(deftest test-with-rdf-ns
+(deftest test-with-rdf-ns-sesame
   (let [before *rdf-ns*
         new-ns "hello"
         result (with-rdf-ns new-ns
@@ -44,7 +44,7 @@
     (is (= new-ns result))
     (is (= before *rdf-ns*))))
 
-(deftest test-with-model
+(deftest test-with-model-sesame
   (let [before-ns *rdf-ns*
         before-model *rdf-model*
         new-ns "hello"
@@ -56,7 +56,7 @@
     (is (= before-ns *rdf-ns*))
     (is (= before-model *rdf-model*))))
 
-(deftest test-make-property
+(deftest test-make-property-sesame
   (let [m (build-model :jena)
         p1 (with-model m
              (rdf-property rdf :hola))
@@ -65,7 +65,7 @@
     (is (= (to-string p1) "http://www.w3.org/1999/02/22-rdf-syntax-ns#hola"))
     (is (= (to-string p2) "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))))
 
-(deftest test-make-resource
+(deftest test-make-resource-sesame
   (let [m (build-model :jena)
         p1 (with-model m
              (rdf-resource rdf :Mundo))
@@ -75,7 +75,7 @@
     (is (= (to-string p2) "http://www.w3.org/2000/01/rdf-schema#Class"))))
 
 
-(deftest test-make-literal
+(deftest test-make-literal-sesame
   (let [m (build-model :jena)
         p1 (with-model m
              (rdf-literal "test"))
@@ -84,7 +84,7 @@
     (is (= (to-string p1) "test"))
     (is (= (to-string p2) "test@es"))))
 
-(deftest test-make-typed-literal
+(deftest test-make-typed-literal-sesame
   (let [m (build-model :jena)
         p1 (with-model m
              (rdf-typed-literal 2))
@@ -93,7 +93,7 @@
     (is (= (to-string p1) "\"2\"^^<http://www.w3.org/2001/XMLSchema#int>"))
     (is (= (to-string p2) "\"2\"^^<http://www.w3.org/2001/XMLSchema#anyURI>"))))
 
-(deftest test-triple-subject
+(deftest test-triple-subject-sesame
   (let [m (build-model :jena)
         p1 (with-model m
              (with-rdf-ns "http://test.com/"
@@ -104,7 +104,7 @@
     (is (= (to-string p1) "http://test.com/A"))
     (is (= (to-string p2) "http://www.w3.org/1999/02/22-rdf-syntax-ns#A"))))
 
-(deftest test-triple-predicate
+(deftest test-triple-predicate-sesame
   (let [m (build-model :jena)
         p1 (with-model m
              (with-rdf-ns "http://test.com/"
@@ -115,7 +115,7 @@
     (is (= (to-string p1) "http://test.com/p"))
     (is (= (to-string p2) "http://www.w3.org/1999/02/22-rdf-syntax-ns#p"))))
 
-(deftest test-triple-object
+(deftest test-triple-object-sesame
   (let [m (build-model :jena)
         p1 (with-model m
              (with-rdf-ns "http://test.com/"
@@ -134,7 +134,7 @@
     (is (= (to-string p3) "test"))
     (is (= (to-string p4) "\"2\"^^<http://www.w3.org/2001/XMLSchema#int>"))))
 
-(deftest test-rdf-triple-a
+(deftest test-rdf-triple-a-sesame
   (let [m (build-model :jena)
         ts (with-model m
              (with-rdf-ns "http://test.com/"
@@ -144,7 +144,7 @@
     (is (= (to-string (nth ts 1)) "http://test.com/b"))
     (is (= (to-string (nth ts 2)) "http://test.com/c"))))
 
-(deftest test-rdf-triple-b
+(deftest test-rdf-triple-b-sesame
   (let [m (build-model :jena)
         ts (with-model m
              (with-rdf-ns "http://test.com/"
@@ -160,38 +160,38 @@
       (is (= (to-string (nth sts 1)) "http://test.com/d"))
       (is (= (to-string (nth sts 2)) "http://test.com/e")))))
 
-(deftest test-add-triples
+(deftest test-add-triples-sesame
   (let [m (build-model :jena)]
     (with-model m (model-add-triples [[:a :b :c] [:d :e :f] [:g [:h :i :j :k]]]))
     (is (= 4 (count (walk-triples m (fn [s p o] [s p o])))))))
 
-(deftest test-add-triples-2
+(deftest test-add-triples-2-sesame
   (let [m (build-model :jena)]
     (with-model m (model-add-triples (make-triples [[:a :b :c] [:d :e :f] [:g [:h :i :j :k]]])))
     (is (= 4 (count (walk-triples m (fn [s p o] [s p o])))))))
 
-(deftest test-remove-triples-1
+(deftest test-remove-triples-1-sesame
   (let [m (defmodel
              (model-add-triples (make-triples [[:a :b (d 2)]]))
              (model-add-triples (make-triples [[:e :f (l "test")]])))]
     (do (with-model m (model-remove-triples (make-triples [[:a :b (d 2)]])))
         (= 1 (count (model-to-triples m))))))
 
-(deftest test-optional
+(deftest test-optional-sesame
   (let [is-optional (optional [:foo])]
     (is (:optional (meta (first is-optional))))))
 
-(deftest test-optional-2
+(deftest test-optional-2-sesame
   (let [is-optional (optional [:foo :bar])
         is-opt (opt [:foo :bar])]
     (is (= is-optional is-opt))))
 
-(deftest test-document-to-model-1
+(deftest test-document-to-model-1-sesame
   (let [m (build-model :jena)
         _m (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes *test-xml*)) :xml))]
     (is (= (count (model-to-triples m)) 3))))
 
-(deftest test-document-to-model-2
+(deftest test-document-to-model-2-sesame
   (let [m (build-model :jena)
         _m (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes *test-xml-blanks*)) :xml))]
     (is (= (count (model-to-triples m)) 4))
@@ -200,19 +200,19 @@
             (is-blank-node (o (nth (model-to-triples m) 2)))
             (is-blank-node (o (nth (model-to-triples m) 3)))))))
 
-(deftest test-find-resources
+(deftest test-find-resources-sesame
   (let [m (build-model :jena)
         _m (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes *test-xml*)) :xml))
         res (find-resources m)]
     (is (= (count res) 2))))
 
-(deftest test-find-resource-uris
+(deftest test-find-resource-uris-sesame
   (let [m (build-model :jena)
         _m (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes *test-xml*)) :xml))
         res (find-resource-uris m)]
     (is (= (count res) 2))))
 
-(deftest test-blank-node
+(deftest test-blank-node-sesame
   (let [b1 (blank-node)
         b2 (b)
         b3 (blank-node :a)
@@ -224,11 +224,11 @@
     (is (= :a (keyword (blank-node-id b3))))
     (is (= :a (keyword (blank-node-id b4))))))
 
-(deftest test-blank-node-is
+(deftest test-blank-node-is-sesame
   (is (not (is-blank-node :?a)))
   (is (not (is-blank-node (d 2))))
   (is (not (is-blank-node (l "test"))))
   (is (not (is-blank-node (rdf-resource "http://test.com/Test")))))
 
-(deftest test-has-meta
+(deftest test-has-meta-sesame
   (is (:triples (meta (make-triples [[:a :b :c]])))))

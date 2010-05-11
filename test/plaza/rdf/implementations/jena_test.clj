@@ -57,12 +57,12 @@
 (deftest test-jena-typed-literal
   (let [model (build-model :jena)
         res (create-typed-literal model 2)]
-    (is (= "2^^http://www.w3.org/2001/XMLSchema#int" (to-string res)))
+    (is (= "\"2\"^^<http://www.w3.org/2001/XMLSchema#int>" (to-string res)))
     (is (not (is-blank res)))
     (is (not (is-resource res)))
     (is (not (is-property res)))
     (is (is-literal res))
-    (is (= (resource-id res) "2^^http://www.w3.org/2001/XMLSchema#int"))
+    (is (= (resource-id res) "\"2\"^^<http://www.w3.org/2001/XMLSchema#int>"))
     (is (= (literal-value res) 2))
     (is (= (literal-language res) ""))
     (is (= (literal-datatype-uri res) "http://www.w3.org/2001/XMLSchema#int"))))

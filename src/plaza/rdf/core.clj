@@ -203,7 +203,7 @@
 
 (defn rdf-literal
   "Creates a new rdf literal"
-  ([lit] (create-literal *rdf-model* lit true))
+  ([lit] (create-literal *rdf-model* lit))
   ([lit lang] (create-literal *rdf-model* lit lang)))
 
 (defn l
@@ -454,6 +454,19 @@
              (recur acump max (+ idx 1)))
            acum)))))
 
+
+(defn parse-format
+  ([format]
+     (cond (= (.toLowerCase (keyword-to-string format)) "xml") "RDF/XML"
+           (= (.toLowerCase (keyword-to-string format)) "ntriple") "N-TRIPLE"
+           (= (.toLowerCase (keyword-to-string format)) "n3") "N3"
+           (= (.toLowerCase (keyword-to-string format)) "ttl") "TURTLE"
+           (= (.toLowerCase (keyword-to-string format)) "turtle") "TTL"
+           (= (.toLowerCase (keyword-to-string format)) "xhtml") "XHTML"
+           (= (.toLowerCase (keyword-to-string format)) "html") "HTML"
+           (= (.toLowerCase (keyword-to-string format)) "trig") "TRIG"
+           (= (.toLowerCase (keyword-to-string format)) "trix") "TRIX"
+           true "RDF/XML")))
 
 
 (defn optional

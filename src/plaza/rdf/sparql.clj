@@ -62,6 +62,13 @@
 (def ?y :?y)
 (def ?z :?z)
 
+(defn keyword-to-variable
+  "Transforms a symbol ':?t' into a variable name 't'"
+  ([kw]
+     (if (.startsWith (keyword-to-string kw) "?")
+       (aget (.split (keyword-to-string kw) "\\?") 1)
+       (keyword-to-string kw))))
+
 (defn sparql-to-pattern
   "Wraps the SPARQL framework type function that transforms a SPARQL string into a pattern"
   ([sparql] (parse-sparql-to-pattern *sparql-framework* sparql)))

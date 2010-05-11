@@ -7,10 +7,11 @@
 (defn keyword-to-string
   "transforms a keyword into a string"
   ([k]
-     (if (= (class k) String)
-       k
-       (let [sk (str k)]
-         (.substring sk 1)))))
+     (if (nil? k) ""
+         (if (= (class k) String)
+           k
+           (let [sk (str k)]
+             (.substring sk 1))))))
 
 (defn fold-list
   "Transforms a list: [1 2 3 4] -> [[1 2] [3 4]]"

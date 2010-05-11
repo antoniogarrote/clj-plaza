@@ -5,7 +5,8 @@
                  [com.hp.hpl.jena/jena "2.6.2"]
                  [com.hp.hpl.jena/arq "2.8.3"]
                  [net.rootdev/java-rdfa "0.3"]
-                 [nu.validator.htmlparser/htmlparser "1.2.0"]]
+                 [nu.validator.htmlparser/htmlparser "1.2.0"]
+                 [com.franz/openrdf-sesame-onejar "2.2"]]
   :dev-dependencies [[leiningen/lein-swank "1.2.0-SNAPSHOT"]
                      [autodoc "0.7.1"]]
     :autodoc { :name "clj-plaza", :page-title "clj-plaza distributed semantic systems library"

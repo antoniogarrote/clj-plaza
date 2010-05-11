@@ -50,24 +50,7 @@
         (= "long" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDlong
         (= "string" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDstring))))
 
-(defn- parse-jena-format
-  ([format]
-     (cond (= (.toLowerCase (keyword-to-string format)) "xml") "RDF/XML"
-           (= (.toLowerCase (keyword-to-string format)) "ntriple") "N-TRIPLE"
-           (= (.toLowerCase (keyword-to-string format)) "n3") "N3"
-           (= (.toLowerCase (keyword-to-string format)) "ttl") "TURTLE"
-           (= (.toLowerCase (keyword-to-string format)) "turtle") "TTL"
-           (= (.toLowerCase (keyword-to-string format)) "xhtml") "XHTML"
-           (= (.toLowerCase (keyword-to-string format)) "html") "HTML")))
-
 ;; SPARQL
-
-(defn- keyword-to-variable
-  "Transforms a symbol ':?t' into a variable name 't'"
-  ([kw]
-     (if (.startsWith (keyword-to-string kw) "?")
-       (aget (.split (keyword-to-string kw) "\\?") 1)
-       (keyword-to-string kw))))
 
 (defn- is-filter-expr
   "Tests if one Jena expression is a filter expression"
@@ -413,7 +396,7 @@
 
 (deftype JenaTypedLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper
   (to-java [resource] res)
-  (to-string [resource]  (str  (literal-lexical-form resource) "^^" (literal-datatype-uri resource)))
+  (to-string [resource]  (str  "\""(literal-lexical-form resource) "\"^^<" (literal-datatype-uri resource) ">"))
   (is-blank [resource] false)
   (is-resource [resource] false)
   (is-property [resource] false)
@@ -539,7 +522,7 @@
                                             (f s p o)))
                                         stmts)))))
   (load-stream [model stream format]
-               (let [format (parse-jena-format format)]
+               (let [format (parse-format format)]
                  (critical-write model
                                  (fn []
                                    (if (string? stream)
@@ -547,7 +530,7 @@
                                      (.read mod stream *rdf-ns* format))))
                  model))
   (output-string  [model format]
-                  (critical-read model (fn [] (.write mod *out* (parse-jena-format format)))))
+                  (critical-read model (fn [] (.write mod *out* (parse-format format)))))
   (find-datatype [model literal] (find-jena-datatype literal))
   (query [model query] (model-query-fn model query))
   (query-triples [model query] (model-query-triples-fn model query)))
@@ -566,7 +549,7 @@
 
 
 (defn parse-jena-object
-  "Parses any Jena relevant object into its plaza equivalent"
+  "Parses any Jena relevant object into its plaza equivalent type"
   ([model jena]
      (if (instance? com.hp.hpl.jena.rdf.model.impl.ResourceImpl jena)
        (if (.isAnon jena)

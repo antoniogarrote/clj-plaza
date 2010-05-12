@@ -168,3 +168,10 @@
     (is (= 1 (count (first result))))
     (is (not (keyword? (nth (first (first result)) 2))))))
 
+(deftest test-pattern-pply
+  (let [res (pattern-apply [[:ba rdf:type :Post]]
+                           [[?a rdf:type :Post]])
+        [s p o] (first (first res))]
+    (is (not (= (.indexOf (to-string s) "ba") -1)))
+    (is (not (= (.indexOf (to-string p) "type") -1)))
+    (is (not (= (.indexOf (to-string o) "Post") -1)))))

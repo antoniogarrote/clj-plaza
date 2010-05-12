@@ -283,9 +283,10 @@
 (defn pattern-apply
   "Applies a pattern to a set of triples"
   ([triples pattern]
-     (let [vars (pattern-collect-vars pattern)
+     (let [checked-pattern (if (:pattern (meta pattern)) pattern (make-pattern pattern))
+           vars (pattern-collect-vars pattern)
            query (defquery
-                   (query-set-pattern pattern)
+                   (query-set-pattern checked-pattern)
                    (query-set-type :select)
                    (query-set-vars vars))]
        (model-query-triples (defmodel (model-add-triples triples))

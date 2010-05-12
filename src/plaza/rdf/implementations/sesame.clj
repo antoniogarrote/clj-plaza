@@ -121,7 +121,8 @@
   (literal-language [resource] (throw (Exception. "Cannot retrieve lang for a blank node")))
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
-  (literal-lexical-form [resource] (str res)))
+  (literal-lexical-form [resource] (str res))
+  (toString [resource] (str res)))
 
 
 (deftype SesameBlank [res] RDFResource RDFNode JavaObjectWrapper RDFPrintable
@@ -138,7 +139,8 @@
   (literal-language [resource] (throw (Exception. "Cannot retrieve lang for a blank node")))
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a resource")))
-  (literal-lexical-form [resource] (.getId res)))
+  (literal-lexical-form [resource] (.getId res))
+  (toString [resource] (.stringValue res)))
 
 
 (deftype SesameLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
@@ -159,7 +161,8 @@
   (literal-datatype-uri [resource] "http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral")
   (literal-datatype-obj [resource] (find-sesame-datatype :xmlliteral))
   (literal-lexical-form [resource] (.stringValue res))
-  (find-datatype [resource literal] (find-sesame-datatype literal)))
+  (find-datatype [resource literal] (find-sesame-datatype literal))
+  (toString [resource] (to-string resource)))
 
 (deftype SesameTypedLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
@@ -176,7 +179,8 @@
   (literal-datatype-uri [resource] (str (.getDatatype res)))
   (literal-datatype-obj [resource] (find-sesame-datatype (str (.getDatatype res))))
   (literal-lexical-form [resource] (str (literal-value resource)))
-  (find-datatype [resource literal] (find-sesame-datatype literal)))
+  (find-datatype [resource literal] (find-sesame-datatype literal))
+  (toString [resource] (str res)))
 
 (deftype SesameProperty [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
@@ -192,7 +196,8 @@
   (literal-language [resource] (throw (Exception. "Cannot retrieve lang for a blank node")))
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
-  (literal-lexical-form [resource] (str res)))
+  (literal-lexical-form [resource] (str res))
+  (toString [resource] (str res)))
 
 
 (deftype SesameModel [mod] RDFModel RDFDatatypeMapper JavaObjectWrapper RDFPrintable
@@ -365,4 +370,5 @@
   "Setup all the root bindings to use Plaza with the Sesame framework. This function must be called
    before start using Plaza"
   ([] (alter-root-model (build-model :sesame))
-     (alter-root-sparql-framework (plaza.rdf.implementations.sesame.SesameSparqlFramework.))))
+      (alter-root-sparql-framework (plaza.rdf.implementations.sesame.SesameSparqlFramework.))
+      (alter-root-model-builder-fn :sesame)))

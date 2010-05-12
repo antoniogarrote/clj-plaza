@@ -73,19 +73,6 @@
   (to-java [wrapper] "Returns the object wrapper by this type object"))
 
 
-;;; Declaration of a model
-
-(defmulti build-model
-  (fn [& options] [(first options)]))
-
-(defmethod build-model [nil]
-  ([& options] (throw (Exception. "Some implementation must be loaded"))))
-
-(defmethod build-model :default
-  ([& options] (throw (Exception. "Some implementation must be loaded"))))
-
-
-
 ;;; Root bindings
 
 
@@ -94,6 +81,22 @@
 
 ;; The root *namespace* that will be used by default
 (def *rdf-ns* "http://plaza.org/ontologies/")
+
+;; The root *rdf-model-builder-fn* that will be used by default to build models
+(def *rdf-model-builder-fn* nil)
+
+;;; Declaration of a model
+
+(defmulti build-model
+  (fn [& options] [(first options)]))
+
+(defmethod build-model [nil]
+  ([& options] (build-model *rdf-model-builder-fn*)))
+
+(defmethod build-model :default
+  ([& options] (build-model *rdf-model-builder-fn*)))
+
+
 
 ;; sets the root bindings, useful when reading configuration.
 ;; with-model and with-rdf-ns should be use in actual code.
@@ -110,6 +113,13 @@
    macro should be used by default"
   ([new-rdf-ns]
      (alter-var-root #'*rdf-ns* (fn [_] new-rdf-ns))))
+
+(defn alter-root-model-builder-fn
+  "Alters the root binding for the default model builder function.
+   This function should only be used when setting up the application
+   with-rdf-ns macro should be used by default"
+  ([builder-fn]
+     (alter-var-root #'*rdf-model-builder-fn* (fn [_] builder-fn))))
 
 (defmacro with-rdf-ns
   "Sets up the default namespace for a set of forms"
@@ -163,7 +173,9 @@
   ([ns local]
      (let [registry-ns (find-ns-registry ns)
            expanded-ns (keyword-to-string (if (nil? registry-ns) ns registry-ns))]
-       (str expanded-ns (keyword-to-string local)))))
+       (if (.startsWith expanded-ns "http")
+         (str expanded-ns (keyword-to-string local))
+         (throw (Exception. (str "Unknown RDF namespace " expanded-ns " with local part " local)))))))
 
 ;;; Manipulation of models
 
@@ -334,6 +346,19 @@
       (is-resource rdf-obj) (rdf-clone-resource rdf-obj) ;resource
       )))
 
+(defn resource-uri
+  "Extracts the URI of a resource"
+  ([resource] (resource-id resource)))
+
+(defn resource-qname-prefix
+  "Extracts the prefix of a QNAME resource URI"
+  ([resource] (qname-prefix resource)))
+
+(defn resource-qname-local
+  "Extracts the local part of a QNAME resource URI"
+  ([resource] (qname-local resource)))
+
+
 (defn make-triples
   "Builds a new collection of triples"
   ([ts]
@@ -406,6 +431,11 @@
      (with-model (build-model)
        (model-add-triples triples)
        (apply model-to-format args))))
+
+(defn triples-to-string
+  "Shows a set of triples using string representations for the triples components"
+  ([triples]
+     (map (fn [[s p o]] [(to-string s) (to-string p) (to-string o)]) triples)))
 
 ;; model manipulation predicates
 (defn subject-from-triple

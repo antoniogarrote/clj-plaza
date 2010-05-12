@@ -69,7 +69,8 @@
   (literal-language [resource] (throw (Exception. "Cannot retrieve lang for a resource")))
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a resource")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a resource")))
-  (literal-lexical-form [resource] (resource-id resource)))
+  (literal-lexical-form [resource] (resource-id resource))
+  (toString [resource] (.getURI res)))
 
 
 (deftype JenaBlank [res] RDFResource RDFNode JavaObjectWrapper RDFPrintable
@@ -86,7 +87,8 @@
   (literal-language [resource] (throw (Exception. "Cannot retrieve lang for a blank node")))
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a resource")))
-  (literal-lexical-form [resource] (str "_:" (resource-id resource))))
+  (literal-lexical-form [resource] (str "_:" (resource-id resource)))
+  (toString [resource] (to-string resource)))
 
 
 (deftype JenaLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
@@ -107,7 +109,8 @@
   (literal-datatype-uri [resource] "http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral")
   (literal-datatype-obj [resource] (find-jena-datatype :xmlliteral))
   (literal-lexical-form [resource] (.getLexicalForm res))
-  (find-datatype [resource literal] (find-jena-datatype literal)))
+  (find-datatype [resource literal] (find-jena-datatype literal))
+  (toString [resource] (to-string resource)))
 
 (deftype JenaTypedLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
@@ -124,7 +127,8 @@
   (literal-datatype-uri [resource] (str (.getDatatypeURI res)))
   (literal-datatype-obj [resource] (find-jena-datatype (.getDatatypeURI res)))
   (literal-lexical-form [resource] (.getLexicalForm res))
-  (find-datatype [resource literal] (find-jena-datatype literal)))
+  (find-datatype [resource literal] (find-jena-datatype literal))
+  (toString [resource] (to-string resource)))
 
 (deftype JenaProperty [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
@@ -140,7 +144,8 @@
   (literal-language [resource] (throw (Exception. "Cannot retrieve lang for a blank node")))
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
-  (literal-lexical-form [resource] (to-string res)))
+  (literal-lexical-form [resource] (to-string res))
+  (toString [resource] (str res)))
 
 
 (deftype JenaModel [mod] RDFModel RDFDatatypeMapper JavaObjectWrapper RDFPrintable
@@ -181,8 +186,11 @@
                                      (.createTypedLiteral mod lit)))
   (create-typed-literal [model lit type]
                         (let [dt (find-datatype model type)]
-                          (plaza.rdf.implementations.jena.JenaTypedLiteral.
-                           (.createTypedLiteral mod lit dt))))
+                          (if (instance? java.util.GregorianCalendar lit)
+                            (plaza.rdf.implementations.jena.JenaTypedLiteral.
+                             (.createTypedLiteral mod lit))
+                            (plaza.rdf.implementations.jena.JenaTypedLiteral.
+                             (.createTypedLiteral mod lit dt)))))
   (critical-write [model f]
                   (do
                     (.enterCriticalSection mod Lock/WRITE)
@@ -295,4 +303,5 @@
   "Setup all the root bindings to use Plaza with the Jena framework. This function must be called
    before start using Plaza"
   ([] (alter-root-model (build-model :jena))
-      (alter-root-sparql-framework (plaza.rdf.implementations.jena.JenaSparqlFramework.))))
+      (alter-root-sparql-framework (plaza.rdf.implementations.jena.JenaSparqlFramework.))
+      (alter-root-model-builder-fn :jena)))

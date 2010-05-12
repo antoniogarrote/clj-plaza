@@ -58,7 +58,7 @@
     (is (= (literal-language lit) "es"))
     (is (= (literal-datatype-uri lit) "http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral"))
     (is (= (literal-datatype-obj lit) "http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral"))
-    (is (= (literal-lexical-form lit) "testeado@es"))))
+    (is (= (literal-lexical-form lit) "testeado"))))
 
 (deftest test-sesame-typed-literal
   (let [model (build-model :sesame)

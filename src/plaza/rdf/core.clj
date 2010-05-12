@@ -23,7 +23,6 @@
 
 (defprotocol RDFNode
   "Common queries for objects that can be inserted in a RDF graph"
-  (to-string [resource] "Canonical String representation of this node")
   (is-blank [resource] "Returns true if this resource is a blank node")
   (is-resource [resource] "Returns true if this resource is not a literal or datatype literal")
   (is-property [resource] "Returns true if this resource is a RDF property")
@@ -39,14 +38,6 @@
   (literal-datatype-uri [resource] "Returns the datatype-uri of this literal datatype")
   (literal-datatype-obj [resource] "Returns an objectual representation of this datatype")
   (literal-lexical-form [resource] "Returns the lexical form of this literal"))
-
-(defprotocol RDFDatatypeMapper
-  "Maps a keyword value or a URI to the right datatype object"
-  (find-datatype [literal lit] "Finds the type for the literal representation"))
-
-(defprotocol JavaObjectWrapper
-  "Allows to retrieve the wrapped object"
-  (to-java [wrapper] "Returns the object wrapper by this type object"))
 
 ;; RDF model
 
@@ -67,6 +58,19 @@
   (query [model query] "Queries this model using the provided query and returns a map of bindings")
   (query-triples [model query] "Queries this model using the provided query and returns a list of graphs"))
 
+
+;; Utility protocols
+
+(defprotocol RDFPrintable
+  (to-string [resource] "Canonical String representation of this RDF object"))
+
+(defprotocol RDFDatatypeMapper
+  "Maps a keyword value or a URI to the right datatype object"
+  (find-datatype [literal lit] "Finds the type for the literal representation"))
+
+(defprotocol JavaObjectWrapper
+  "Allows to retrieve the wrapped object"
+  (to-java [wrapper] "Returns the object wrapper by this type object"))
 
 
 ;;; Declaration of a model
@@ -260,7 +264,10 @@
   "Defines the predicate of a statement"
   ([predicate]
      (if (and (instance? plaza.rdf.core.RDFResource predicate)
-              (is-resource predicate)) predicate
+              (is-resource predicate))
+       predicate
+       (if (instance? plaza.rdf.core.RDFResource predicate)
+         (rdf-property predicate)
          (if (coll? predicate)
            (let [[rdf-ns local] predicate]
              (rdf-property rdf-ns local))
@@ -268,7 +275,7 @@
              (throw (Exception. "Blank node cannot be predicate in a model"))
              (if (.startsWith (keyword-to-string predicate) "?")
                (keyword predicate)
-               (rdf-property predicate)))))))
+               (rdf-property predicate))))))))
 
 (defn triple-object
   "Defines the object of a statement"
@@ -299,7 +306,9 @@
 
 (defn- rdf-clone-property
   ([prop]
-     (rdf-property (str prop))))
+     (if (instance? plaza.rdf.core.RDFPrintable prop)
+       (rdf-property (to-string prop))
+       (rdf-property (str prop)))))
 
 (defn- rdf-clone-literal
   ([lit] (if (= (literal-language lit) "")
@@ -320,7 +329,7 @@
      (cond
       (keyword? rdf-obj) rdf-obj        ;variable
       (is-blank-node rdf-obj) (rdf-clone-blank-node rdf-obj)
-      (is-literal rdf-obj) (rdf-clone-literal rdf-obj) ;literal
+      (is-literal rdf-obj) (rdf-clone-literal rdf-obj)   ;literal
       (is-property rdf-obj) (rdf-clone-property rdf-obj) ;property
       (is-resource rdf-obj) (rdf-clone-resource rdf-obj) ;resource
       )))

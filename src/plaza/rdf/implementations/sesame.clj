@@ -18,6 +18,7 @@
                                         ;(Class/forName "net.rootdev.javardfa.RDFaReader")
 
 ;; declaration of symbols
+(declare parse-sesame-object)
 
 
 ;; Shared functions
@@ -78,10 +79,295 @@
 
 ;; SPARQL
 
+(defn- is-filter-expr
+  "Tests if one Jena expression is a filter expression"
+  ([expr]
+     (or (instance? com.hp.hpl.jena.sparql.expr.ExprFunction expr)
+         (instance? com.hp.hpl.jena.sparql.syntax.ElementFilter expr))))
+
+(defn- is-var-expr-fn
+  "Tests if one Jena expression is a var expression"
+  ([expr]
+     (or (and (keyword? expr)
+              (.startsWith (keyword-to-string expr) "?"))
+         (= (class expr) com.hp.hpl.jena.sparql.expr.ExprVar))))
+
+(defn- parse-pattern-literal
+  "Parses a literal value"
+  ([lit]
+     (if (nil? (.getLiteralDatatypeURI lit))
+       (l (.getLiteralLexicalForm lit) (.getLiteralLanguage lit))
+       (d (.getLiteralValue lit) (.getLiteralDatatypeURI lit)))))
+
+(defn- parse-pattern-atom
+  "Parses a single component of a pattern: variable, literal, URI, etc"
+  ([atom pos]
+     (cond
+      (instance? com.hp.hpl.jena.sparql.core.Var atom) (keyword (str "?" (.getVarName atom)))
+      (instance? com.hp.hpl.jena.graph.Node_URI atom) (cond
+                                                       (= pos :subject) (rdf-resource (.getURI atom))
+                                                       (= pos :predicate) (rdf-property (.getURI atom))
+                                                       (= pos :object) (rdf-resource (.getURI atom)))
+      (instance? com.hp.hpl.jena.graph.Node_Literal atom) (parse-pattern-literal atom)
+      true atom)))
+
+
+(defn- parse-literal-lexical
+  ([lit]
+     (let [parts-a (.split lit "\\^\\^")
+           val-a (aget parts-a 0)
+           datatype (if (= (alength parts-a) 2) (aget (.split (aget (.split (aget parts-a 1) "<") 1) ">") 0) "http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral")
+           parts-b (.split val-a "@")
+           val (let [val-tmp (aget parts-b 0)]
+                 (if (and (.startsWith val-tmp "\"")
+                          (.endsWith val-tmp "\""))
+                   (aget (.split (aget (.split val-tmp "\"") 1) "\"") 0)
+                   val-tmp))
+           lang-tag (if (= (alength parts-b) 2) (aget parts-b 1) nil)]
+       (if (nil? lang-tag)
+         (rdf-typed-literal val datatype)
+         (rdf-literal val lang-tag)))))
+
+(declare parse-filter-expr)
+(defn- parse-next-filter-expr
+  ([expr]
+     (cond
+      (is-var-expr-fn expr) (keyword (.toString expr))
+      (is-filter-expr expr) (parse-filter-expr expr)
+      true (parse-literal-lexical (.toString expr)))))
+
+(defn- parse-filter-expr-2
+  ([expr symbol]
+     {:expression (keyword symbol)
+      :kind :two-parts
+      :args [(parse-next-filter-expr (.. expr (getArg 1)))
+             (parse-next-filter-expr (.. expr (getArg 2)))]}))
+
+(defn- parse-filter-expr-1
+  ([expr symbol]
+     {:expression (keyword symbol)
+      :kind :one-part
+      :args [(parse-next-filter-expr (.. expr (getArg 1)))]}))
+
+
+(defn- parse-filter-expr
+  "Parses a filter expression"
+  ([expr]
+     (cond
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Str) (parse-filter-expr-1 "str")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Lang) (parse-filter-expr-1 expr "lang")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Datatype) (parse-filter-expr-1 expr "datatype")
+
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Bound) (parse-filter-expr-1 expr "bound")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_IsIRI) (parse-filter-expr-1 expr "isIRI")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_IsURI) (parse-filter-expr-1 expr "isURI")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_IsBlank) (parse-filter-expr-1 expr "isBlank")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_IsLiteral) (parse-filter-expr-1 expr "isLiteral")
+
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_GreaterThanOrEqual) (parse-filter-expr-2 expr ">=")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_GreaterThan) (parse-filter-expr-2 expr ">")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_LessThanOrEqual) (parse-filter-expr-2 expr "<=")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_LessThan) (parse-filter-expr-2 expr "<")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_NotEquals) (parse-filter-expr-2 expr "!=")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Equals) (parse-filter-expr-2 expr "=")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Subtract) (parse-filter-expr-2 expr "-")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Add) (parse-filter-expr-2 expr "+")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Multiply) (parse-filter-expr-2 expr "*")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Divide) (parse-filter-expr-2 expr "div"))))
+
+(defn- sparql-to-pattern-filters
+  "Parses a SPARQL query and transform it into a pattern and some filters"
+  ([sparql-string-or-query]
+     (let [query (if (string? sparql-string-or-query)
+                   (com.hp.hpl.jena.query.QueryFactory/create sparql-string-or-query)
+                   sparql-string-or-query)
+           query-pattern-els (.. query getQueryPattern getElements)]
+       (flatten-1
+        (map (fn [elem]
+               (let [pattern-els (if (instance? com.hp.hpl.jena.sparql.syntax.ElementOptional elem)
+                                   (.. elem getOptionalElement getElements (get 0) patternElts)
+                                   (if (instance? com.hp.hpl.jena.sparql.syntax.ElementFilter elem)
+                                     (.iterator [elem])
+                                     (.patternElts elem)))
+                     is-optional (if (instance? com.hp.hpl.jena.sparql.syntax.ElementOptional elem)
+                                   true
+                                   false)]
+                 (loop [should-continue (.hasNext pattern-els)
+                        acum []]
+                   (if should-continue
+                     (let [next-elt (.next pattern-els)]
+                       (if (instance? com.hp.hpl.jena.sparql.syntax.ElementFilter next-elt)
+                         ;; This is a filter
+                         (recur (.hasNext pattern-els)
+                                (conj acum (with-meta (parse-filter-expr (.getExpr next-elt))
+                                             {:filter true
+                                              :optional is-optional})))
+                         ;; A regular (maybe optional) expression
+                         (recur (.hasNext pattern-els)
+                                (conj acum (with-meta [(parse-pattern-atom (.getSubject next-elt) :subject)
+                                                       (parse-pattern-atom (.getPredicate next-elt) :predicate)
+                                                       (parse-pattern-atom (.getObject next-elt) :object)]
+                                             {:optional is-optional
+                                              :filter false})))))
+                     acum))))
+             query-pattern-els)))))
+
+(defn- parse-sparql-to-pattern-fn
+  "Parses a SPARQL query and transform it into a pattern"
+  ([sparql-string-or-query]
+     (filter (fn [x] (not (:filter (meta x)))) (sparql-to-pattern-filters sparql-string-or-query))))
+
+(defn- parse-sparql-to-query-fn
+  "Parses a SPARQL query and builds a whole query dictionary"
+  ([sparql-string]
+     (let [query (com.hp.hpl.jena.query.QueryFactory/create sparql-string)
+           pattern-filters (sparql-to-pattern-filters query)]
+       { :vars (vec (map (fn [v] (keyword v)) (.getResultVars query)))
+        :filters (filter #(:filter (meta %1)) pattern-filters)
+        :pattern (filter #(not (:filter (meta %1))) pattern-filters)
+        :kind (let [kind (.getQueryType query)]
+                (cond (= kind com.hp.hpl.jena.query.Query/QueryTypeAsk) :ask
+                      (= kind com.hp.hpl.jena.query.Query/QueryTypeConstruct) :construct
+                      (= kind com.hp.hpl.jena.query.Query/QueryTypeDescribe) :describe
+                      (= kind com.hp.hpl.jena.query.Query/QueryTypeSelect) :select
+                      true :unknown)) })))
+
+;; bulding of queries and filters
+
+
+(defn- build-filter-two-parts
+  "Builds a filter with two parts"
+  ([expression arg-0 arg-1]
+     (cond
+      (= expression :>=) (new com.hp.hpl.jena.sparql.expr.E_GreaterThanOrEqual arg-0 arg-1)
+      (= expression :>) (new com.hp.hpl.jena.sparql.expr.E_GreaterThan arg-0 arg-1)
+      (= expression :<=) (new com.hp.hpl.jena.sparql.expr.E_LessThanOrEqual arg-0 arg-1)
+      (= expression :<) (new com.hp.hpl.jena.sparql.expr.E_LessThan arg-0 arg-1)
+      (= expression :!=) (new com.hp.hpl.jena.sparql.expr.E_NotEquals arg-0 arg-1)
+      (= expression :=) (new com.hp.hpl.jena.sparql.expr.E_Equals arg-0 arg-1)
+      (= expression :-) (new com.hp.hpl.jena.sparql.expr.E_Subtract arg-0 arg-1)
+      (= expression :+) (new com.hp.hpl.jena.sparql.expr.E_Add arg-0 arg-1)
+      (= expression :*) (new com.hp.hpl.jena.sparql.expr.E_Multiply arg-0 arg-1)
+      (= expression :div) (new com.hp.hpl.jena.sparql.expr.E_Divide arg-0 arg-1))))
+
+(defn- build-filter-one-part
+  ([expression arg]
+     (cond
+      (= expression :str) (new com.hp.hpl.jena.sparql.expr.E_Str arg)
+      (= expression :lang) (com.hp.hpl.jena.sparql.expr.E_Lang arg)
+      (= expression :datatype) (new com.hp.hpl.jena.sparql.expr.E_Datatype arg)
+      (= expression :bound) (new com.hp.hpl.jena.sparql.expr.E_Bound arg)
+      (= expression :isIRI) (com.hp.hpl.jena.sparql.expr.E_IsIRI arg)
+      (= expression :isURI) (new com.hp.hpl.jena.sparql.expr.E_IsURI arg)
+      (= expression :isBlank) (com.hp.hpl.jena.sparql.expr.E_IsBlank arg)
+      (= expression :isLiteral) (new com.hp.hpl.jena.sparql.expr.E_IsLiteral arg))))
+
+(defn- build-filter-arg
+  ([builder arg]
+     (cond
+      (keyword? arg) (new com.hp.hpl.jena.sparql.expr.ExprVar (.replace (keyword-to-string arg) "?" ""))
+      (map? arg) (build-filter builder arg)
+      true (com.hp.hpl.jena.sparql.expr.NodeValue/makeNode (literal-lexical-form arg) (literal-language arg) (literal-datatype-uri arg)))))
+
+(defn- build-filter-fn
+  ([builder filter]
+     (if (= :two-parts (:kind filter))
+       (build-filter-two-parts (:expression filter)
+                               (build-filter-arg builder (first (:args filter)))
+                               (build-filter-arg builder (second (:args filter))))
+       (build-filter-one-part (:expression filter)
+                              (build-filter-arg builder (first (:args filter)))))))
+
+(defn- build-query-atom
+  "Transforms a query atom (subject, predicate or object) in the suitable Jena object for a Jena query"
+  ([atom]
+     (if (keyword? atom)
+       (com.hp.hpl.jena.sparql.core.Var/alloc (keyword-to-variable atom))
+       (if (is-literal atom)
+         (com.hp.hpl.jena.graph.Node/createLiteral (literal-lexical-form atom) (literal-language atom) (plaza.rdf.implementations.jena/find-jena-datatype (literal-datatype-uri atom)))
+         (com.hp.hpl.jena.graph.Node/createURI (if (is-resource atom) (to-string atom) (str atom)))))))
+
+(defn- build-query-fn
+  "Transforms a query representation into a Jena Query object"
+  ([builder query]
+     (let [built-query (com.hp.hpl.jena.query.Query.)
+           pattern (:pattern query)
+           built-patterns (reduce (fn [acum item]
+                                    (let [building (:building acum)
+                                          optional (:optional acum)]
+                                      (if (:optional (meta item))
+                                        ;; add it to the optional elem
+                                        (.addTriplePattern optional (com.hp.hpl.jena.graph.Triple/create (build-query-atom (nth item 0))
+                                                                                                         (build-query-atom (nth item 1))
+                                                                                                         (build-query-atom (nth item 2))))
+                                        ;; Is not an optional triple
+                                        (.addTriplePattern building (com.hp.hpl.jena.graph.Triple/create (build-query-atom (nth item 0))
+                                                                                                         (build-query-atom (nth item 1))
+                                                                                                         (build-query-atom (nth item 2)))))
+                                      {:building building
+                                       :optional optional}))
+                                  {:building (com.hp.hpl.jena.sparql.syntax.ElementGroup.)
+                                   :optional (com.hp.hpl.jena.sparql.syntax.ElementGroup.)}
+                                  pattern)
+           built-pattern (do
+                           (when (not (.isEmpty (:optional built-patterns)))
+                             (.addElement (:building built-patterns) (com.hp.hpl.jena.sparql.syntax.ElementOptional. (:optional built-patterns))))
+                           (:building built-patterns))
+           built-filters (loop [bfs (map (fn [f] (build-filter builder f)) (if (nil? (:filters query)) [] (:filters query)))]
+                           (if (not (empty? bfs))
+                             (let [bf (first bfs)]
+                               (.addElement built-pattern (com.hp.hpl.jena.sparql.syntax.ElementFilter. bf))
+                               (recur (rest bfs)))))]
+       (do
+         (loop [idx 0]
+           (when (< idx (count (:vars query)))
+             (do
+               (.addResultVar built-query (keyword-to-variable (nth (:vars query) idx)))
+               (recur (+ idx 1)))))
+         (.setQueryPattern built-query built-pattern)
+         (.setQueryType built-query (cond (= :ask (:kind query)) com.hp.hpl.jena.query.Query/QueryTypeAsk
+                                          (= :construct (:kind query)) com.hp.hpl.jena.query.Query/QueryTypeConstruct
+                                          (= :describe (:kind query)) com.hp.hpl.jena.query.Query/QueryTypeDescribe
+                                          (= :select (:kind query)) com.hp.hpl.jena.query.Query/QueryTypeSelect))
+         (when (:limit query)
+           (.setLimit built-query (:limit query)))
+         (when (:offset query)
+           (.setOffset built-query (:offset query)))
+         (when (:distinct query)
+           (.setDistinct built-query true))
+         (when (:reduced query)
+           (.setReduced built-query true))
+         built-query))))
+
+
+(defn- process-model-query-result
+  "Transforms a query result into a dicitionary of bindings"
+  ([model result]
+     (let [vars (iterator-seq (.iterator result))]
+       (reduce (fn [acum item] (assoc acum (keyword (str "?" (.getName item))) (parse-sesame-object model (.getValue item)))) {} vars))))
+
+(defn- model-query-fn
+  "Queries a model and returns a map of bindings"
+  ([model connection query]
+     (let [tuple-query (.prepareTupleQuery connection org.openrdf.query.QueryLanguage/SPARQL (.toString (build-query *sparql-framework* query)))
+           result (.evaluate tuple-query)]
+       (loop [acum []
+              should-continue (.hasNext result)]
+         (if should-continue
+           (recur (conj acum (process-model-query-result model (.next result)))
+                  (.hasNext result))
+           acum)))))
+
+(defn- model-query-triples-fn
+  "Queries a model and returns a list of triple sets with results binding variables in que query pattern"
+  ([model connection query]
+     (let [results (model-query-fn model connection query)]
+       (map #(pattern-bind (:pattern query) %1) results))))
+
 
 ;; Sesame implementation
 
-(deftype SesameResource [res] RDFResource RDFNode JavaObjectWrapper
+(deftype SesameResource [res] RDFResource RDFNode JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
   (to-string [resource]  (str res))
   (is-blank [resource] false)
@@ -98,7 +384,7 @@
   (literal-lexical-form [resource] (str res)))
 
 
-(deftype SesameBlank [res] RDFResource RDFNode JavaObjectWrapper
+(deftype SesameBlank [res] RDFResource RDFNode JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
   (to-string [resource] (.stringValue res))
   (is-blank [resource] true)
@@ -115,7 +401,7 @@
   (literal-lexical-form [resource] (.getId res)))
 
 
-(deftype SesameLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper
+(deftype SesameLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
   (to-string [resource] (let [lang (literal-language resource)]
                           (if (= "" lang)
@@ -132,10 +418,10 @@
   (literal-language [resource] (let [lang (.getLanguage res)] (if (nil? lang) "" lang)))
   (literal-datatype-uri [resource] "http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral")
   (literal-datatype-obj [resource] (find-sesame-datatype :xmlliteral))
-  (literal-lexical-form [resource] (resource-id resource))
+  (literal-lexical-form [resource] (.stringValue res))
   (find-datatype [resource literal] (find-sesame-datatype literal)))
 
-(deftype SesameTypedLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper
+(deftype SesameTypedLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
   (to-string [resource]  (str res))
   (is-blank [resource] false)
@@ -149,10 +435,10 @@
   (literal-language [resource] "")
   (literal-datatype-uri [resource] (str (.getDatatype res)))
   (literal-datatype-obj [resource] (find-sesame-datatype (str (.getDatatype res))))
-  (literal-lexical-form [resource] (to-string resource))
+  (literal-lexical-form [resource] (str (literal-value resource)))
   (find-datatype [resource literal] (find-sesame-datatype literal)))
 
-(deftype SesameProperty [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper
+(deftype SesameProperty [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
   (to-string [resource]  (str res))
   (is-blank [resource] false)
@@ -169,7 +455,7 @@
   (literal-lexical-form [resource] (str res)))
 
 
-(deftype SesameModel [mod] RDFModel RDFDatatypeMapper JavaObjectWrapper
+(deftype SesameModel [mod] RDFModel RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [model] mod)
   (create-resource [model ns local] (plaza.rdf.implementations.sesame.SesameResource. (.. ValueFactoryImpl getInstance (createURI (expand-ns ns local)))))
   (create-resource [model uri]
@@ -180,8 +466,9 @@
                        (plaza.rdf.implementations.sesame.SesameResource. (.. ValueFactoryImpl getInstance (createURI (expand-ns *rdf-ns* (keyword-to-string uri))))))))
   (create-property [model ns local] (plaza.rdf.implementations.sesame.SesameProperty. (.. ValueFactoryImpl getInstance (createURI (expand-ns ns local)))))
   (create-property [model uri]
-                   (if (instance? plaza.rdf.implementations.sesame.SesameResource uri)
-                     (plaza.rdf.implementations.sesame.SesameProperty. (.. ValueFactoryImpl getInstance (to-string uri)))
+                   (if (or (instance? plaza.rdf.implementations.sesame.SesameResource uri)
+                           (instance? plaza.rdf.implementations.sesame.SesameProperty uri))
+                     (plaza.rdf.implementations.sesame.SesameProperty. (.. ValueFactoryImpl getInstance (createURI (to-string uri))))
                      (if (.startsWith (keyword-to-string uri) "http://")
                        (plaza.rdf.implementations.sesame.SesameProperty. (.. ValueFactoryImpl getInstance (createURI (keyword-to-string uri))))
                        (plaza.rdf.implementations.sesame.SesameProperty. (.. ValueFactoryImpl getInstance (createURI (expand-ns *rdf-ns* (keyword-to-string uri))))))))
@@ -193,7 +480,7 @@
   (create-typed-literal [model lit type] (plaza.rdf.implementations.sesame.SesameTypedLiteral.
                                           (.. ValueFactoryImpl
                                               getInstance (createLiteral
-                                                           lit
+                                                           (str lit)
                                                            (.. ValueFactoryImpl getInstance (createURI (str (find-sesame-datatype type))))))))
   (critical-write [model f] (let [connection (.getConnection mod)]
                               (try
@@ -262,6 +549,7 @@
                        res))
                    (catch RepositoryException e (.rollback connection))
                    (finally (.close connection)))))
+  (to-string [model] (walk-triples model (fn [s p o] [(to-string s) (to-string p) (to-string o)])))
   (load-stream [model stream format]
 
                (let [format (translate-plaza-format (parse-format format))
@@ -277,56 +565,59 @@
                     (let [connection (.getConnection mod)
                           writer (org.openrdf.rio.Rio/createWriter (translate-plaza-format (parse-format format)) *out*)]
                       (try
-                       (.export writer connection)
+                       (.export connection writer (into-array org.openrdf.model.Resource []))
                        (finally (.close connection)))))
                   model)
   (find-datatype [model literal] (translate-plaza-format (parse-format format)))
   (query [model query] (let [connection (.getConnection mod)]
                          (try
-                          (.prepareTupleQuery connection org.openrdf.query.QueryLanguage/SPARQL query)
+                          (model-query-fn model connection query)
                           (finally (.close connection)))))
-  (query-triples [model query] :todo))
+  (query-triples [model query] (let [connection (.getConnection mod)]
+                                 (try
+                                  (model-query-triples-fn model connection query)
+                                  (finally (.close connection))))))
 
 
 (deftype SesameSparqlFramework [] SparqlFramework
-  (parse-sparql-to-query [framework sparql] :todo)
-  (parse-sparql-to-pattern [framework sparql] :todo)
-  (build-filter [framework filter] :todo)
-  (build-query [framework query] :todo)
-  (is-var-expr [framework expr] :todo)
-  (var-to-keyword [framework var-expr] :todo))
+  (parse-sparql-to-query [framework sparql] (parse-sparql-to-query-fn sparql))
+  (parse-sparql-to-pattern [framework sparql] (parse-sparql-to-pattern-fn sparql))
+  (build-filter [framework filter] (build-filter-fn framework filter))
+  (build-query [framework query] (build-query-fn framework query))
+  (is-var-expr [framework expr] (is-var-expr-fn expr))
+  (var-to-keyword [framework var-expr]
+                  (let [s (.getVarName var-expr)]
+                    (if (.startsWith s "?")
+                      (keyword s)
+                      (keyword (str "?" s))))))
 
 
 (defn- parse-sesame-object
   "Parses any Sesame relevant object into its plaza equivalent type"
   ([model sesame]
-     (if (instance? :ResourceImpl sesame)
-       (if (:isAnon sesame)
-         (create-blank-node model (str (.getId sesame)))
-         (create-resource model (str sesame)))
-       (if (instance? :PropertyImpl sesame)
-         (create-property model (str sesame))
-         (if (instance? :Literal sesame)
-           (if (or (nil? (:getDatatypeURI sesame))
-                   (= (:getDatatypeURI sesame) "http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral"))
-             (create-literal model (:getValue sesame) (:getLanguage sesame))
-             (create-typed-literal model (:getValue sesame) (:getDatatypeURI sesame)))
-           (throw (Exception. (str "Unable to parse object " sesame " of type " (class sesame)))))))))
+     (cond (instance? org.openrdf.model.URI sesame) (create-resource model (str sesame))
+           (instance? org.openrdf.model.BNode sesame) (create-blank-node model (str (.getID sesame)))
+           (instance? org.openrdf.model.Literal sesame) (if (or (nil? (.getDatatype sesame))
+                                                                (= (.getDatatype sesame) "http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral"))
+                                                          (create-literal model (.stringValue sesame) (.getLanguage sesame))
+                                                          (create-typed-literal model (sesame-typed-literal-tojava sesame) (str (.getDatatype sesame))))
+           true (throw (Exception. (str "Unable to parse object " sesame " of type " (class sesame)))))))
+
 
 ;; Initialization
 
 (defmethod build-model [:sesame]
-  ([& options] (let [repo (SailRepository. (ForwardChainingRDFSInferencer. (MemoryStore.)))]
+  ([& options] (let [repo (SailRepository. (MemoryStore.))]
                  (.initialize repo)
                  (plaza.rdf.implementations.sesame.SesameModel. repo))))
 
 (defmethod build-model [nil]
-  ([& options] (let [repo (SailRepository. (ForwardChainingRDFSInferencer. (MemoryStore.)))]
+  ([& options] (let [repo (SailRepository. (MemoryStore.))]
                  (.initialize repo)
                  (plaza.rdf.implementations.sesame.SesameModel. repo))))
 
 (defmethod build-model :default
-  ([& options] (let [repo (SailRepository. (ForwardChainingRDFSInferencer. (MemoryStore.)))]
+  ([& options] (let [repo (SailRepository. (MemoryStore.))]
                  (.initialize repo)
                  (plaza.rdf.implementations.sesame.SesameModel. repo))))
 
@@ -334,4 +625,4 @@
   "Setup all the root bindings to use Plaza with the Sesame framework. This function must be called
    before start using Plaza"
   ([] (alter-root-model (build-model :sesame))
-     (alter-root-sparql-framework :todo)))
+     (alter-root-sparql-framework (plaza.rdf.implementations.sesame.SesameSparqlFramework.))))

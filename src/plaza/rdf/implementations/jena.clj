@@ -323,12 +323,9 @@
   "Queries a model and returns a map of bindings"
   ([model query]
      (model-critical-read model
-                          (let [ ;_model (println (str "MODEL: " (model-to-format model :ttl)))
-                                        ;_test (println (.toString (build-query query)))
-                                qexec (QueryExecutionFactory/create (.toString (build-query *sparql-framework* query)) (to-java model))
+                          (let [qexec (QueryExecutionFactory/create (.toString (build-query *sparql-framework* query)) (to-java model))
                                         ;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
                                 results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
-                                        ;_results (println (str "RESULTS " results))]
                             (map #(process-model-query-result model %1) results)))))
 
 (defn- model-query-triples-fn
@@ -340,7 +337,7 @@
 
 ;; JENA implementation
 
-(deftype JenaResource [res] RDFResource RDFNode JavaObjectWrapper
+(deftype JenaResource [res] RDFResource RDFNode JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
   (to-string [resource] (.getURI res))
   (is-blank [resource] false)
@@ -357,7 +354,7 @@
   (literal-lexical-form [resource] (resource-id resource)))
 
 
-(deftype JenaBlank [res] RDFResource RDFNode JavaObjectWrapper
+(deftype JenaBlank [res] RDFResource RDFNode JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
   (to-string [resource] (str "_:" (resource-id resource)))
   (is-blank [resource] true)
@@ -374,7 +371,7 @@
   (literal-lexical-form [resource] (str "_:" (resource-id resource))))
 
 
-(deftype JenaLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper
+(deftype JenaLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
   (to-string [resource] (let [lang (literal-language resource)]
                           (if (= "" lang)
@@ -394,7 +391,7 @@
   (literal-lexical-form [resource] (.getLexicalForm res))
   (find-datatype [resource literal] (find-jena-datatype literal)))
 
-(deftype JenaTypedLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper
+(deftype JenaTypedLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
   (to-string [resource]  (str  "\""(literal-lexical-form resource) "\"^^<" (literal-datatype-uri resource) ">"))
   (is-blank [resource] false)
@@ -411,7 +408,7 @@
   (literal-lexical-form [resource] (.getLexicalForm res))
   (find-datatype [resource literal] (find-jena-datatype literal)))
 
-(deftype JenaProperty [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper
+(deftype JenaProperty [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
   (to-string [resource]  (str res))
   (is-blank [resource] false)
@@ -428,7 +425,7 @@
   (literal-lexical-form [resource] (to-string res)))
 
 
-(deftype JenaModel [mod] RDFModel RDFDatatypeMapper JavaObjectWrapper
+(deftype JenaModel [mod] RDFModel RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [model] mod)
   (create-resource [model ns local] (.createResource mod (expand-ns ns local)))
   (create-resource [model uri]
@@ -521,6 +518,7 @@
                                                         (create-resource model (str obj)))))]
                                             (f s p o)))
                                         stmts)))))
+  (to-string [model] (walk-triples model (fn [s p o] [(to-string s) (to-string p) (to-string o)])))
   (load-stream [model stream format]
                (let [format (parse-format format)]
                  (critical-write model

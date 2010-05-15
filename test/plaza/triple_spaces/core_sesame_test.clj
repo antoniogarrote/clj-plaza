@@ -9,7 +9,7 @@
 (init-sesame-framework)
 
 (deftest test-basic-write-read
-  (let [*ts* (make-basic-triple-space :test)]
+  (let [*ts* (make-basic-triple-space)]
     (out *ts* [[:a :b :c] [:d :e (l "test")] [:g :h (d 2)]])
     (is (= 3 (count (flatten-1 (rd *ts* [[?s ?p ?o]])))))
     (is (= 1 (count (flatten-1 (rd *ts* [[?s ?p :c]])))))
@@ -17,27 +17,27 @@
     (is (= 1 (count (flatten-1 (rd *ts* [[?s ?p (d 2)]])))))))
 
 (deftest test-basic-write-read-blank
-  (let [*ts* (make-basic-triple-space :test)]
+  (let [*ts* (make-basic-triple-space)]
     (out *ts* [[:a :b (b :m)]])
     (is (= 1 (count (flatten-1 (rd *ts* [[?s ?p ?o]])))))
     (is (= 1 (count (flatten-1 (rd *ts* [[?s ?p (b :m)]])))))
     (is (= 1 (count (flatten-1 (rd *ts* [[?s ?p (b :n)]])))))))
 
 (deftest test-basic-write-read-filter
-  (let [*ts* (make-basic-triple-space :test)]
+  (let [*ts* (make-basic-triple-space)]
     (out *ts* [[:a :b (d 5)]])
     (out *ts* [[:a :b (d 10)]])
     (is (= 2 (count (flatten-1 (rd *ts* [[?s ?p ?o]] [(f :> ?o (d 1))])))))
     (is (= 1 (count (flatten-1 (rd *ts* [[?s ?p ?o]] [(f :> ?o (d 1)) (f :> ?o (d 7))])))))))
 
 (deftest test-basic-write-in
-  (let [*ts* (make-basic-triple-space :test)]
+  (let [*ts* (make-basic-triple-space)]
     (out *ts* [[:a :b :c]])
     (is (= 1 (count (flatten-1 (in *ts* [[?s ?p ?o]])))))
     (is (= 0 (count (flatten-1 (rd *ts* [[?s ?p ?o]])))))))
 
 (deftest test-rdb-1
-  (let [*ts* (make-basic-triple-space :test)
+  (let [*ts* (make-basic-triple-space)
         sync (promise)]
     (.start (Thread. (fn [] (do (rdb *ts* [[?s ?p :c]]) (deliver sync :done)))))
     (out *ts* [[:d :e :c]])
@@ -45,7 +45,7 @@
     (is (= 1 (count (flatten-1 (rd *ts* [[?s ?p ?o]])))))))
 
 (deftest test-inb-1
-  (let [*ts* (make-basic-triple-space :test)
+  (let [*ts* (make-basic-triple-space)
         sync (promise)]
     (.start (Thread. (fn [] (do (inb *ts* [[?s ?p :c]]) (deliver sync :done)))))
     (out *ts* [[:d :e :c]])
@@ -54,7 +54,7 @@
 
 
 (deftest test-swap-1
-  (let [*ts* (make-basic-triple-space :test)]
+  (let [*ts* (make-basic-triple-space)]
     (out *ts* [[:d :e :c]])
     (is (= 1 (count (flatten-1 (swap *ts* [[:d ?p ?o]] [[:a :b :c]])))))
     (let [res (flatten-1 (rd *ts* [[?s ?p ?o]]))]
@@ -62,7 +62,7 @@
       (is (.endsWith (resource-uri (first (first res))) "a")))))
 
 (deftest test-swap-2
-  (let [*ts* (make-basic-triple-space :test)
+  (let [*ts* (make-basic-triple-space)
         sync (promise)]
     (.start (Thread. (fn [] (do (inb *ts* [[?s ?p :c]]) (deliver sync :done)))))
     (out *ts* [[:e :f :g]])
@@ -72,7 +72,7 @@
 
 
 (deftest test-notify-1
-  (let [*ts* (make-basic-triple-space :test)
+  (let [*ts* (make-basic-triple-space)
         counter (ref 0)
         sync-before (promise)
         sync-after (promise)]
@@ -93,7 +93,7 @@
     (dosync (is (= @counter 1)))))
 
 (deftest test-notify-2
-  (let [*ts* (make-basic-triple-space :test)
+  (let [*ts* (make-basic-triple-space)
         counter (ref 0)
         sync-before (promise)
         sync-after (promise)]
@@ -114,7 +114,7 @@
     (dosync (is (= @counter 1)))))
 
 (deftest test-notify-3
-  (let [*ts* (make-basic-triple-space :test)
+  (let [*ts* (make-basic-triple-space)
         counter (ref 0)
         sync-before (promise)
         sync-after (promise)]
@@ -135,7 +135,7 @@
     (dosync (is (= @counter 1)))))
 
 (deftest test-swap-3
-  (let [*ts* (make-basic-triple-space :test)
+  (let [*ts* (make-basic-triple-space)
         sync-before (promise)
         sync-after (promise)]
     (out *ts* [[:a :b :c]])
@@ -147,7 +147,7 @@
     (is true)))
 
 (deftest test-swap-4
-  (let [*ts* (make-basic-triple-space :test)
+  (let [*ts* (make-basic-triple-space)
         sync-before-1 (promise)
         sync-before-2 (promise)
         sync-after-1 (promise)
@@ -165,7 +165,7 @@
 
 
 (deftest test-notify-4
-  (let [*ts* (make-basic-triple-space :test)
+  (let [*ts* (make-basic-triple-space)
         sync-before (promise)
         sync-after (promise)]
     (.start (Thread. (fn [] (do (deliver sync-before :done)

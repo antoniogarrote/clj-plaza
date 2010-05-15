@@ -104,7 +104,7 @@
 
 
 
-(deftype BasicTripleSpace [identifier ts-agent]
+(deftype BasicTripleSpace [ts-agent]
   TripleSpace
 
 ;;;;
@@ -272,7 +272,56 @@
 (defn make-basic-triple-space
   "Builds a basic triple space that can be shared among different
    threads in the same node"
-  ([identifier]
+  ([]
      (let [m (defmodel)
            id-gen (let [id (ref 0)] (fn [] (dosync (alter id #(+ %1 1)) @id)))]
-       (BasicTripleSpace. identifier (agent {:model m :id-gen id-gen :queues [] :notify-queues []})))))
+       (BasicTripleSpace. (agent {:model m :id-gen id-gen :queues [] :notify-queues []})))))
+
+
+;; Common agent operations
+
+
+;; Shared has where every defined agent will be registered
+(def *plaza-agent-registry* (ref {}))
+(def *plaza-triple-spaces* (ref {}))
+
+(defn register-agent
+  "Registers an agent definition in the registry"
+  ([name agent-fn]
+     (dosync (alter plaza.triple-spaces.core/*plaza-agent-registry* (fn [registry] (assoc registry name agent-fn))))))
+
+(defn unregister-agent
+  "Unregisters an agent from the registry"
+  ([name]
+     (dosync (alter plaza.triple-spaces.core/*plaza-agent-registry* (fn [registry] (dissoc registry name))))))
+
+(defn def-ts
+  "Defines a triple space"
+  ([name ts]
+     (dosync (alter plaza.triple-spaces.core/*plaza-triple-spaces* (fn [registry] (assoc registry name ts))))))
+
+(defn unregister-ts
+  "Unregisters a triple space"
+  ([name]
+     (dosync (alter plaza.triple-spaces.core/*plaza-triple-spaces* (fn [registry] (dissoc registry name))))))
+
+(defn ts
+  "Retrieves a triple space from the registry"
+  [name]
+  (dosync (get (deref plaza.triple-spaces.core/*plaza-triple-spaces*) name)))
+
+(defmacro def-agent
+  "Defines a new agent"
+  ([agent-name & body]
+     `(register-agent ~agent-name
+                      (fn []
+                        (with-model (build-model)
+                          ~@body)))))
+
+(defmacro spawn!
+  "Starts a new agent"
+  ([& args]
+     (if (list? (first args))
+       `(.start (Thread. (fn [] (with-model (build-model) ~@args))))
+       (let [name (first args)]
+         `(.start (Thread. (get (deref plaza.triple-spaces.core/*plaza-agent-registry*) ~name)))))))

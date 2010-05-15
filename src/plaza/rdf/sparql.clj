@@ -242,6 +242,10 @@
       :args args
       :kind (if  (= (count args) 1) :one-part :two-parts)}))
 
+(defn f
+  "Shortcut for make-filter"
+  ([name & args]
+     (apply make-filter (cons name args))))
 
 ;; Querying a model
 
@@ -299,12 +303,18 @@
 
 (defn model-pattern-apply
   "Applies a pattern to a Model returning triples"
-  ([model pattern-or-vector]
+  ([model pattern-or-vector & filters]
      (let [pattern (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
            vars (pattern-collect-vars pattern)
-           query (defquery
-                   (query-set-pattern pattern)
-                   (query-set-type :select)
-                   (query-set-vars vars))]
+           query (if (empty? filters)
+                   (defquery
+                     (query-set-pattern pattern)
+                     (query-set-type :select)
+                     (query-set-vars vars))
+                   (defquery
+                     (query-set-pattern pattern)
+                     (query-set-type :select)
+                     (query-set-vars vars)
+                     (query-set-filters filters)))]
        (model-query-triples model
                             query))))

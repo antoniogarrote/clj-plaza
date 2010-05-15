@@ -248,8 +248,12 @@
      (if (keyword? atom)
        (com.hp.hpl.jena.sparql.core.Var/alloc (keyword-to-variable atom))
        (if (is-literal atom)
-         (com.hp.hpl.jena.graph.Node/createLiteral (literal-lexical-form atom) (literal-language atom) (find-jena-datatype (literal-datatype-uri atom)))
-         (com.hp.hpl.jena.graph.Node/createURI (if (is-resource atom) (to-string atom) (str atom)))))))
+         (if (= (find-jena-datatype (literal-datatype-uri atom)) (find-jena-datatype :xmlliteral))
+           (com.hp.hpl.jena.graph.Node/createLiteral (literal-lexical-form atom) (literal-language atom) false)
+           (com.hp.hpl.jena.graph.Node/createLiteral (literal-lexical-form atom) (literal-language atom) (find-jena-datatype (literal-datatype-uri atom))))
+         (if (is-blank atom) (com.hp.hpl.jena.graph.Node/createAnon (com.hp.hpl.jena.rdf.model.AnonId. (resource-id atom)))
+             (com.hp.hpl.jena.graph.Node/createURI  (if (is-resource atom) (to-string atom)
+                                                        (str atom))))))))
 
 (defn build-query-fn
   "Transforms a query representation into a Jena Query object"

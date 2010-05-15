@@ -40,11 +40,13 @@
 (defn- model-query-fn
   "Queries a model and returns a map of bindings"
   ([model query]
-     (model-critical-read model
-                          (let [qexec (QueryExecutionFactory/create (.toString (build-query *sparql-framework* query)) (to-java model))
+     (let [query-string (str (build-query *sparql-framework* query))]
+       ;(println (str "QUERYING JENA WITH: " query-string))
+       (model-critical-read model
+                            (let [qexec (QueryExecutionFactory/create query-string (to-java model))
                                         ;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
-                                results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
-                            (map #(process-model-query-result model %1) results)))))
+                                  results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
+                              (map #(process-model-query-result model %1) results))))))
 
 (defn- model-query-triples-fn
   "Queries a model and returns a list of triple sets with results binding variables in que query pattern"
@@ -178,7 +180,7 @@
                        (plaza.rdf.implementations.jena.JenaBlank.
                         (.createResource mod (com.hp.hpl.jena.rdf.model.AnonId. anon-id)))))
   (create-literal [model lit] (plaza.rdf.implementations.jena.JenaLiteral.
-                               (.createLiteral mod lit true)))
+                               (.createLiteral mod lit false)))
   (create-literal [model lit lang]
                   (plaza.rdf.implementations.jena.JenaLiteral.
                    (.createLiteral mod lit lang)))
@@ -293,15 +295,9 @@
 (defmethod build-model [:jena]
   ([& options] (plaza.rdf.implementations.jena.JenaModel. (ModelFactory/createDefaultModel))))
 
-(defmethod build-model [nil]
-  ([& options] (plaza.rdf.implementations.jena.JenaModel. (ModelFactory/createDefaultModel))))
-
-(defmethod build-model :default
-  ([& options] (plaza.rdf.implementations.jena.JenaModel. (ModelFactory/createDefaultModel))))
-
 (defn init-jena-framework
   "Setup all the root bindings to use Plaza with the Jena framework. This function must be called
    before start using Plaza"
   ([] (alter-root-model (build-model :jena))
-      (alter-root-sparql-framework (plaza.rdf.implementations.jena.JenaSparqlFramework.))
-      (alter-root-model-builder-fn :jena)))
+     (alter-root-sparql-framework (plaza.rdf.implementations.jena.JenaSparqlFramework.))
+     (alter-root-model-builder-fn :jena)))

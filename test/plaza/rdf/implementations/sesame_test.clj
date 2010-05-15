@@ -4,7 +4,7 @@
   (:use [clojure.test]))
 
 ;; we'll test with jena
-(alter-root-model (build-model :sesame))
+(init-sesame-framework)
 
 
 (deftest test-build-model-1
@@ -50,6 +50,22 @@
   (let [bnode (create-blank-node (build-model))]
     (is (= (.getID (to-java bnode)) (resource-id bnode)))))
 
+(deftest test-blank-node-str
+  (let [bnode (create-blank-node (build-model) :m)]
+    (is (= (to-string bnode) "_:m"))))
+
+(deftest test-sesame-blank-node
+  (let [model (build-model :sesame)
+        res (create-blank-node model "a")]
+    (is (= "_:a" (to-string res)))
+    (is (is-blank res))
+    (is (not (is-resource res)))
+    (is (not (is-property res)))
+    (is (= "a" (resource-id res)))
+    (is (= "_" (qname-prefix res)))
+    (is (= "a" (qname-local res)))))
+
+
 (deftest test-sesame-literal
   (let [m (build-model :sesame)
         lit (create-literal m "testeado" "es")]
@@ -72,3 +88,14 @@
     (is (= (literal-value res) 2))
     (is (= (literal-language res) ""))
     (is (= (literal-datatype-uri res) "http://www.w3.org/2001/XMLSchema#int"))))
+
+(deftest test-locks-1
+  (let [*m* (build-model :jena)
+        counter (ref 0)
+        sync (promise)
+        sync-lock (promise)]
+    (.start (Thread. (fn [] (do (model-critical-write *m* (deliver sync-lock :continue) (dosync (alter counter (fn [x] :a))) (deliver sync :continue))))))
+    @sync-lock
+    (model-critical-write *m* (dosync (is (= @counter :a)) (alter counter (fn [x] :b))))
+    @sync
+    (is (= (dosync @counter) :b))))

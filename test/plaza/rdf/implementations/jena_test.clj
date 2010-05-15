@@ -4,7 +4,7 @@
   (:use [clojure.test]))
 
 ;; we'll test with jena
-(alter-root-model (build-model :jena))
+(init-jena-framework)
 
 
 (deftest test-jena-resource
@@ -66,3 +66,14 @@
     (is (= (literal-value res) 2))
     (is (= (literal-language res) ""))
     (is (= (literal-datatype-uri res) "http://www.w3.org/2001/XMLSchema#int"))))
+
+(deftest test-locks-1
+  (let [*m* (build-model :jena)
+        counter (ref 0)
+        sync (promise)
+        sync-lock (promise)]
+    (.start (Thread. (fn [] (do (model-critical-write *m* (deliver sync-lock :continue) (dosync (alter counter (fn [x] :a))) (deliver sync :continue))))))
+    @sync-lock
+    (model-critical-write *m* (dosync (is (= @counter :a)) (alter counter (fn [x] :b))))
+    @sync
+    (is (= (dosync @counter) :b))))

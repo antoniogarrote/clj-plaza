@@ -16,7 +16,7 @@
 
 ;; Loading RDFa java
 
-;(Class/forName "net.rootdev.javardfa.RDFaReader")
+                                        ;(Class/forName "net.rootdev.javardfa.RDFaReader")
 
 ;; declaration of symbols
 (declare parse-sesame-object)
@@ -89,14 +89,16 @@
 (defn- model-query-fn
   "Queries a model and returns a map of bindings"
   ([model connection query]
-     (let [tuple-query (.prepareTupleQuery connection org.openrdf.query.QueryLanguage/SPARQL (.toString (build-query *sparql-framework* query)))
-           result (.evaluate tuple-query)]
-       (loop [acum []
-              should-continue (.hasNext result)]
-         (if should-continue
-           (recur (conj acum (process-model-query-result model (.next result)))
-                  (.hasNext result))
-           acum)))))
+     (let [query-string (str (build-query *sparql-framework* query))]
+       ;(println (str "QUERYING SESAME WITH: " query-string))
+       (let [tuple-query (.prepareTupleQuery connection org.openrdf.query.QueryLanguage/SPARQL query-string)
+             result (.evaluate tuple-query)]
+         (loop [acum []
+                should-continue (.hasNext result)]
+           (if should-continue
+             (recur (conj acum (process-model-query-result model (.next result)))
+                    (.hasNext result))
+             acum))))))
 
 (defn- model-query-triples-fn
   "Queries a model and returns a list of triple sets with results binding variables in que query pattern"
@@ -127,20 +129,20 @@
 
 (deftype SesameBlank [res] RDFResource RDFNode JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
-  (to-string [resource] (.stringValue res))
+  (to-string [resource] (str "_:" (resource-id resource)))
   (is-blank [resource] true)
   (is-resource [resource] false)
   (is-property [resource] false)
   (is-literal [resource] false)
   (resource-id [resource] (.getID res))
   (qname-prefix [resource] "_")
-  (qname-local [resource] (.getId res))
+  (qname-local [resource] (.getID res))
   (literal-value [resource] (throw (Exception. "Cannot retrieve literal value for a blank node")))
   (literal-language [resource] (throw (Exception. "Cannot retrieve lang for a blank node")))
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a resource")))
   (literal-lexical-form [resource] (.getId res))
-  (toString [resource] (.stringValue res)))
+  (toString [resource] (to-string resource)))
 
 
 (deftype SesameLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
@@ -232,7 +234,8 @@
                                (do
                                  (.setAutoCommit connection false)
                                  (let [res (f)]
-                                   (.commit connection)))
+                                   (.commit connection)
+                                   res))
                                (catch RepositoryException e (.rollback connection))
                                (finally (.close connection)))))
   (critical-read [model f] (critical-write model f)) ;; is reading thread-safe in Sesame?
@@ -352,16 +355,6 @@
 ;; Initialization
 
 (defmethod build-model [:sesame]
-  ([& options] (let [repo (SailRepository. (MemoryStore.))]
-                 (.initialize repo)
-                 (plaza.rdf.implementations.sesame.SesameModel. repo))))
-
-(defmethod build-model [nil]
-  ([& options] (let [repo (SailRepository. (MemoryStore.))]
-                 (.initialize repo)
-                 (plaza.rdf.implementations.sesame.SesameModel. repo))))
-
-(defmethod build-model :default
   ([& options] (let [repo (SailRepository. (MemoryStore.))]
                  (.initialize repo)
                  (plaza.rdf.implementations.sesame.SesameModel. repo))))

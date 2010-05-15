@@ -91,10 +91,14 @@
   (fn [& options] [(first options)]))
 
 (defmethod build-model [nil]
-  ([& options] (build-model *rdf-model-builder-fn*)))
+  ([& options] (if (nil? *rdf-model-builder-fn*)
+                 (throw (Exception. "Some framework must be loaded"))
+                 (build-model *rdf-model-builder-fn*))))
 
 (defmethod build-model :default
-  ([& options] (build-model *rdf-model-builder-fn*)))
+  ([& options] (if (nil? *rdf-model-builder-fn*)
+                 (throw (Exception. "Some framework must be loaded"))
+                 (build-model *rdf-model-builder-fn*))))
 
 
 

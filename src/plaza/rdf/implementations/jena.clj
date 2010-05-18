@@ -39,19 +39,22 @@
 
 (defn- model-query-fn
   "Queries a model and returns a map of bindings"
-  ([model query]
-     (let [query-string (str (build-query *sparql-framework* query))]
-       ;(println (str "QUERYING JENA WITH: " query-string))
-       (model-critical-read model
-                            (let [qexec (QueryExecutionFactory/create query-string (to-java model))
+  ([model query query-string]
+;     (let [query (if (string? query-or-string) (sparql-to-query query-or-string) query-or-string)
+;           query-string (if (string? query-or-string) query-or-string (str (build-query *sparql-framework* query)))]
+     ;(println (str "QUERYING JENA WITH: " query-string))
+     (model-critical-read model
+                          (let [qexec (QueryExecutionFactory/create query-string (to-java model))
                                         ;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
-                                  results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
-                              (map #(process-model-query-result model %1) results))))))
+                                results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
+                            (map #(process-model-query-result model %1) results)))))
 
 (defn- model-query-triples-fn
   "Queries a model and returns a list of triple sets with results binding variables in que query pattern"
-  ([model query]
-     (let [results (model-query-fn model query)]
+  ([model query-or-string]
+     (let [query (if (string? query-or-string) (sparql-to-query query-or-string) query-or-string)
+           query-string (if (string? query-or-string) query-or-string (str (build-query *sparql-framework* query-or-string)))
+           results (model-query-fn model query query-string)]
        (map #(pattern-bind (:pattern query) %1) results))))
 
 
@@ -255,10 +258,12 @@
                                      (.read mod stream format)
                                      (.read mod stream *rdf-ns* format))))
                  model))
+  (output-string  [model writer format]
+                  (critical-read model (fn [] (.write mod writer (parse-format format)))))
   (output-string  [model format]
-                  (critical-read model (fn [] (.write mod *out* (parse-format format)))))
+                  (output-string model *out* format))
   (find-datatype [model literal] (find-jena-datatype literal))
-  (query [model query] (model-query-fn model query))
+  (query [model query] (model-query-fn model query (str (build-query *sparql-framework* query))))
   (query-triples [model query] (model-query-triples-fn model query)))
 
 (deftype JenaSparqlFramework [] SparqlFramework

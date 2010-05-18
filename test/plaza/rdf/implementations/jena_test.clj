@@ -77,3 +77,10 @@
     (model-critical-write *m* (dosync (is (= @counter :a)) (alter counter (fn [x] :b))))
     @sync
     (is (= (dosync @counter) :b))))
+
+(deftest test-query-string
+  (let [*m* (build-model :jena)
+        query-str "SELECT ?s ?p ?o WHERE { ?s ?p ?o .}"]
+    (with-model *m* (model-add-triples [[:a :b :c]]))
+    (is (= 1 (count (query-triples *m* query-str))))
+    (is (= 3 (count (ffirst (query-triples *m* query-str)))))))

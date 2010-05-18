@@ -54,7 +54,7 @@
   (remove-triples [model triples] "Remove triples from the model")
   (walk-triples [model f] "iterates through the triples of the model")
   (load-stream [model stream format] "Load triples from a stream")
-  (output-string  [model format] "Outputs the triples to a string")
+  (output-string  [model format] [model writer format] "Outputs the triples to a string")
   (query [model query] "Queries this model using the provided query and returns a map of bindings")
   (query-triples [model query] "Queries this model using the provided query and returns a list of graphs"))
 

@@ -89,7 +89,7 @@
 (defn- model-query-fn
   "Queries a model and returns a map of bindings"
   ([model connection query]
-     (let [query-string (str (build-query *sparql-framework* query))]
+     (let [query-string (if (string? query) query (str (build-query *sparql-framework* query)))]
        ;(println (str "QUERYING SESAME WITH: " query-string))
        (let [tuple-query (.prepareTupleQuery connection org.openrdf.query.QueryLanguage/SPARQL query-string)
              result (.evaluate tuple-query)]
@@ -102,8 +102,10 @@
 
 (defn- model-query-triples-fn
   "Queries a model and returns a list of triple sets with results binding variables in que query pattern"
-  ([model connection query]
-     (let [results (model-query-fn model connection query)]
+  ([model connection query-or-string]
+     (let [query (if (string? query-or-string) (sparql-to-query query-or-string) query-or-string)
+           query-string (if (string? query-or-string) query-or-string (str (build-query *sparql-framework* query-or-string)))
+           results (model-query-fn model connection query-string)]
        (map #(pattern-bind (:pattern query) %1) results))))
 
 
@@ -308,14 +310,16 @@
                     (.add connection stream *rdf-ns* format))
                   (finally (.close connection)))
                  model))
-  (output-string  [model format]
+  (output-string  [model writer format]
                   (do
                     (let [connection (.getConnection mod)
-                          writer (org.openrdf.rio.Rio/createWriter (translate-plaza-format (parse-format format)) *out*)]
+                          writer (org.openrdf.rio.Rio/createWriter (translate-plaza-format (parse-format format)) writer)]
                       (try
                        (.export connection writer (into-array org.openrdf.model.Resource []))
                        (finally (.close connection)))))
                   model)
+  (output-string  [model format]
+                  (output-string model *out* format))
   (find-datatype [model literal] (translate-plaza-format (parse-format format)))
   (query [model query] (let [connection (.getConnection mod)]
                          (try

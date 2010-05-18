@@ -255,14 +255,11 @@
                                                    (deliver prom :created)
                                                    (assoc ag :notify-queues (conj (:notify-queues ag) queue-data))))
                   cell)
-            (println "waiting for handshake")
+            (println "handshake...")
             @cell
-            (println "Handshaked!!!")
             (loop [queue (:queue queue-data)]
-              (println "Blocking waiting for data")
               (let [results (.take queue)
                     should-continue (f results)]
-                (println "got data!")
                 (if (= should-continue :finish)
                   (.put queue :finish)
                   (recur queue))))))

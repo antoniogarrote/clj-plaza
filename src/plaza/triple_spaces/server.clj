@@ -10,7 +10,8 @@
         (plaza.triple-spaces core)
         (plaza.triple-spaces.server auxiliary)
         (plaza.rdf core sparql)
-        (plaza.rdf.implementations jena)))
+        (plaza.rdf.implementations jena))
+  (:import [java.util UUID]))
 
 ;; temporary
 (init-jena-framework)
@@ -205,7 +206,8 @@ will display a parse error in the :clj handler as well"
 (defn make-remote-triple-space
   "Creates a new remote triple space located at the provided host and port"
   ([& options]
-     (let [opt-map (apply array-map options)
+     (let [uuid (.toString (UUID/randomUUID))
+           opt-map (assoc (assoc (apply array-map options) :routing-key uuid) :queue (str "box" uuid))
            [rabbit-conn rabbit-chn] (rabbit/connect opt-map)]
        (rabbit/bind-channel opt-map rabbit-chn)
        (plaza.triple-spaces.server.RemoteTripleSpace. (start-triple-server-client (:ts-host opt-map) (:ts-port opt-map))

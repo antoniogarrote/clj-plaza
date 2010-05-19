@@ -6,7 +6,8 @@
   (:use (plaza.rdf core sparql)
         (plaza utils)
         (plaza.rdf.implementations jena)
-        [org.clojars.rabbitmq :as rabbit])
+        [org.clojars.rabbitmq :as rabbit]
+        [clojure.contrib.logging :only [log]])
   (:require [clojure.contrib.string :as string]))
 
 (defn parse-message
@@ -107,6 +108,7 @@
                                 (alter queues-ref (fn [old] queuesp))
                                 (let [[pattern routing-info kind-op] (first queues)
                                       results (query-triples model pattern)]
+                                  (log :info (str "checking queued " kind-op " -> " pattern " ? " (empty? results)))
                                   (if (empty? results)
                                     (recur (rest queues)
                                            (conj queuesp (first queues)))
@@ -145,7 +147,8 @@
                            (let [w (java.io.StringWriter.)
                                  triples-to-remove (query-triples model pattern)]
                              (if (empty? triples-to-remove)
-                               (dosync (alter queues (fn [old] (conj old [pattern routing-info :inb])))
+                               (dosync (log :info "Storing INB operation in the queue")
+                                       (alter queues (fn [old] (conj old [pattern routing-info :inb])))
                                        (blocking-response))
                                (do
                                  ;; deleting read triples
@@ -166,7 +169,7 @@
          "rdb" (apply-rdb-operation (:pattern message) model queues {:exchange exch :routing-key routing-key})
          "out" (apply-out-operation (:value message) model queues rabbit-chn)
          "in" (apply-in-operation (:pattern message) model)
-         "inb" (apply-in-operation (:pattern message) model queues {:exchange exch :routing-key routing-key})
+         "inb" (apply-inb-operation (:pattern message) model queues {:exchange exch :routing-key routing-key})
          (throw (Exception. "Unsupported operation"))))))
 
 ;; Parsers

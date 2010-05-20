@@ -29,25 +29,25 @@
 (defn response
   "reates a response to be send down to the client"
   ([payload]
-     (str "TS response:\r\n\r\nsuccess\r\n\r\n" payload "\r\n\r\n")))
+     (str "<ts:response xmlns:ts=\"http://plaza.org/tsresponse\"><ts:tokensep/>success<ts:tokensep/>" payload "</ts:response>")))
 
 (defn blocking-response
   "reates a response to be send down to the client"
-  ([] (str "TS response:\r\n\r\nblocking\r\n\r\n")))
+  ([] (str "<ts:response xmlns:ts=\"http://plaza.org/tsresponse\"><ts:tokensep/>blocking</ts:response>")))
 
 (defn success
   "reates a response to be send down to the client"
   ([payload]
-     (str "TS response:\r\n\r\nsuccess\r\n\r\n" payload "\r\n\r\n"))
+     (str "<ts:response xmlns:ts=\"http://plaza.org/tsresponse\"><ts:tokensep/>success<ts:tokensep/>" payload "</ts:response>"))
   ([]
-     (str "TS response:\r\n\r\nsuccess\r\n\r\n\r\n\r\n")))
+     (str "<ts:response xmlns:ts=\"http://plaza.org/tsresponse\"><ts:tokensep/>success<ts:tokensep/></ts:response>")))
 
 (defn failure
   "reates a response to be send down to the client"
   ([payload]
-     (str "TS response:\r\n\r\nfailure\r\n\r\n" payload "\r\n\r\n"))
+     (str "<ts:response xmlns:ts=\"http://plaza.org/tsresponse\"><ts:tokensep/>failure<ts:tokensep/>" payload "</ts:response>"))
   ([]
-     (str "TS response:\r\n\r\nfailure\r\n\r\n\r\n\r\n")))
+     (str "<ts:response xmlns:ts=\"http://plaza.org/tsresponse\"><ts:tokensep/>failure<ts:tokensep/></ts:response>")))
 
 
 ;; (defn serialize-binding-map
@@ -72,6 +72,14 @@
 
 ;; Server Operations
 
+(defn- deliver-notify
+  ([rabbit-chn direction name value config]
+     (let [exchange-name (str "queue-" direction "-" name)
+           configp (assoc config :exchange exchange-name)
+           configpp (assoc configp :routing-key direction)]
+       (log :info (str " Delivering with " rabbit-chn " " direction " " name " " value " " config " \r\nexchange -> " exchange-name " \rndirection -> " direction "\r\n"))
+       (rabbit/publish configpp rabbit-chn value))))
+
 (defn- apply-rd-operation
   "Applies a TS rd operation over a model"
   ([pattern model]
@@ -79,7 +87,7 @@
        (response
         (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                              (output-string m w :xml)
-                             (.write w "\r\n\r\n") w))
+                             (.write w "<ts:tokensep/>") w))
                 w (query-triples model pattern))))))
 
 (defn- apply-rdb-operation
@@ -98,9 +106,11 @@
 
 (defn- apply-out-operation
   "Applies a TS rd operation over a model"
-  ([rdf-document model queues-ref rabbit-chn]
+  ([rdf-document model name rabbit-chn queues-ref options]
      (with-model model (document-to-model (java.io.ByteArrayInputStream. (.getBytes rdf-document)) :xml))
      (model-critical-write model
+                           ;(log :info "*** about to deliver notify")
+                           ;(deliver-notify rabbit-chn "out" name rdf-document options)
                            (dosync
                             (loop [queues @queues-ref
                                    queuesp []]
@@ -108,7 +118,7 @@
                                 (alter queues-ref (fn [old] queuesp))
                                 (let [[pattern routing-info kind-op] (first queues)
                                       results (query-triples model pattern)]
-                                  (log :info (str "checking queued " kind-op " -> " pattern " ? " (empty? results)))
+                                  (log :info (str "*** checking queued " kind-op " -> " pattern " ? " (empty? results)))
                                   (if (empty? results)
                                     (recur (rest queues)
                                            (conj queuesp (first queues)))
@@ -120,6 +130,7 @@
                                                          w results))]
                                       (when (= kind-op :inb)
                                         (with-model model (model-remove-triples (flatten-1 results))))
+                                      (log :info (str "*** queue to blocked client: \r\n" respo))
                                       (rabbit/publish routing-info rabbit-chn respo)
                                       (recur (rest queues)
                                              queuesp))))))
@@ -127,22 +138,25 @@
 
 (defn- apply-in-operation
   "Applies a TS in operation over a model"
-  ([pattern model]
+  ([pattern model name rabbit-chn routing-info]
      (model-critical-write model
                            (let [w (java.io.StringWriter.)
-                                 triples-to-remove (query-triples model pattern)]
+                                 triples-to-remove (query-triples model pattern)
+                                 flattened-triples (flatten-1 triples-to-remove)]
                              ;; deleting read triples
-                             (with-model model (model-remove-triples (flatten-1 triples-to-remove)))
+                             (with-model model (model-remove-triples flattened-triples))
                              ;; returning triple sets
-                             (response
-                              (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
-                                                   (output-string m w :xml)
-                                                   (.write w "\r\n\r\n") w))
-                                      w triples-to-remove))))))
+                             (let [triples (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
+                                                                (output-string m w :xml)
+                                                                (.write w "\r\n\r\n") w))
+                                                   w triples-to-remove)]
+                               ;(if-not (empty? triples-to-remove)
+                               ; (deliver-notify rabbit-chn "in" name triples routing-info))
+                               (response triples))))))
 
 (defn- apply-inb-operation
   "Applies a TS inb operation over a model"
-  ([pattern model queues routing-info]
+  ([pattern model name rabbit-chn queues routing-info options]
      (model-critical-write model
                            (let [w (java.io.StringWriter.)
                                  triples-to-remove (query-triples model pattern)]
@@ -154,22 +168,73 @@
                                  ;; deleting read triples
                                  (with-model model (model-remove-triples (flatten-1 triples-to-remove)))
                                  ;; returning triple sets
-                                 (response
-                                  (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
-                                                       (output-string m w :xml)
-                                                       (.write w "\r\n\r\n") w))
-                                          w triples-to-remove))))))))
+                                 (let [triples (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
+                                                                    (output-string m w :xml)
+                                                                    (.write w "\r\n\r\n") w))
+                                                       w triples-to-remove)]
+                                   ;(deliver-notify rabbit-chn "in" name triples options)
+                                   (response triples))))))))
+
+(defn apply-swap-operation
+  "Applies a TS swap operation over a model"
+  ([pattern rdf-document model name rabbit-chn queues-ref routing-info]
+     (model-critical-write model
+                           (let [w (java.io.StringWriter.)
+                                 triples-to-remove (query-triples model pattern)
+                                 flattened-triples (if (empty? triples-to-remove) [] (flatten-1 triples-to-remove))]
+                             (when-not (empty? triples-to-remove)
+                               (with-model model
+                                 (model-remove-triples flattened-triples)
+                                 (document-to-model (java.io.ByteArrayInputStream. (.getBytes rdf-document)) :xml))
+
+                               ;; processing notifications
+;;                                (let [m (defmodel (model-add-triples flattened-triples))
+;;                                      w (java.io.StringWriter.)
+;;                                      rdf (do (output-string m w :xml) (.toString w))]
+;;                                  (deliver-notify rabbit-chn "in" name rdf routing-info))
+;;                               (deliver-notify rabbit-chn "out" name rdf-document routing-info)
+
+                               ;; Processing queues
+                               (dosync
+                                (loop [queues @queues-ref
+                                       queuesp []]
+                                  (if (empty? queues)
+                                    (alter queues-ref (fn [old] queuesp))
+                                    (let [[pattern routing-info kind-op] (first queues)
+                                          results (query-triples model pattern)]
+                                      (log :info (str "checking queued " kind-op " -> " pattern " ? " (empty? results)))
+                                      (if (empty? results)
+                                        (recur (rest queues)
+                                               (conj queuesp (first queues)))
+                                        (let [w (java.io.StringWriter.)
+                                              respo (response
+                                                     (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
+                                                                          (output-string m w :xml)
+                                                                          (.write w "\r\n\r\n") w))
+                                                             w results))]
+                                          (when (= kind-op :inb)
+                                            (with-model model (model-remove-triples (flatten-1 results))))
+                                          (rabbit/publish routing-info rabbit-chn respo)
+                                          (recur (rest queues)
+                                                 queuesp))))))))
+                             (response
+                              (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
+                                                   (output-string m w :xml)
+                                                   (.write w "\r\n\r\n") w))
+                                      w triples-to-remove))))))
 
 (defn apply-operation
   "Applies an operation over a Plaza model"
-  ([message model queues rabbit-conn rabbit-chn options]
+  ([message name model queues rabbit-conn rabbit-chn options]
      (let [[exch routing-key] (.split (:client-id message) ":")]
+       (log :info "*** about to apply operation")
        (condp = (:operation message)
          "rd" (apply-rd-operation (:pattern message) model)
          "rdb" (apply-rdb-operation (:pattern message) model queues {:exchange exch :routing-key routing-key})
-         "out" (apply-out-operation (:value message) model queues rabbit-chn)
-         "in" (apply-in-operation (:pattern message) model)
-         "inb" (apply-inb-operation (:pattern message) model queues {:exchange exch :routing-key routing-key})
+         "out" (apply-out-operation (:value message) model name rabbit-chn queues options)
+         "in" (apply-in-operation (:pattern message) model name rabbit-chn options)
+         "inb" (apply-inb-operation (:pattern message) model name rabbit-chn queues {:exchange exch :routing-key routing-key} options)
+         "swap" (apply-swap-operation (:pattern message) (:value message) model name rabbit-chn queues options)
          (throw (Exception. "Unsupported operation"))))))
 
 ;; Parsers
@@ -180,49 +245,75 @@
         (do ~@body)
         (throw (Exception. "Reached eof")))))
 
-
-(defn- read-eos
+(defn buffer-ready?
   ([in]
-     (if (not (.ready in))
-       in
-       (let [line (.readLine in)]
-         (if (= line "")
-           (recur in)
-           (throw (Exception. (str "error parsing response: got <" line "> but <EOS> was expected"))))))))
+     (and (do (println "checking .ready") (let [ready (.ready in)] (println "ready!") ready))
+          (do (.mark in 1)
+              (println "checking .read")
+              (if (= 1 (.read in (char-array 1) 0 1))
+                (do (println "read!") (.reset in) true)
+                false)))))
 
-(defn- read-ts-response
+(defn read-from-buffer
+  ([in len]
+     (let [buffer (char-array len)]
+       (do (.mark in len)
+           (println (str "reading from buffer " len " chars"))
+           (.read in buffer 0 len)
+           (println (str "read!"))
+           (String. buffer)))))
+
+(defn read-eos
+  ([in]
+     (if (not (buffer-ready? in))
+       (do (println "exit!") in)
+       (let [_test (println "let's read a line")
+             line (read-from-buffer in 1024)]
+         (recur in)))))
+
+
+(defn read-ts-response
   ([in]
      (if-not-eos in
-                 (let [line (.readLine in)]
-                   (when (not (= line "TS response:"))
-                     (throw (Exception. (str "error parsing response: got <" line "> but <TS response:> was expected"))))
+                 (let [line (read-from-buffer in 52)]
+                   (when (not (= line "<ts:response xmlns:ts=\"http://plaza.org/tsresponse\">"))
+                     (do
+                       (.reset in)
+                       (throw (Exception. (str "error parsing response: got '" line "' but '<ts:response xmlns:ts=\"http://plaza.org/tsresponse\">' was expected")))))
                    in))))
 
-(defn- read-blank-line
+(defn read-blank-line [in] :foo)
+
+(defn read-token-separator
   ([in]
      (if-not-eos in
-                 (let [line (.readLine in)]
-                   (when (not (= line ""))
-                     (throw (Exception. (str "error parsing response: got <" line "> but blank line was expected"))))
+                 (let [line (read-from-buffer in 14)]
+                   (when (not (= line "<ts:tokensep/>"))
+                     (.reset in)
+                     (throw (Exception. (str "error parsing response: got '" line "' but token separator was expected"))))
                    in))))
 
-(defn- read-success
+(defn read-success
   ([in]
      (if-not-eos in
-                 (let [line (.readLine in)]
+                 (let [line (read-from-buffer in 7)]
                    (when (not (= line "success"))
-                     (throw (Exception. (str "error parsing response: got <" line "> but <success> was expected"))))
+                     (.reset in)
+                     (throw (Exception. (str "error parsing response: got '" line "' but 'success' was expected"))))
                    in))))
 
-(defn- return-succes-failure
+(defn return-succes-failure
   ([in]
      (if-not-eos in
-                 (let [line (.readLine in)]
+                 (let [line (read-from-buffer in 7)]
                    (if (or (= line "success")
-                           (= line "failure")
-                           (= line "blocking"))
+                           (= line "failure"))
                      line
-                     (throw (Exception. (str "error parsing response: got <" line "> but <success|failure> expected"))))))))
+                     (let [line (do (.reset in) (read-from-buffer in 8))]
+                       (if (= line "blocking")
+                         line
+                         (do (.reset in)
+                             (throw (Exception. (str "error parsing response: got <" line "> but <success|failure> expected")))))))))))
 
 (defn- return-many
   ([parser in]
@@ -235,31 +326,30 @@
                     (catch Exception ex
                       acum))))))
 
-(defn- return-rdf-stanzas
+(defn return-rdf-stanzas
   ([in]
+     (println "reading stanzas")
      (if-not-eos in
-                 (loop [writer (java.io.StringWriter.)
-                        acum   []]
-                   (if (not (.ready in))
-                     acum
-                     (let [line (.readLine in)]
-                       (if (not (= "</rdf:RDF>" line))
-                         (if (= "" line)
-                           (recur writer acum)
-                           (do (.write writer line)
-                               (recur writer acum)))
-                         (do (.write writer line)
-                             (recur (java.io.StringWriter.)
-                                    (conj acum (.toString writer)))))))))))
+                 (println "not eos...")
+                 (let [result (loop [writer (java.io.StringWriter.)]
+                                (println "looping feels all right!")
+                                (if (not (buffer-ready? in))
+                                  (.toString writer)
+                                  (do (.write writer (read-from-buffer in 1024))
+                                      (recur writer))))
+                       clean-result (first (seq (.split result "</ts:response>")))]
+                   (filter #(not (= "" %1)) (seq (.split clean-result "<ts:tokensep/>")))))))
 
 (defn parse-out-response
   "Process a response from the triple space to a previously requested OUT operation"
   ([in]
      (let [result (-> in
                       (read-ts-response)
-                      (read-blank-line)
+                      (read-token-separator)
                       (return-succes-failure))]
+       (println "got something already")
        (read-eos in)
+       (println "now!")
        (keyword result))))
 
 (defn parse-rd-response
@@ -268,10 +358,11 @@
      (str "reading response rd")
      (let [result (-> in
                       (read-ts-response)
-                      (read-blank-line)
+                      (read-token-separator)
                       (read-success)
-                      (read-blank-line)
+                      (read-token-separator)
                       (return-rdf-stanzas))]
+       (println "Let's go for eos")
        (read-eos in)
        (map #(with-model (defmodel) (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml))) result))))
 
@@ -281,16 +372,37 @@
      (str "reading response rd")
      (let [should-block (-> in
                             (read-ts-response)
-                            (read-blank-line)
+                            (read-token-separator)
                             (return-succes-failure))]
        (if (= should-block "blocking")
          (do (read-eos in)
              (println (str "about to block..."))
-             (let [result (rabbit/consume-poll options rabbit-chn)]
-               (println (str "unblocking with something"))
+             (let [read (rabbit/consume-poll options rabbit-chn)
+                   _test (println (str "******************** ---> unblocking with something :\r\n" read "*****************************************\r\n\r\n\r\n"))
+                   result (-> (java.io.BufferedReader. (java.io.StringReader. read))
+                              (read-ts-response)
+                              (read-token-separator)
+                              (read-success)
+                              (read-token-separator)
+                              (return-rdf-stanzas))]
                (map #(with-model (defmodel) (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml))) result)))
          (let [result (-> in
-                          (read-blank-line)
+                          (read-token-separator)
                           (return-rdf-stanzas))]
            (read-eos in)
            (map #(with-model (defmodel) (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml))) result))))))
+
+(defn parse-notify-response
+  "Process a response from the triple space to a previously requested RDB operation"
+  ([name in f direction rabbit-chn options]
+     (str "reading response notify")
+     (println (str "about to block..."))
+     (loop [queue (str "notify-box" (.toString (java.util.UUID/randomUUID)))
+            exchange (str "queue-" direction "-" name)
+            read (do (log :info (str "blcking with " (assoc (assoc options :exchange exchange) :queue queue) " \r\nexchange -> " exchange " \rndirection -> " direction "\r\n"))
+                     (rabbit/consume-poll (assoc (assoc (assoc options :exchange exchange) :queue queue) :routing-key direction) rabbit-chn))]
+       (println (str "unblocking with something"))
+       (f (map #(with-model (defmodel)
+                  (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml)))
+               (return-rdf-stanzas (java.io.BufferedReader. (java.io.StringReader. read)))))
+       (recur queue exchange (rabbit/consume-poll (assoc (assoc options :exchange exchange) :queue queue) rabbit-chn)))))

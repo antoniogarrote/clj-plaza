@@ -21,11 +21,12 @@
 
 (defhandler #^{:doc
                "The MessageParser handler for parsing incoming messages"}
-  MessageParser [model queues rabbit-conn rabbit-chn options]
+  MessageParser [name model queues rabbit-conn rabbit-chn options]
   (connect  [_] (println "Connecting"))
   (upstream [this msg] (let [parsed (parse-message msg)]
-                         (log :info (str "parsed: " parsed "\r\n\r\n"))
-                         (send-down (apply-operation parsed model queues rabbit-conn rabbit-chn options))))
+                         (log :info (str "*** parsed: " parsed "\r\n\r\n"))
+                         (log :info (str "*** " parsed " " name " " model " " queues " " rabbit-conn " " rabbit-chn " " options))
+                         (send-down (apply-operation parsed name model queues rabbit-conn rabbit-chn options))))
   (error [this msg]
          (log :error msg)
          (failure msg)))
@@ -44,10 +45,15 @@ Sum - The custom handler contains the cumulative sum state so far for a
 single connection. Non-integers that are evalable will throw a
 ClassCastException to the default handle, while unevalable ones
 will display a parse error in the :clj handler as well"
-  [port model & options]
+  [name port model & options]
   (let [opt-map (apply array-map options)
         [rabbit-conn rabbit-chn] (rabbit/connect opt-map)]
-    (start-server port :string :print (MessageParser. model (ref []) rabbit-conn rabbit-chn options))))
+    ;; binding notify-out
+    (.exchangeDeclare rabbit-chn (str "queue-out-" name) "direct" true)
+    ;; binding notify-in
+    (.exchangeDeclare rabbit-chn (str "queue-in-" name) "direct" true)
+    ;; start the server
+    (start-server port :string :print (MessageParser. name model (ref []) rabbit-conn rabbit-chn opt-map))))
 
 ;; client
 
@@ -91,7 +97,7 @@ will display a parse error in the :clj handler as well"
                      (query-set-vars vars)
                      (query-set-filters filters)))
            query-string (query-to-string query)]
-       (log :info (str "*** client rd : " query-string))
+       (log :info (str "*** client rd \r\n: " query-string))
        (.write channel (format-message "rd" client-id query-string ""))
        (.flush channel))))
 
@@ -110,10 +116,9 @@ will display a parse error in the :clj handler as well"
                      (query-set-vars vars)
                      (query-set-filters filters)))
            query-string (query-to-string query)]
-       (log :info (str "*** client rdb : " query-string))
+       (log :info (str "*** client rdb \r\n: " query-string))
        (.write channel (format-message "rdb" client-id query-string ""))
        (.flush channel))))
-
 
 (defn send-out-operation
   ([channel client-id triples-or-vector filters]
@@ -121,7 +126,7 @@ will display a parse error in the :clj handler as well"
            m (defmodel (model-add-triples triples))
            w (java.io.StringWriter.)
            rdf (do (output-string m w :xml) (.toString w))]
-       (log :info (str "*** client out : " rdf))
+       (log :info (str "*** client out \r\n: " rdf))
        (.write channel (format-message "out" client-id "" rdf))
        (.flush channel))))
 
@@ -140,7 +145,7 @@ will display a parse error in the :clj handler as well"
                      (query-set-vars vars)
                      (query-set-filters filters)))
            query-string (query-to-string query)]
-       (log :info (str "*** client in : " query-string))
+       (log :info (str "*** client in \r\n: " query-string))
        (.write channel (format-message "in" client-id query-string ""))
        (.flush channel))))
 
@@ -159,36 +164,79 @@ will display a parse error in the :clj handler as well"
                      (query-set-vars vars)
                      (query-set-filters filters)))
            query-string (query-to-string query)]
-       (log :info (str "*** client nb : " query-string))
+       (log :info (str "*** client inb \r\n: " query-string))
        (.write channel (format-message "inb" client-id query-string ""))
        (.flush channel))))
 
-(deftype RemoteTripleSpace [connected-client rabbit-conn rabbit-chn options] TripleSpace
+(defn send-swap-operation
+  ([channel client-id pattern-or-vector triples-or-vector filters]
+     (let [triples (if (:triples (meta triples-or-vector)) triples-or-vector (make-triples triples-or-vector))
+           pattern (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
+           m (defmodel (model-add-triples triples))
+           w (java.io.StringWriter.)
+           rdf (do (output-string m w :xml) (.toString w))
+           vars (pattern-collect-vars pattern)
+           query (if (empty? filters)
+                   (defquery
+                     (query-set-pattern pattern)
+                     (query-set-type :select)
+                     (query-set-vars vars))
+                   (defquery
+                     (query-set-pattern pattern)
+                     (query-set-type :select)
+                     (query-set-vars vars)
+                     (query-set-filters filters)))
+           query-string (query-to-string query)]
+       (log :info (str "*** client swap \r\n: " query " \r\n" rdf))
+       (.write channel (format-message "swap" client-id query-string rdf))
+       (.flush channel))))
+
+;;
+;; RemoteTripleSpace
+;;
+(deftype RemoteTripleSpace [name connected-client rabbit-conn rabbit-chn options] TripleSpace
+
+  ;; rd operation
   (rd [this pattern] (rd this pattern []))
-  (rd [this pattern filters] (do (send-rd-operation (:out connected-client) "test" pattern filters)
+
+  (rd [this pattern filters] (do (send-rd-operation (:out connected-client) (:client-id options) pattern filters)
                                  (loop [ready (.ready (:in connected-client))]
                                    (if-not ready
                                      (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
                                  (parse-rd-response (:in connected-client))))
+
+  ;; rdb operation
   (rdb [this pattern] (rdb this pattern []))
+
   (rdb [this pattern filters] (do (send-rdb-operation (:out connected-client) (:client-id options) pattern filters)
                                   (loop [ready (.ready (:in connected-client))]
                                     (if-not ready
                                       (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
                                   (parse-rdb-response (:in connected-client) rabbit-chn options)))
+
+
+  ;; in operation
   (in [this pattern] (in this pattern []))
-  (in [this pattern filters] (do (send-in-operation (:out connected-client) "test" pattern filters)
+
+  (in [this pattern filters] (do (send-in-operation (:out connected-client) (:client-id options) pattern filters)
                                  (loop [ready (.ready (:in connected-client))]
                                    (if-not ready
                                      (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
                                  (parse-rd-response (:in connected-client))))
+
+
+  ;; inb operation
   (inb [this pattern] (inb this pattern []))
+
   (inb [this pattern filters] (do (send-inb-operation (:out connected-client) (:client-id options) pattern filters)
                                   (loop [ready (.ready (:in connected-client))]
                                     (if-not ready
                                       (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
                                   (parse-rdb-response (:in connected-client) rabbit-chn options)))
-  (out [this triples] (do (send-out-operation (:out connected-client) "test" triples [])
+
+
+  ;; out operation
+  (out [this triples] (do (send-out-operation (:out connected-client) (:client-id options) triples [])
                           (loop [ready (.ready (:in connected-client))]
                             (if-not ready
                               (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
@@ -196,21 +244,40 @@ will display a parse error in the :clj handler as well"
                           (if (= :success result)
                             triples
                             (throw (Exception. (str "Error in out operation with client " connected-client)))))))
-  (swap [this pattern triples] :not-yet)
-  (swap [this pattern triples filters] :not-yet)
-  (notify [this op pattern f] :not-yet)
-  (notify [this op pattern filters f] :not-yet)
+
+
+  ;; swap operation
+  (swap [this pattern triples] (swap this pattern triples []))
+
+  (swap [this pattern triples filters] (do (send-swap-operation (:out connected-client) (:client-id options) pattern triples filters)
+                                           (loop [ready (.ready (:in connected-client))]
+                                             (if-not ready
+                                               (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
+                                           (parse-rdb-response (:in connected-client) rabbit-chn options)))
+
+
+  ;; notify operation
+  (notify [this op pattern f] (notify this op pattern f []))
+
+  (notify [this op pattern filters f]
+          (parse-notify-response name (:in connected-client) f (plaza.utils/keyword-to-string op) rabbit-chn options))
+
+
+  ;; inspect
   (inspect [this] :not-yet))
 
 
 (defn make-remote-triple-space
   "Creates a new remote triple space located at the provided host and port"
-  ([& options]
+  ([name & options]
      (let [uuid (.toString (UUID/randomUUID))
            opt-map (assoc (assoc (apply array-map options) :routing-key uuid) :queue (str "box" uuid))
            [rabbit-conn rabbit-chn] (rabbit/connect opt-map)]
        (rabbit/bind-channel opt-map rabbit-chn)
-       (plaza.triple-spaces.server.RemoteTripleSpace. (start-triple-server-client (:ts-host opt-map) (:ts-port opt-map))
+
+       ;; start the server
+       (plaza.triple-spaces.server.RemoteTripleSpace. name
+                                                      (start-triple-server-client (:ts-host opt-map) (:ts-port opt-map))
                                                       rabbit-conn
                                                       rabbit-chn
                                                       (assoc opt-map :client-id (str (:exchange opt-map) ":" (:routing-key opt-map)))))))

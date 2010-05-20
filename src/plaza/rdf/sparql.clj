@@ -297,7 +297,7 @@
                             query))))
 
 (defn query-to-string
-  "Returns the strin representation of a query"
+  "Returns the string representation of a query"
   ([query]
      (str (build-query *sparql-framework* query))))
 

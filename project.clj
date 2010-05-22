@@ -8,7 +8,7 @@
                  [nu.validator.htmlparser/htmlparser "1.2.0"]
                  [com.franz/openrdf-sesame-onejar "2.2"]
                  [org.jboss.netty/netty       "3.2.0.BETA1"]
-                 [com.twinql/clojure-rabbitmq "0.3.1"]
+                 [com.rabbitmq/amqp-client "1.7.2"]
                  [log4j/log4j "1.2.14"]]
   :dev-dependencies [[leiningen/lein-swank "1.2.0-SNAPSHOT"]
                      [autodoc "0.7.1"]

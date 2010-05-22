@@ -134,4 +134,5 @@
            '("stanza" "stanza" "stanza")))
      (catch Exception ex (do (println (.getMessage ex)) (is false))))))
 
-
+(deftest test-pack-stanas
+  (is (= (pack-stanzas ["a" "b"]) "a<ts:tokensep/>b")))

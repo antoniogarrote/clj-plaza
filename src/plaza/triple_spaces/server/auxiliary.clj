@@ -6,9 +6,17 @@
   (:use (plaza.rdf core sparql)
         (plaza utils)
         (plaza.rdf.implementations jena)
-        [org.clojars.rabbitmq :as rabbit]
+        [plaza.triple-spaces.server.rabbit :as rabbit]
         [clojure.contrib.logging :only [log]])
-  (:require [clojure.contrib.string :as string]))
+  (:require [clojure.contrib.string :as string])
+  (:import [com.rabbitmq.client
+            ConnectionParameters
+            Connection
+            Channel
+            AMQP
+            ConnectionFactory
+            Consumer
+            QueueingConsumer]))
 
 (defn parse-message
   "Parses a message sent to the server"
@@ -49,6 +57,10 @@
   ([]
      (str "<ts:response xmlns:ts=\"http://plaza.org/tsresponse\"><ts:tokensep/>failure<ts:tokensep/></ts:response>")))
 
+(defn pack-stanzas
+  "pack a set of stanzas in a message interleaving them with token separators"
+  ([stanzas]
+     (reduce (fn [a i] (str a i)) "" (reverse (rest (reverse (reduce (fn [a i] (conj (conj a i) "<ts:tokensep/>")) [] stanzas)))))))
 
 ;; (defn serialize-binding-map
 ;;   "Transforms a binding map into a string that can be later deserialized"
@@ -72,13 +84,10 @@
 
 ;; Server Operations
 
-(defn- deliver-notify
-  ([rabbit-chn direction name value config]
-     (let [exchange-name (str "queue-" direction "-" name)
-           configp (assoc config :exchange exchange-name)
-           configpp (assoc configp :routing-key direction)]
-       (log :info (str " Delivering with " rabbit-chn " " direction " " name " " value " " config " \r\nexchange -> " exchange-name " \rndirection -> " direction "\r\n"))
-       (rabbit/publish configpp rabbit-chn value))))
+(defn deliver-notify
+  ([rabbit-conn name direction value]
+     (log :info (str "*** Delivering with " rabbit-conn " " direction " " value))
+     (rabbit/publish rabbit-conn name (str "exchange-" direction "-" name) "msgs" value)))
 
 (defn- apply-rd-operation
   "Applies a TS rd operation over a model"
@@ -92,11 +101,11 @@
 
 (defn- apply-rdb-operation
   "Applies a TS rd operation over a model"
-  ([pattern model queues routing-info]
+  ([pattern model queues client-id]
      (let [w (java.io.StringWriter.)
            results (query-triples model pattern)]
        (if (empty? results)
-         (dosync (alter queues (fn [old] (conj old [pattern routing-info :rdb])))
+         (dosync (alter queues (fn [old] (conj old [pattern :rdb client-id])))
                  (blocking-response))
          (response
           (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
@@ -106,17 +115,15 @@
 
 (defn- apply-out-operation
   "Applies a TS rd operation over a model"
-  ([rdf-document model name rabbit-chn queues-ref options]
+  ([rdf-document model name rabbit-conn queues-ref]
      (with-model model (document-to-model (java.io.ByteArrayInputStream. (.getBytes rdf-document)) :xml))
      (model-critical-write model
-                           ;(log :info "*** about to deliver notify")
-                           ;(deliver-notify rabbit-chn "out" name rdf-document options)
                            (dosync
                             (loop [queues @queues-ref
                                    queuesp []]
                               (if (empty? queues)
                                 (alter queues-ref (fn [old] queuesp))
-                                (let [[pattern routing-info kind-op] (first queues)
+                                (let [[pattern kind-op client-id] (first queues)
                                       results (query-triples model pattern)]
                                   (log :info (str "*** checking queued " kind-op " -> " pattern " ? " (empty? results)))
                                   (if (empty? results)
@@ -131,14 +138,14 @@
                                       (when (= kind-op :inb)
                                         (with-model model (model-remove-triples (flatten-1 results))))
                                       (log :info (str "*** queue to blocked client: \r\n" respo))
-                                      (rabbit/publish routing-info rabbit-chn respo)
+                                      (rabbit/publish rabbit-conn name (str "exchange-" name) client-id respo)
                                       (recur (rest queues)
                                              queuesp))))))
                             (success)))))
 
 (defn- apply-in-operation
   "Applies a TS in operation over a model"
-  ([pattern model name rabbit-chn routing-info]
+  ([pattern model name]
      (model-critical-write model
                            (let [w (java.io.StringWriter.)
                                  triples-to-remove (query-triples model pattern)
@@ -150,19 +157,17 @@
                                                                 (output-string m w :xml)
                                                                 (.write w "\r\n\r\n") w))
                                                    w triples-to-remove)]
-                               ;(if-not (empty? triples-to-remove)
-                               ; (deliver-notify rabbit-chn "in" name triples routing-info))
                                (response triples))))))
 
 (defn- apply-inb-operation
   "Applies a TS inb operation over a model"
-  ([pattern model name rabbit-chn queues routing-info options]
+  ([pattern model name rabbit-conn queues client-id]
      (model-critical-write model
                            (let [w (java.io.StringWriter.)
                                  triples-to-remove (query-triples model pattern)]
                              (if (empty? triples-to-remove)
-                               (dosync (log :info "Storing INB operation in the queue")
-                                       (alter queues (fn [old] (conj old [pattern routing-info :inb])))
+                               (dosync (log :info "*** Storing INB operation in the queue")
+                                       (alter queues (fn [old] (conj old [pattern :inb client-id])))
                                        (blocking-response))
                                (do
                                  ;; deleting read triples
@@ -172,12 +177,11 @@
                                                                     (output-string m w :xml)
                                                                     (.write w "\r\n\r\n") w))
                                                        w triples-to-remove)]
-                                   ;(deliver-notify rabbit-chn "in" name triples options)
                                    (response triples))))))))
 
 (defn apply-swap-operation
   "Applies a TS swap operation over a model"
-  ([pattern rdf-document model name rabbit-chn queues-ref routing-info]
+  ([pattern rdf-document model name rabbit-conn queues-ref]
      (model-critical-write model
                            (let [w (java.io.StringWriter.)
                                  triples-to-remove (query-triples model pattern)
@@ -187,20 +191,13 @@
                                  (model-remove-triples flattened-triples)
                                  (document-to-model (java.io.ByteArrayInputStream. (.getBytes rdf-document)) :xml))
 
-                               ;; processing notifications
-;;                                (let [m (defmodel (model-add-triples flattened-triples))
-;;                                      w (java.io.StringWriter.)
-;;                                      rdf (do (output-string m w :xml) (.toString w))]
-;;                                  (deliver-notify rabbit-chn "in" name rdf routing-info))
-;;                               (deliver-notify rabbit-chn "out" name rdf-document routing-info)
-
                                ;; Processing queues
                                (dosync
                                 (loop [queues @queues-ref
                                        queuesp []]
                                   (if (empty? queues)
                                     (alter queues-ref (fn [old] queuesp))
-                                    (let [[pattern routing-info kind-op] (first queues)
+                                    (let [[pattern kind-op client-id] (first queues)
                                           results (query-triples model pattern)]
                                       (log :info (str "checking queued " kind-op " -> " pattern " ? " (empty? results)))
                                       (if (empty? results)
@@ -214,7 +211,7 @@
                                                              w results))]
                                           (when (= kind-op :inb)
                                             (with-model model (model-remove-triples (flatten-1 results))))
-                                          (rabbit/publish routing-info rabbit-chn respo)
+                                          (rabbit/publish rabbit-conn name (str "exchange-" name) client-id respo)
                                           (recur (rest queues)
                                                  queuesp))))))))
                              (response
@@ -225,17 +222,16 @@
 
 (defn apply-operation
   "Applies an operation over a Plaza model"
-  ([message name model queues rabbit-conn rabbit-chn options]
-     (let [[exch routing-key] (.split (:client-id message) ":")]
-       (log :info "*** about to apply operation")
-       (condp = (:operation message)
-         "rd" (apply-rd-operation (:pattern message) model)
-         "rdb" (apply-rdb-operation (:pattern message) model queues {:exchange exch :routing-key routing-key})
-         "out" (apply-out-operation (:value message) model name rabbit-chn queues options)
-         "in" (apply-in-operation (:pattern message) model name rabbit-chn options)
-         "inb" (apply-inb-operation (:pattern message) model name rabbit-chn queues {:exchange exch :routing-key routing-key} options)
-         "swap" (apply-swap-operation (:pattern message) (:value message) model name rabbit-chn queues options)
-         (throw (Exception. "Unsupported operation"))))))
+  ([message name model queues rabbit-conn options]
+     (log :info "*** about to apply operation")
+     (condp = (:operation message)
+       "rd" (apply-rd-operation (:pattern message) model)
+       "rdb" (apply-rdb-operation (:pattern message) model queues (:client-id message))
+       "out" (apply-out-operation (:value message) model name rabbit-conn queues)
+       "in" (apply-in-operation (:pattern message) model name)
+       "inb" (apply-inb-operation (:pattern message) model name rabbit-conn queues (:client-id message))
+       "swap" (apply-swap-operation (:pattern message) (:value message) model name rabbit-conn queues)
+       (throw (Exception. "Unsupported operation")))))
 
 ;; Parsers
 
@@ -247,28 +243,24 @@
 
 (defn buffer-ready?
   ([in]
-     (and (do (println "checking .ready") (let [ready (.ready in)] (println "ready!") ready))
+     (and (.ready in)
           (do (.mark in 1)
-              (println "checking .read")
               (if (= 1 (.read in (char-array 1) 0 1))
-                (do (println "read!") (.reset in) true)
+                (do (.reset in) true)
                 false)))))
 
 (defn read-from-buffer
   ([in len]
      (let [buffer (char-array len)]
        (do (.mark in len)
-           (println (str "reading from buffer " len " chars"))
            (.read in buffer 0 len)
-           (println (str "read!"))
            (String. buffer)))))
 
 (defn read-eos
   ([in]
      (if (not (buffer-ready? in))
-       (do (println "exit!") in)
-       (let [_test (println "let's read a line")
-             line (read-from-buffer in 1024)]
+       in
+       (let [line (read-from-buffer in 1024)]
          (recur in)))))
 
 
@@ -328,11 +320,8 @@
 
 (defn return-rdf-stanzas
   ([in]
-     (println "reading stanzas")
      (if-not-eos in
-                 (println "not eos...")
                  (let [result (loop [writer (java.io.StringWriter.)]
-                                (println "looping feels all right!")
                                 (if (not (buffer-ready? in))
                                   (.toString writer)
                                   (do (.write writer (read-from-buffer in 1024))
@@ -347,62 +336,57 @@
                       (read-ts-response)
                       (read-token-separator)
                       (return-succes-failure))]
-       (println "got something already")
        (read-eos in)
-       (println "now!")
        (keyword result))))
 
 (defn parse-rd-response
   "Process a response from the triple space to a previously requested RD operation"
-  ([in]
-     (str "reading response rd")
+  ([in name should-deliver rabbit-conn]
      (let [result (-> in
                       (read-ts-response)
                       (read-token-separator)
                       (read-success)
                       (read-token-separator)
                       (return-rdf-stanzas))]
-       (println "Let's go for eos")
        (read-eos in)
+       (when should-deliver (deliver-notify rabbit-conn name "in" (pack-stanzas result)))
        (map #(with-model (defmodel) (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml))) result))))
 
 (defn parse-rdb-response
   "Process a response from the triple space to a previously requested RDB operation"
-  ([in rabbit-chn options]
-     (str "reading response rd")
+  ([in name should-deliver rabbit-conn options prom]
      (let [should-block (-> in
                             (read-ts-response)
                             (read-token-separator)
                             (return-succes-failure))]
        (if (= should-block "blocking")
          (do (read-eos in)
-             (println (str "about to block..."))
-             (let [read (rabbit/consume-poll options rabbit-chn)
-                   _test (println (str "******************** ---> unblocking with something :\r\n" read "*****************************************\r\n\r\n\r\n"))
-                   result (-> (java.io.BufferedReader. (java.io.StringReader. read))
+             (log :info "about to block...")
+             (let [read (rabbit/consume-n-messages rabbit-conn name (str "queue-client-" (:client-id options)) 1)
+                   result (-> (java.io.BufferedReader. (java.io.StringReader. (first read)))
                               (read-ts-response)
                               (read-token-separator)
                               (read-success)
                               (read-token-separator)
                               (return-rdf-stanzas))]
-               (map #(with-model (defmodel) (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml))) result)))
+               (when should-deliver (deliver-notify rabbit-conn name "in" (pack-stanzas (first result))))
+               (deliver prom (map #(with-model (defmodel) (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml))) result))))
          (let [result (-> in
                           (read-token-separator)
                           (return-rdf-stanzas))]
            (read-eos in)
-           (map #(with-model (defmodel) (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml))) result))))))
+           (when should-deliver (deliver-notify rabbit-conn name "in" (pack-stanzas result)))
+           (deliver prom (map #(with-model (defmodel) (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml))) result)))))))
 
 (defn parse-notify-response
   "Process a response from the triple space to a previously requested RDB operation"
-  ([name in f direction rabbit-chn options]
-     (str "reading response notify")
-     (println (str "about to block..."))
-     (loop [queue (str "notify-box" (.toString (java.util.UUID/randomUUID)))
-            exchange (str "queue-" direction "-" name)
-            read (do (log :info (str "blcking with " (assoc (assoc options :exchange exchange) :queue queue) " \r\nexchange -> " exchange " \rndirection -> " direction "\r\n"))
-                     (rabbit/consume-poll (assoc (assoc (assoc options :exchange exchange) :queue queue) :routing-key direction) rabbit-chn))]
-       (println (str "unblocking with something"))
-       (f (map #(with-model (defmodel)
-                  (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml)))
-               (return-rdf-stanzas (java.io.BufferedReader. (java.io.StringReader. read)))))
-       (recur queue exchange (rabbit/consume-poll (assoc (assoc options :exchange exchange) :queue queue) rabbit-chn)))))
+  ([name pattern filters f direction rabbit-conn options]
+     (log :info  (str "*** parse-notify " direction " -> about to block..."))
+     (make-consumer rabbit-conn name (str "queue-client-" direction "-" (:client-id options))
+                    (fn [read]
+                      (println (str "*** unblocking with something: \r\n: " read))
+                      (f (flatten-1 (filter #(not (empty? %1))
+                                            (map #(let [model (defmodel
+                                                                (document-to-model (java.io.ByteArrayInputStream. (.getBytes (clojure.contrib.string/trim %1))) :xml))]
+                                                    (apply model-pattern-apply (cons model (cons pattern filters))))
+                                                 (return-rdf-stanzas (java.io.BufferedReader. (java.io.StringReader. read)))))))))))

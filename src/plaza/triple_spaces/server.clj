@@ -1,11 +1,11 @@
-;; @author Antonio Garote
+;; @author Antonio Garrote
 ;; @email antoniogarrote@gmail.com
 ;; @date 16.05.2010
 
 (ns plaza.triple-spaces.server
   (:use [saturnine]
 	[saturnine.handler]
-        [org.clojars.rabbitmq :as rabbit]
+        [plaza.triple-spaces.server.rabbit :as rabbit]
         [clojure.contrib.logging :only [log]]
         (plaza.triple-spaces core)
         (plaza.triple-spaces.server auxiliary)
@@ -21,12 +21,12 @@
 
 (defhandler #^{:doc
                "The MessageParser handler for parsing incoming messages"}
-  MessageParser [name model queues rabbit-conn rabbit-chn options]
+  MessageParser [name model queues rabbit-conn options]
   (connect  [_] (println "Connecting"))
   (upstream [this msg] (let [parsed (parse-message msg)]
                          (log :info (str "*** parsed: " parsed "\r\n\r\n"))
-                         (log :info (str "*** " parsed " " name " " model " " queues " " rabbit-conn " " rabbit-chn " " options))
-                         (send-down (apply-operation parsed name model queues rabbit-conn rabbit-chn options))))
+                         (log :info (str "*** " parsed " " name " " model " " queues " " rabbit-conn " " options))
+                         (send-down (apply-operation parsed name model queues rabbit-conn options))))
   (error [this msg]
          (log :error msg)
          (failure msg)))
@@ -47,13 +47,16 @@ ClassCastException to the default handle, while unevalable ones
 will display a parse error in the :clj handler as well"
   [name port model & options]
   (let [opt-map (apply array-map options)
-        [rabbit-conn rabbit-chn] (rabbit/connect opt-map)]
-    ;; binding notify-out
-    (.exchangeDeclare rabbit-chn (str "queue-out-" name) "direct" true)
-    ;; binding notify-in
-    (.exchangeDeclare rabbit-chn (str "queue-in-" name) "direct" true)
+        rabbit-conn (apply rabbit/connect options)]
+
+    ;; Declaring channels and exchanges for this triple space
+    (make-channel rabbit-conn name)
+    (declare-exchange rabbit-conn name (str "exchange-" name))
+    (declare-exchange rabbit-conn name (str "exchange-out-" name))
+    (declare-exchange rabbit-conn name (str "exchange-in-" name))
+
     ;; start the server
-    (start-server port :string :print (MessageParser. name model (ref []) rabbit-conn rabbit-chn opt-map))))
+    (start-server port :string :print (MessageParser. name model (ref []) rabbit-conn opt-map))))
 
 ;; client
 
@@ -128,7 +131,8 @@ will display a parse error in the :clj handler as well"
            rdf (do (output-string m w :xml) (.toString w))]
        (log :info (str "*** client out \r\n: " rdf))
        (.write channel (format-message "out" client-id "" rdf))
-       (.flush channel))))
+       (.flush channel)
+       rdf)))
 
 (defn send-in-operation
   ([channel client-id pattern-or-vector filters]
@@ -194,7 +198,7 @@ will display a parse error in the :clj handler as well"
 ;;
 ;; RemoteTripleSpace
 ;;
-(deftype RemoteTripleSpace [name connected-client rabbit-conn rabbit-chn options] TripleSpace
+(deftype RemoteTripleSpace [name connected-client rabbit-conn options] TripleSpace
 
   ;; rd operation
   (rd [this pattern] (rd this pattern []))
@@ -203,7 +207,7 @@ will display a parse error in the :clj handler as well"
                                  (loop [ready (.ready (:in connected-client))]
                                    (if-not ready
                                      (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
-                                 (parse-rd-response (:in connected-client))))
+                                 (parse-rd-response (:in connected-client) name false rabbit-conn)))
 
   ;; rdb operation
   (rdb [this pattern] (rdb this pattern []))
@@ -212,7 +216,9 @@ will display a parse error in the :clj handler as well"
                                   (loop [ready (.ready (:in connected-client))]
                                     (if-not ready
                                       (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
-                                  (parse-rdb-response (:in connected-client) rabbit-chn options)))
+                                  (let [prom (promise)]
+                                    (parse-rdb-response (:in connected-client) name false rabbit-conn options prom)
+                                    @prom)))
 
 
   ;; in operation
@@ -222,7 +228,7 @@ will display a parse error in the :clj handler as well"
                                  (loop [ready (.ready (:in connected-client))]
                                    (if-not ready
                                      (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
-                                 (parse-rd-response (:in connected-client))))
+                                 (parse-rd-response (:in connected-client) name true rabbit-conn)))
 
 
   ;; inb operation
@@ -232,17 +238,22 @@ will display a parse error in the :clj handler as well"
                                   (loop [ready (.ready (:in connected-client))]
                                     (if-not ready
                                       (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
-                                  (parse-rdb-response (:in connected-client) rabbit-chn options)))
+                                  (let [prom (promise)]
+                                    (parse-rdb-response (:in connected-client) name true rabbit-conn options prom)
+                                    @prom)))
 
 
   ;; out operation
-  (out [this triples] (do (send-out-operation (:out connected-client) (:client-id options) triples [])
-                          (loop [ready (.ready (:in connected-client))]
-                            (if-not ready
-                              (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
+  (out [this triples] (let [rdf (send-out-operation (:out connected-client) (:client-id options) triples [])]
+                        (loop [ready (.ready (:in connected-client))]
+                          (if-not ready
+                            (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
                         (let [result (parse-out-response (:in connected-client))]
                           (if (= :success result)
-                            triples
+                            (do
+                              (log :info "*** delivering notify out")
+                              (deliver-notify rabbit-conn name "out" (pack-stanzas [rdf]))
+                              triples)
                             (throw (Exception. (str "Error in out operation with client " connected-client)))))))
 
 
@@ -253,14 +264,16 @@ will display a parse error in the :clj handler as well"
                                            (loop [ready (.ready (:in connected-client))]
                                              (if-not ready
                                                (do (Thread/sleep 100) (recur (.ready (:in connected-client))))))
-                                           (parse-rdb-response (:in connected-client) rabbit-chn options)))
+                                           (let [prom (promise)]
+                                             (parse-rdb-response (:in connected-client) name true rabbit-conn options prom)
+                                             @prom)))
 
 
   ;; notify operation
-  (notify [this op pattern f] (notify this op pattern f []))
+  (notify [this op pattern f] (notify this op pattern [] f))
 
   (notify [this op pattern filters f]
-          (parse-notify-response name (:in connected-client) f (plaza.utils/keyword-to-string op) rabbit-chn options))
+          (parse-notify-response name (:in connected-client) pattern  filters f (plaza.utils/keyword-to-string op) rabbit-conn options))
 
 
   ;; inspect
@@ -271,13 +284,24 @@ will display a parse error in the :clj handler as well"
   "Creates a new remote triple space located at the provided host and port"
   ([name & options]
      (let [uuid (.toString (UUID/randomUUID))
-           opt-map (assoc (assoc (apply array-map options) :routing-key uuid) :queue (str "box" uuid))
-           [rabbit-conn rabbit-chn] (rabbit/connect opt-map)]
-       (rabbit/bind-channel opt-map rabbit-chn)
+           opt-map (-> (apply array-map options)
+                       (assoc :routing-key uuid)
+                       (assoc :queue (str "box-" uuid)))
+           rabbit-conn (apply rabbit/connect opt-map)]
 
-       ;; start the server
+       ;; Creating a channel and declaring exchanges
+       (rabbit/make-channel rabbit-conn name)
+       (rabbit/declare-exchange rabbit-conn name (str "exchange-" name))
+       (rabbit/declare-exchange rabbit-conn name (str "exchange-out-" name))
+       (rabbit/declare-exchange rabbit-conn name (str "exchange-in-" name))
+
+       ;; Creating queues and bindings
+       (rabbit/make-queue rabbit-conn name (str "queue-client-" uuid) (str "exchange-" name) uuid)
+       (rabbit/make-queue rabbit-conn name (str "queue-client-in-" uuid) (str "exchange-out-" name) "msgs")
+       (rabbit/make-queue rabbit-conn name (str "queue-client-out-" uuid) (str "exchange-in-" name) "msgs")
+
+       ;; startint the server
        (plaza.triple-spaces.server.RemoteTripleSpace. name
                                                       (start-triple-server-client (:ts-host opt-map) (:ts-port opt-map))
                                                       rabbit-conn
-                                                      rabbit-chn
-                                                      (assoc opt-map :client-id (str (:exchange opt-map) ":" (:routing-key opt-map)))))))
+                                                      (assoc opt-map :client-id uuid)))))

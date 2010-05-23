@@ -233,14 +233,15 @@
                                                        flattened (plaza.utils/flatten-1 triples-out)]
                                                    (with-model m
                                                      (model-remove-triples flattened)
-                                                     (model-add-triples triples)
-
-                                                     (let [[queuesp notify-queuesp] (process-queues-out m queues notify-queues)]
-                                                       (deliver prom flattened)
-                                                       (let [notify-queuespp (check-notify-queues triples-out :rd notify-queuesp)
-                                                             notify-queuesppp (check-notify-queues [triples] :out notify-queuespp)
-                                                             agp (assoc ag :queues queuesp)]
-                                                         (assoc agp :notify-queues notify-queuesppp)))))))
+                                                     (if-not (empty? flattened)
+                                                       (do (model-add-triples triples)
+                                                           (let [[queuesp notify-queuesp] (process-queues-out m queues notify-queues)]
+                                                             (deliver prom flattened)
+                                                             (let [notify-queuespp (check-notify-queues triples-out :rd notify-queuesp)
+                                                                   notify-queuesppp (check-notify-queues [triples] :out notify-queuespp)
+                                                                   agp (assoc ag :queues queuesp)]
+                                                               (assoc agp :notify-queues notify-queuesppp))))
+                                                       (do (deliver prom flattened) ag))))))
                 cell)
           @cell))
   (swap [ts pattern triples-or-vector] (swap ts pattern triples-or-vector []))

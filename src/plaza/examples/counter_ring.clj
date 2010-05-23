@@ -4,7 +4,7 @@
 
 (ns plaza.examples.counter-ring
   (:use (plaza.rdf core predicates sparql)
-        (plaza.triple-spaces core server)
+        (plaza.triple-spaces core)
         (plaza.rdf.implementations jena)
         (plaza utils)))
 
@@ -22,13 +22,13 @@
 ;; declaration of triple spaces
 
 ;;; Single node triple space
-;(def-ts :counter (make-basic-triple-space))
+(def-ts :counter (make-basic-triple-space))
 
 ;;; Multiple nodes triple space
 ; The name used to start the server must be the same that the one used to define
 ; the triple space ("counter" in this example)
 ;(start-triple-server "counter" 7555 (build-model :jena) :username "guest" :password "guest" :host "localhost" :port 5672 :virtual-host "/")
-(def-ts :counter (make-remote-triple-space "counter" :ts-host "localhost" :ts-port 7555))
+;(def-ts :counter (make-remote-triple-space "counter" :ts-host "localhost" :ts-port 7555))
 
 ;; we store some constrains in the triple space
 (out (ts :counter) [[:constrains :max-agents (d *max-agents*)]])

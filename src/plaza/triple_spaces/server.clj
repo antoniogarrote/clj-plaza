@@ -17,7 +17,7 @@
 (init-jena-framework)
 
 
-; handlers
+                                        ; handlers
 
 (defhandler #^{:doc
                "The MessageParser handler for parsing incoming messages"}
@@ -285,27 +285,34 @@ will display a parse error in the :clj handler as well"
          (try (.close rabbit-conn)
               (catch Exception ex ""))))
 
-
 (defn make-remote-triple-space
   "Creates a new remote triple space located at the provided host and port"
   ([name & options]
-     (let [uuid (.toString (UUID/randomUUID))
-           opt-map (-> (apply array-map options)
-                       (assoc :routing-key uuid)
-                       (assoc :queue (str "box-" uuid)))
-           rabbit-conn (apply rabbit/connect opt-map)]
+     (let [registry (ref {})]
+       (fn []
+         (let [id (plaza.utils/thread-id)
+               ts (get @registry id)]
+           (if (nil? ts)
+             (let [uuid (.toString (UUID/randomUUID))
+                   opt-map (-> (apply array-map options)
+                               (assoc :routing-key uuid)
+                               (assoc :queue (str "box-" uuid)))
+                   rabbit-conn (apply rabbit/connect opt-map)]
 
-       ;; Creating a channel and declaring exchanges
-       (rabbit/make-channel rabbit-conn name)
-       (rabbit/declare-exchange rabbit-conn name (str "exchange-" name))
-       (rabbit/declare-exchange rabbit-conn name (str "exchange-out-" name))
-       (rabbit/declare-exchange rabbit-conn name (str "exchange-in-" name))
+               ;; Creating a channel and declaring exchanges
+               (rabbit/make-channel rabbit-conn name)
+               (rabbit/declare-exchange rabbit-conn name (str "exchange-" name))
+               (rabbit/declare-exchange rabbit-conn name (str "exchange-out-" name))
+               (rabbit/declare-exchange rabbit-conn name (str "exchange-in-" name))
 
-       ;; Creating queues and bindings
-       (rabbit/make-queue rabbit-conn name (str "queue-client-" uuid) (str "exchange-" name) uuid)
+               ;; Creating queues and bindings
+               (rabbit/make-queue rabbit-conn name (str "queue-client-" uuid) (str "exchange-" name) uuid)
 
-       ;; startint the server
-       (plaza.triple-spaces.server.RemoteTripleSpace. name
-                                                      (start-triple-server-client (:ts-host opt-map) (:ts-port opt-map))
-                                                      rabbit-conn
-                                                      (assoc opt-map :client-id uuid)))))
+               ;; startint the server
+               (let [tsp (plaza.triple-spaces.server.RemoteTripleSpace. name
+                                                                        (start-triple-server-client (:ts-host opt-map) (:ts-port opt-map))
+                                                                        rabbit-conn
+                                                                        (assoc opt-map :client-id uuid))]
+                 (dosync (alter registry (fn [old] (assoc old id tsp))))
+                 tsp))
+             ts))))))

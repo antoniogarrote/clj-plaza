@@ -98,3 +98,7 @@
              (if (= res false)
                (recur)
                agent)))))))
+
+(defn thread-id
+  "Returns the ID of the current thread"
+  ([] (.getId (Thread/currentThread))))

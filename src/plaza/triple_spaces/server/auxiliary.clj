@@ -111,7 +111,7 @@
          (response
           (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                (output-string m w :xml)
-                               (.write w "\r\n\r\n") w))
+                               (.write w "</ts:response>") w))
                   w results))))))
 
 (defn- apply-out-operation
@@ -134,7 +134,7 @@
                                           respo (response
                                                  (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                       (output-string m w :xml)
-                                                                      (.write w "\r\n\r\n") w))
+                                                                      (.write w "</ts:response>") w))
                                                          w results))]
                                       (when (= kind-op :inb)
                                         (with-model model (model-remove-triples (flatten-1 results))))
@@ -156,7 +156,7 @@
                              ;; returning triple sets
                              (let [triples (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                 (output-string m w :xml)
-                                                                (.write w "\r\n\r\n") w))
+                                                                (.write w "</ts:response>") w))
                                                    w triples-to-remove)]
                                (response triples))))))
 
@@ -176,7 +176,7 @@
                                  ;; returning triple sets
                                  (let [triples (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                     (output-string m w :xml)
-                                                                    (.write w "\r\n\r\n") w))
+                                                                    (.write w "</ts:response>") w))
                                                        w triples-to-remove)]
                                    (response triples))))))))
 
@@ -208,7 +208,7 @@
                                               respo (response
                                                      (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                           (output-string m w :xml)
-                                                                          (.write w "\r\n\r\n") w))
+                                                                          (.write w "</ts:response>") w))
                                                              w results))]
                                           (when (= kind-op :inb)
                                             (with-model model (model-remove-triples (flatten-1 results))))
@@ -218,7 +218,7 @@
                              (response
                               (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                    (output-string m w :xml)
-                                                   (.write w "\r\n\r\n") w))
+                                                   (.write w "</ts:response>") w))
                                       w triples-to-remove))))))
 
 (defn apply-operation

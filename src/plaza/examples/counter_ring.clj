@@ -4,7 +4,7 @@
 
 (ns plaza.examples.counter-ring
   (:use (plaza.rdf core predicates sparql)
-        (plaza.triple-spaces core)
+        (plaza.triple-spaces core server)
         (plaza.rdf.implementations jena)
         (plaza utils)))
 
@@ -20,8 +20,15 @@
 
 
 ;; declaration of triple spaces
-(def-ts :counter (make-basic-triple-space))
 
+;;; Single node triple space
+;(def-ts :counter (make-basic-triple-space))
+
+;;; Multiple nodes triple space
+; The name used to start the server must be the same that the one used to define
+; the triple space ("counter" in this example)
+;(start-triple-server "counter" 7555 (build-model :jena) :username "guest" :password "guest" :host "localhost" :port 5672 :virtual-host "/")
+(def-ts :counter (make-remote-triple-space "counter" :ts-host "localhost" :ts-port 7555))
 
 ;; we store some constrains in the triple space
 (out (ts :counter) [[:constrains :max-agents (d *max-agents*)]])
@@ -43,7 +50,7 @@
 ;; declaration of agents in the ring
 (doseq [i (range 0 *max-agents*)]
   (def-agent i
-    (println (str "*** " i " hello!"))
+    (println (str "------------------> " i " hello!"))
     (loop []
       (let [token (first
                    (inb (ts :counter) [[?s rdf:type :Counter]
@@ -52,19 +59,19 @@
             constrains (first
                         (rd (ts :counter) [[:constrains :max-agents ?m]
                                            [:constrains :should-finish ?n]]))]
-        (println (str "*** " i " found the token, sleeping " *sleep-time* " millisecs"))
+        (println (str "------------------> " i " found the token, sleeping " *sleep-time* " millisecs"))
         (Thread/sleep *sleep-time*)
         (if-not (find-property-value constrains :should-finish)
           (let [old-value (find-property-value token :value)
                 max-agents (find-property-value constrains :max-agents)
                 next-value (inc old-value)
                 next-agent (if (< (inc i) max-agents) (inc i) 0) ]
-            (println (str "*** " i " storing value " next-value))
+            (println (str "------------------> " i " storing value " next-value))
             (out (ts :counter) [[*token-uri* rdf:type :Counter]
                                 [*token-uri* :next (d next-agent)]
                                 [*token-uri* :value (d next-value)]])
             (recur))
-          (println (str "*** " i " finishing execution")))))))
+          (println (str "------------------> " i " finishing execution")))))))
 
 
 

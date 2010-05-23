@@ -273,8 +273,9 @@
    threads in the same node"
   ([]
      (let [m (defmodel)
-           id-gen (let [id (ref 0)] (fn [] (dosync (alter id #(+ %1 1)) @id)))]
-       (BasicTripleSpace. (agent {:model m :id-gen id-gen :queues [] :notify-queues []})))))
+           id-gen (let [id (ref 0)] (fn [] (dosync (alter id #(+ %1 1)) @id)))
+           ts (BasicTripleSpace. (agent {:model m :id-gen id-gen :queues [] :notify-queues []}))]
+       (fn [] ts))))
 
 
 ;; Common agent operations
@@ -307,7 +308,7 @@
 (defn ts
   "Retrieves a triple space from the registry"
   [name]
-  (dosync (get (deref plaza.triple-spaces.core/*plaza-triple-spaces*) name)))
+  (apply (dosync (get (deref plaza.triple-spaces.core/*plaza-triple-spaces*) name)) []))
 
 (defmacro def-agent
   "Defines a new agent"

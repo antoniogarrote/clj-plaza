@@ -9,7 +9,8 @@
         [plaza.triple-spaces.server.rabbit :as rabbit]
         [clojure.contrib.logging :only [log]])
   (:require [clojure.contrib.string :as string])
-  (:import [com.rabbitmq.client
+  (:import [java.util UUID]
+           [com.rabbitmq.client
             ConnectionParameters
             Connection
             Channel
@@ -369,7 +370,7 @@
                               (read-success)
                               (read-token-separator)
                               (return-rdf-stanzas))]
-               (when should-deliver (deliver-notify rabbit-conn name "in" (pack-stanzas (first result))))
+               (when should-deliver (deliver-notify rabbit-conn name "in" (pack-stanzas result)))
                (deliver prom (map #(with-model (defmodel) (model-to-triples (document-to-model (java.io.ByteArrayInputStream. (.getBytes %1)) :xml))) result))))
          (let [result (-> in
                           (read-token-separator)
@@ -381,12 +382,19 @@
 (defn parse-notify-response
   "Process a response from the triple space to a previously requested RDB operation"
   ([name pattern filters f direction rabbit-conn options]
-     (log :info  (str "*** parse-notify " direction " -> about to block..."))
-     (make-consumer rabbit-conn name (str "queue-client-" direction "-" (:client-id options))
-                    (fn [read]
-                      (println (str "*** unblocking with something: \r\n: " read))
-                      (f (flatten-1 (filter #(not (empty? %1))
-                                            (map #(let [model (defmodel
-                                                                (document-to-model (java.io.ByteArrayInputStream. (.getBytes (clojure.contrib.string/trim %1))) :xml))]
-                                                    (apply model-pattern-apply (cons model (cons pattern filters))))
-                                                 (return-rdf-stanzas (java.io.BufferedReader. (java.io.StringReader. read)))))))))))
+     (let [uuid (.toString (UUID/randomUUID))]
+       ;; redefining exchange and declaring fresh queue
+       (rabbit/declare-exchange rabbit-conn name (str "exchange-" direction "-" name))
+       (rabbit/make-queue rabbit-conn name (str "queue-client-" direction "-" uuid) (str "exchange-" direction "-" name) "msgs")
+       (log :info  (str "*** parse-notify " direction " -> about to block..."))
+       (make-consumer rabbit-conn name (str "queue-client-" direction "-" uuid)
+                      (fn [read]
+                        (println (str "*** after " pattern " direction " direction ", unblocking with something: ----->" read "<----------"))
+                        (let [flattened (flatten-1 (filter #(not (empty? %1))
+                                                           (map #(let [model (defmodel
+                                                                               (document-to-model (java.io.ByteArrayInputStream.
+                                                                                                   (.getBytes (clojure.contrib.string/trim %1))) :xml))]
+                                                                   (apply model-pattern-apply (cons model (cons pattern filters))))
+                                                                (return-rdf-stanzas (java.io.BufferedReader. (java.io.StringReader. read))))))]
+                          (when-not (empty? flattened)
+                            (f flattened))))))))

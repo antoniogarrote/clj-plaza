@@ -273,11 +273,17 @@ will display a parse error in the :clj handler as well"
   (notify [this op pattern f] (notify this op pattern [] f))
 
   (notify [this op pattern filters f]
-          (parse-notify-response name (:in connected-client) pattern  filters f (plaza.utils/keyword-to-string op) rabbit-conn options))
+          (parse-notify-response name pattern  filters f (plaza.utils/keyword-to-string op) rabbit-conn options))
 
 
   ;; inspect
-  (inspect [this] :not-yet))
+  (inspect [this] :not-yet)
+
+  ;; clean
+  (clean [this] (try (.close (:socket connected-client))
+                     (catch Exception ex ""))
+         (try (.close rabbit-conn)
+              (catch Exception ex ""))))
 
 
 (defn make-remote-triple-space
@@ -297,8 +303,6 @@ will display a parse error in the :clj handler as well"
 
        ;; Creating queues and bindings
        (rabbit/make-queue rabbit-conn name (str "queue-client-" uuid) (str "exchange-" name) uuid)
-       (rabbit/make-queue rabbit-conn name (str "queue-client-in-" uuid) (str "exchange-out-" name) "msgs")
-       (rabbit/make-queue rabbit-conn name (str "queue-client-out-" uuid) (str "exchange-in-" name) "msgs")
 
        ;; startint the server
        (plaza.triple-spaces.server.RemoteTripleSpace. name

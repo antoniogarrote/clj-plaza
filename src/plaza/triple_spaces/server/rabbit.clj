@@ -178,6 +178,7 @@
                                                         (alter acum #(conj %1 msg)))
                                                     (deliver prom [consumer-tag (conj @acum msg)]))))))]
 
+         (log :error (str "SOMETHING NIL: chn->" chn "<- queue ->" queue "<- consumer ->" consumer))
          (.basicConsume chn queue true consumer)
          (let [[tag value] @prom]
            (log :info (str  "---------------------------------> unblocking! " tag " value " value " queue info " queue-info))

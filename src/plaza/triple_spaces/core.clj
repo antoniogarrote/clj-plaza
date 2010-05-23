@@ -16,6 +16,7 @@
   (out [ts triples] "Add some triples to the triple space ts.")
   (swap [ts pattern triples] [ts pattern triples filters] "Remove triples matching pattern and replace them with the new triples in single atomic operation")
   (notify [ts op pattern f][ts op pattern filters f] "Blocks until some other process performs an op operation in the triple space matching the provided pattern")
+  (clean [ts] "Clean the resources associated to this triple space")
   (inspect [ts] "Testing"))
 
 ;; Ahead declarations
@@ -67,7 +68,7 @@
                  (reduce conj to-delete triples-to-delete)
                  deliveries))))))
 
-(defn make-queue
+(defn- make-queue
   ([op pattern filters]
      {:operation op
       :queue (LinkedBlockingQueue.)
@@ -264,7 +265,8 @@
                   (.put queue :finish)
                   (recur queue))))))
   (notify [ts op pattern f] (notify ts op pattern [] f))
-  (inspect [this] ts-agent))
+  (inspect [this] ts-agent)
+  (clean [this] :clean))
 
 (defn make-basic-triple-space
   "Builds a basic triple space that can be shared among different

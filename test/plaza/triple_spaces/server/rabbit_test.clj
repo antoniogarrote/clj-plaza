@@ -33,6 +33,6 @@
   (let [rabbit (connect)
         chn (make-channel rabbit :test)]
     (declare-exchange rabbit :test "test-exchange")
-    (let [*q*  (make-queue rabbit :test "test-queue" "test-exchange")]
+    (let [*q*  (make-queue rabbit :test "test-queue" "test-exchange" "all")]
       (is true))
     (disconnect rabbit)))

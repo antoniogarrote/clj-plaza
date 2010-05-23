@@ -13,7 +13,8 @@
   :dev-dependencies [[leiningen/lein-swank "1.2.0-SNAPSHOT"]
                      [autodoc "0.7.1"]
                      [lein-clojars         "0.5.0-SNAPSHOT"]]
-    :autodoc { :name "clj-plaza", :page-title "clj-plaza distributed semantic systems library"
-              :author "Antonio Garrote <antoniogarrote@gmail.com> <agarrote@usal.es>"
-              :copyright "2010 (c) Antonio Garrote, under the MIT license"
-              :web-home "http://antoniogarrote.github.com/clj-plaza/api"})
+  :main     plaza.core
+  :autodoc {:name "clj-plaza", :page-title "clj-plaza distributed semantic systems library"
+            :author "Antonio Garrote <antoniogarrote@gmail.com> <agarrote@usal.es>"
+            :copyright "2010 (c) Antonio Garrote, under the MIT license"
+            :web-home "http://antoniogarrote.github.com/clj-plaza/api"})

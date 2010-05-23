@@ -53,64 +53,63 @@ pageTracker._trackPageview();
 </ul>
 </p>
 <h2 id="definition_ts">Definition of triple spaces</h2>
-<p>A triple space is a <span class="caps">RDF</span> graph stored in a shared memory location that can be<br />
-accessed concurrently by any number of agents manipulating the triples in graph.</p>
+<p>A triple space is a <span class="caps">RDF</span> graph stored in a shared memory location, that can be<br />
+accessed concurrently by any number of agents manipulating the triples in the graph.</p>
 <p>Besides being a mean to store and manipulate semantic meta data, triple spaces<br />
-also offer a coordination mechanism between agents thanks to a small set of<br />
-operations on the triple space with well defined semantics.</p>
-<p>The origins of this formalism can be traced to the original <a href="http://en.wikipedia.org/wiki/Tuple_space">Linda</a> system created<br />
+also offer coordination mechanisms among agents thanks to a small set of<br />
+operations over the triple space with well defined semantics. Origins of this formalism can be traced to the original <a href="http://en.wikipedia.org/wiki/Tuple_space">Linda</a> system created<br />
 by <a href="http://en.wikipedia.org/wiki/David_Gelernter">David Gelernter</a> and the blackboard AI systems.</p>
 <p>Some of the benefits of the coordination mechanism offered by this kind of<br />
 systems can be summarized as follows:</p>
 
 	<ul>
-		<li>generality, different kind of distributed model can be implemented on top of it</li>
-		<li>orthogonality, provided by a small set of triple space operations</li>
+		<li>generality: different kind of distributed model can be implemented on top of it</li>
+		<li>orthogonality: provided by a small set of triple space operations</li>
 		<li>greater decoupling among agents</li>
 	</ul><p><strong>clj-plaza</strong> tries to offer an implementation of this computational model<br />
- accessible from Clojure code.</p>
+ accessible from Clojure applications.</p>
 <h2 id="creating_ts">Creation of triple spaces</h2>
-<p>The triple space model can be implemented in different ways and support<br />
+<p>The triple space model can be implemented in different ways and supports<br />
 different kinds of distribution, for example, in a single <span class="caps">JVM</span> or across different <span class="caps">JVM</span> nodes.<br />
 Applications built using <strong>clj-plaza</strong> can be ported to these different<br />
-distribution architectures just choosing a different kind of triple space used without<br />
-changing the implementation.</p>
+distribution architectures just choosing a different kind of triple space without<br />
+changing the code of the application.</p>
 <p>Currently, two implementations of triple spaces are supported: a<br />
 <code>BasicTripleSpace</code> that can be used by agents inside a single <span class="caps">JVM</span> or<br />
 a <code>RemoteTripleSpace</code> that can be used by agents in different JVMs.</p>
-<p>The definition of <code>BasicTripleSapce</code> can be achieved using the<br />
+<p>The creation of a <code>BasicTripleSapce</code> can be achieved using the<br />
 following Clojure code:</p>
 <div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">triple-spaces</span><span class="o">.</span><span class="nv">core</span><span class="p">)</span>
 <span class="p">(</span><span class="nf">def-ts</span> <span class="nv">:test</span> <span class="p">(</span><span class="nf">make-basic-triple-space</span><span class="p">))</span>
 </code></pre>
 </div><p>We have declared a new triple space and we have assigned it the name<br />
 <code>:test</code>.<br />
-If we would like to access the triple space we can use the function<br />
+If we would like to access the triple space, we can use the function<br />
 <code>ts</code> passing the name of the triple space as an argument:</p>
 <div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span>
 <span class="c1">; output -&gt; #&lt;BasicTripleSpace plaza.triple-spaces.core.BasicTripleSpace@72433b8a&gt;</span>
 </code></pre>
-</div><p>Once the triple space is created, it can be shared among the different agents<br />
-performing the computation. These agents, can issue a set of operations that<br />
+</div><p>Once the triple space has been created, it can be shared among the different agents<br />
+performing the computation. These agents can issue a set of operations that<br />
 modify the <span class="caps">RDF</span> graph stored in the triple space:</p>
 
 	<ul>
 		<li><strong>out</strong>: store triples in the triple store</li>
 		<li><strong>rd</strong>: copy and returns triples stored in the triple store matching a pattern</li>
 		<li><strong>in</strong>: removes and returns triples stored in the triple store matching a pattern</li>
-		<li><strong>swap</strong>: substitutes some triples matching a pattern by a new set of triples in a single atomic operation</li>
+		<li><strong>swap</strong>: replaces some triples matching a pattern by a new set of triples in a single atomic operation</li>
 		<li><strong>rdb</strong>: blocking version of the <strong>rd</strong> operation</li>
 		<li><strong>inb</strong>: blocking version of the <strong>in</strong> operation</li>
 		<li><strong>notify</strong>: the agent receives a notification each time another agent tries to insert or remove triples from the triple space matching a pattern</li>
 	</ul><h2 id="out_ts">The out operation</h2>
 <p>The <strong>out</strong> operation allows an agent to add new triples to a triple space. This<br />
-operation can be described in Clojure code using the funcion <code>out</code><br />
+operation can be issued from Clojure using the function <code>out</code><br />
 and a <strong>clj-plaza</strong> <span class="caps">RDF</span> triple set:</p>
 <div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">out</span> <span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span> <span class="p">[[</span><span class="nv">:a</span> <span class="nv">:b</span> <span class="nv">:c</span><span class="p">][</span><span class="nv">:a</span> <span class="nv">:size</span> <span class="p">(</span><span class="nf">d</span> <span class="mi">520</span><span class="p">)]])</span>
 </code></pre>
 </div><p>The operation returns the triples just inserted in the triple space.<br />
-If an agent tries to insert the same triples in the triple space, no new triples<br />
-will be inserted. Triples cannot be duplicated in the triple space.</p>
+If an agent tries to insert the same triples again in the triple space, no new triples<br />
+will be inserted. The out operation is idempotent. Triples cannot be duplicated in the triple space.</p>
 <h2 id="rd_ts">The rd operation</h2>
 <p>The <strong>rd</strong> operation returns a list of triple sets built with the triples stored<br />
 in the triple space that match a particular pattern, described using <strong>clj-plaza</strong><br />
@@ -125,7 +124,7 @@ in the triple space that match a particular pattern, described using <strong>clj
 <span class="c1">;   #&lt;PlazaResource http://plaza.org/ontologies/c&gt;]])</span>
 </code></pre>
 </div><p>In this example only one triple set matches the pattern, so a list with just one<br />
-element is returned, if more than one triple set matches the pattern they will<br />
+element is returned, if more than one triple set matches the pattern, they will<br />
 be returned as different elements in the list:</p>
 <div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">rd</span> <span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span> <span class="p">[[</span><span class="nv">?s</span> <span class="nv">?p</span> <span class="nv">?o</span><span class="p">]])</span>
 <span class="c1">;([[#&lt;PlazaResource http://plaza.org/ontologies/a&gt;</span>
@@ -138,8 +137,8 @@ be returned as different elements in the list:</p>
 <span class="c1">;; 2</span>
 </code></pre>
 </div><h2 id="in_ts">The in operation</h2>
-<p>The <strong>in</strong> operation accepts a pattern as the argument and returns the matching<br />
-triple sets from the triple space removing these triples from the space:</p>
+<p>The <strong>in</strong> operation accepts a pattern as the argument and returns matching<br />
+triple sets from the triple space, removing these triples from the space:</p>
 <div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">out</span> <span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span> <span class="p">[[</span><span class="nv">:a</span> <span class="nv">:b</span> <span class="nv">:c</span><span class="p">][</span><span class="nv">:a</span> <span class="nv">:size</span> <span class="p">(</span><span class="nf">d</span> <span class="mi">520</span><span class="p">)]])</span>
 <span class="p">(</span><span class="nf">in</span> <span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span> <span class="p">[[</span><span class="nv">?s</span> <span class="nv">?p</span> <span class="nv">?o</span><span class="p">]])</span>
 <span class="c1">;([[#&lt;PlazaResource http://plaza.org/ontologies/a&gt;</span>
@@ -151,13 +150,13 @@ triple sets from the triple space removing these triples from the space:</p>
 <span class="p">(</span><span class="nf">in</span> <span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span> <span class="p">[[</span><span class="nv">?s</span> <span class="nv">?p</span> <span class="nv">?o</span><span class="p">]])</span>
 <span class="c1">;; ()</span>
 </code></pre>
-</div><p>If no triple matches the provided pattern, the in operation returns the empty<br />
+</div><p>If no triple matches the provided pattern, the <strong>in</strong> operation returns the empty<br />
 list.</p>
 <h2 id="swap_ts">The swap operation</h2>
-<p>The <strong>swap</strong> operation is combination of a <strong>in</strong> and conditional <strong>out</strong> operation<br />
+<p>The <strong>swap</strong> operation is combination of the <strong>in</strong> and conditional <strong>out</strong> operation<br />
 in a single atomic operation.<br />
 It accepts a pattern and a triple set, and tries to match the pattern in the<br />
-triple space and, in the case of any matches, remove the triple from the triple<br />
+triple space and, in the case of any matches, removes the triple from the triple<br />
 space and inserts the provided triple set.</p>
 <div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">out</span> <span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span> <span class="p">[[</span><span class="nv">:a</span> <span class="nv">:b</span> <span class="nv">:c</span><span class="p">][</span><span class="nv">:a</span> <span class="nv">:size</span> <span class="p">(</span><span class="nf">d</span> <span class="mi">520</span><span class="p">)]])</span>
 <span class="p">(</span><span class="nf">swap</span> <span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span> <span class="p">[[</span><span class="nv">?s</span> <span class="nv">?p</span> <span class="nv">?o</span><span class="p">]]</span> <span class="p">[[</span><span class="nv">:e</span> <span class="nv">:f</span> <span class="nv">:g</span><span class="p">]])</span>
@@ -205,8 +204,8 @@ space:</p>
 <div id="img_wrapper">
 <p><img src="/clj-plaza/images/rdb1.png"></img></p>
 </div>
-<p>If some agents block with a <strong>inb</strong> operation, all of them will receive a copy of<br />
-the read triples, and all of them  will be removed from the triple space:</p>
+<p>If any agents block with a <strong>inb</strong> operation, all of them will receive a copy of<br />
+the read triples, and all of the triples  will be removed from the triple space:</p>
 <div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">spawn!</span> <span class="p">(</span><span class="nf">rdb</span> <span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span> <span class="p">[[</span><span class="nv">:a</span> <span class="nv">:b</span> <span class="nv">?o</span><span class="p">]])</span> <span class="p">(</span><span class="nb">println </span><span class="s">&quot;got some triples (a)&quot;</span><span class="p">))</span>
 <span class="p">(</span><span class="nf">spawn!</span> <span class="p">(</span><span class="nf">inb</span> <span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span> <span class="p">[[</span><span class="nv">:a</span> <span class="nv">:c</span> <span class="nv">?o</span><span class="p">]])</span> <span class="p">(</span><span class="nb">println </span><span class="s">&quot;got some triples (b)&quot;</span><span class="p">))</span>
 <span class="p">(</span><span class="nf">spawn!</span> <span class="p">(</span><span class="nf">inb</span> <span class="p">(</span><span class="nf">ts</span> <span class="nv">:test</span><span class="p">)</span> <span class="p">[[</span><span class="nv">:a</span> <span class="nv">:d</span> <span class="nv">?o</span><span class="p">]])</span> <span class="p">(</span><span class="nb">println </span><span class="s">&quot;got some triples (c)&quot;</span><span class="p">))</span>
@@ -227,15 +226,15 @@ the read triples, and all of them  will be removed from the triple space:</p>
 </div>
 <h2 id="notify_ts">The notify operation</h2>
 <p>The last operation supported over a triple space is the <strong>notify</strong> operation. The<br />
-<code>notify</code> function implements this operation and receives three<br />
+<code>notify</code> function implementing this operation receives three<br />
 arguments:</p>
 
 	<ul>
-		<li>a kind of notifications</li>
+		<li>a notification type</li>
 		<li>a <span class="caps">SPARQL</span> pattern</li>
 		<li>an anonymous function</li>
-	</ul><p>The kind parameter signals which kind of operations will generate notifications,<br />
-it can have two values: <code>:in</code> and <code>:out</code> for operations<br />
+	</ul><p>The type parameter signals which kind of operations will generate notifications.<br />
+It can have two values: <code>:in</code> and <code>:out</code> for operations<br />
 extracting triples from the triple space (<strong>in</strong> and successful <strong>swap</strong> operations) and<br />
 operations inserting triples in the triple space (<strong>out</strong> and successful <strong>swap</strong><br />
 operations).</p>

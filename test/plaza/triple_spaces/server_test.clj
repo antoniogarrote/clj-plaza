@@ -44,7 +44,6 @@
       (is (= (resource-id (first (first (second res)))) "http://plaza.org/ontologies/a"))
       (is (= (resource-id (second (first (second res)))) "http://plaza.org/ontologies/b"))
       (is (= (resource-id (nth (first (second res)) 2)) "http://plaza.org/ontologies/c")))
-    (clean (ts :ts))
     (unregister-ts :ts)
     (stop-server *s*))
   (breathe))

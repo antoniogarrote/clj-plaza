@@ -114,6 +114,8 @@
                                (.write w "</ts:response>") w))
                   w results))))))
 
+;(when (= kind-op :inb)
+;  (with-model model (model-remove-triples (flatten-1 results))))
 (defn- apply-out-operation
   "Applies a TS rd operation over a model"
   ([rdf-document model name rabbit-conn queues-ref]
@@ -121,27 +123,29 @@
      (model-critical-write model
                            (dosync
                             (loop [queues @queues-ref
-                                   queuesp []]
+                                   queuesp []
+                                   to-delete []]
                               (if (empty? queues)
-                                (alter queues-ref (fn [old] queuesp))
+                                (do (with-model model (model-remove-triples to-delete))
+                                    (alter queues-ref (fn [old] queuesp)))
                                 (let [[pattern kind-op client-id] (first queues)
                                       results (query-triples model pattern)]
                                   (log :info (str "*** checking queued " kind-op " -> " pattern " ? " (empty? results)))
                                   (if (empty? results)
                                     (recur (rest queues)
-                                           (conj queuesp (first queues)))
+                                           (conj queuesp (first queues))
+                                           to-delete)
                                     (let [w (java.io.StringWriter.)
                                           respo (response
                                                  (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                       (output-string m w :xml)
                                                                       (.write w "</ts:response>") w))
                                                          w results))]
-                                      (when (= kind-op :inb)
-                                        (with-model model (model-remove-triples (flatten-1 results))))
                                       (log :info (str "*** queue to blocked client: \r\n" respo))
                                       (rabbit/publish rabbit-conn name (str "exchange-" name) client-id respo)
                                       (recur (rest queues)
-                                             queuesp))))))
+                                             queuesp
+                                             (if (= kind-op :inb) (conj to-delete (flatten-1 results)) to-delete)))))))
                             (success)))))
 
 (defn- apply-in-operation

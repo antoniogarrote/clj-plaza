@@ -212,7 +212,8 @@
       (= expression :-) (new com.hp.hpl.jena.sparql.expr.E_Subtract arg-0 arg-1)
       (= expression :+) (new com.hp.hpl.jena.sparql.expr.E_Add arg-0 arg-1)
       (= expression :*) (new com.hp.hpl.jena.sparql.expr.E_Multiply arg-0 arg-1)
-      (= expression :div) (new com.hp.hpl.jena.sparql.expr.E_Divide arg-0 arg-1))))
+      (= expression :div) (new com.hp.hpl.jena.sparql.expr.E_Divide arg-0 arg-1)
+      (= expression :sameTerm) (new com.hp.hpl.jena.sparql.expr.E_SameTerm arg-0 arg-1))))
 
 (defn- build-filter-one-part
   ([expression arg]
@@ -231,6 +232,7 @@
      (cond
       (keyword? arg) (new com.hp.hpl.jena.sparql.expr.ExprVar (.replace (keyword-to-string arg) "?" ""))
       (map? arg) (build-filter builder arg)
+      (is-resource arg) (com.hp.hpl.jena.sparql.expr.NodeValue/makeNode (com.hp.hpl.jena.graph.Node/createURI (resource-id arg)))
       true (com.hp.hpl.jena.sparql.expr.NodeValue/makeNode (literal-lexical-form arg) (literal-language arg) (literal-datatype-uri arg)))))
 
 (defn build-filter-fn

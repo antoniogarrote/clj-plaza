@@ -168,6 +168,13 @@
     (is (= 1 (count (first result))))
     (is (not (keyword? (nth (first (first result)) 2))))))
 
+(deftest test-model-pattern-apply-non-free-vars
+  (let [m (defmodel (model-add-triples [[:a :b :c] [:a :b :e]]))
+        result (model-pattern-apply m [[:a :b :c]])]
+    (is (= 1 (count result)))
+    (is (= 1 (count (first result))))
+    (is (not (keyword? (nth (first (first result)) 2))))))
+
 (deftest test-pattern-pply
   (let [res (pattern-apply [[:ba rdf:type :Post]]
                            [[?a rdf:type :Post]])

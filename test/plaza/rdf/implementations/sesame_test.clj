@@ -1,5 +1,5 @@
 (ns plaza.rdf.implementations.sesame-test
-  (:use [plaza.rdf core] :reload-all)
+  (:use [plaza.rdf core sparql] :reload-all)
   (:use [plaza.rdf.implementations sesame] :reload-all)
   (:use [clojure.test]))
 
@@ -113,3 +113,10 @@
     (with-model *m* (model-add-triples [[:a :b :c]]))
     (is (= 1 (count (query-triples *m* query-str))))
     (is (= 3 (count (ffirst (query-triples *m* query-str)))))))
+
+(deftest test-model-pattern-apply-non-free-vars
+  (let [m (defmodel (model-add-triples [[:a :b :c] [:a :b :e]]))
+        result (model-pattern-apply m [[:a :b :c]])]
+    (is (= 1 (count result)))
+    (is (= 1 (count (first result))))
+    (is (not (keyword? (nth (first (first result)) 2))))))

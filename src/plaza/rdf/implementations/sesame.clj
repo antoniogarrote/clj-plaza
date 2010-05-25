@@ -126,7 +126,9 @@
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-lexical-form [resource] (str res))
-  (toString [resource] (str res)))
+  (toString [resource] (str res))
+  (equals [resource other-resource] (= (resource-id resource) (resource-id other-resource)))
+  (hashCode [resource] (.hashCode (resource-id resource))))
 
 
 (deftype SesameBlank [res] RDFResource RDFNode JavaObjectWrapper RDFPrintable
@@ -144,7 +146,9 @@
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a resource")))
   (literal-lexical-form [resource] (.getId res))
-  (toString [resource] (to-string resource)))
+  (toString [resource] (to-string resource))
+  (hashCode [resource] (.hashCode (resource-id resource)))
+  (equals [resource other-resource] (= (resource-id resource) (resource-id other-resource))))
 
 
 (deftype SesameLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
@@ -166,7 +170,9 @@
   (literal-datatype-obj [resource] (find-sesame-datatype :xmlliteral))
   (literal-lexical-form [resource] (.stringValue res))
   (find-datatype [resource literal] (find-sesame-datatype literal))
-  (toString [resource] (to-string resource)))
+  (toString [resource] (to-string resource))
+  (hashCode [resource] (.hashCode (resource-id resource)))
+  (equals [resource other-resource] (= (resource-id resource) (resource-id other-resource))))
 
 (deftype SesameTypedLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
@@ -184,7 +190,9 @@
   (literal-datatype-obj [resource] (find-sesame-datatype (str (.getDatatype res))))
   (literal-lexical-form [resource] (str (literal-value resource)))
   (find-datatype [resource literal] (find-sesame-datatype literal))
-  (toString [resource] (str res)))
+  (toString [resource] (str res))
+  (hashCode [resource] (.hashCode (resource-id resource)))
+  (equals [resource other-resource] (= (resource-id resource) (resource-id other-resource))))
 
 (deftype SesameProperty [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
@@ -201,7 +209,9 @@
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-lexical-form [resource] (str res))
-  (toString [resource] (str res)))
+  (toString [resource] (str res))
+  (hashCode [resource] (.hashCode (resource-id resource)))
+  (equals [resource other-resource] (= (resource-id resource) (resource-id other-resource))))
 
 
 (deftype SesameModel [mod] RDFModel RDFDatatypeMapper JavaObjectWrapper RDFPrintable

@@ -286,15 +286,31 @@
 
 (defn pattern-apply
   "Applies a pattern to a set of triples"
-  ([triples pattern]
-     (let [checked-pattern (if (:pattern (meta pattern)) pattern (make-pattern pattern))
-           vars (pattern-collect-vars pattern)
-           query (defquery
-                   (query-set-pattern checked-pattern)
-                   (query-set-type :select)
-                   (query-set-vars vars))]
-       (model-query-triples (defmodel (model-add-triples triples))
-                            query))))
+  ([triples pattern-or-vector & filters-pre]
+     (let [pattern-pre (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
+           vars-pre (pattern-collect-vars pattern-pre)
+           vars (if-not (empty? vars-pre) vars-pre [:p])
+           [pattern filters] (if-not (empty? vars-pre)
+                               [pattern-pre filters-pre]
+                               (let [s (nth (first pattern-pre) 0)
+                                     p (nth (first pattern-pre) 1)
+                                     o (nth (first pattern-pre) 2)]
+                                 [(cons [s ?p o] (rest pattern-pre))
+                                  (cons (f :sameTerm  ?p p) filters-pre)]))
+           query (if (empty? filters)
+                   (defquery
+                     (query-set-pattern pattern)
+                     (query-set-type :select)
+                     (query-set-vars vars)
+                     (query-set-distinct))
+                   (defquery
+                     (query-set-pattern pattern)
+                     (query-set-type :select)
+                     (query-set-vars vars)
+                     (query-set-distinct)
+                     (query-set-filters filters)))]
+       (distinct (model-query-triples (defmodel (model-add-triples triples))
+                                      query)))))
 
 (defn query-to-string
   "Returns the string representation of a query"
@@ -318,11 +334,78 @@
                    (defquery
                      (query-set-pattern pattern)
                      (query-set-type :select)
-                     (query-set-vars vars))
+                     (query-set-vars vars)
+                     (query-set-distinct))
                    (defquery
                      (query-set-pattern pattern)
                      (query-set-type :select)
                      (query-set-vars vars)
+                     (query-set-distinct)
                      (query-set-filters filters)))]
-       (model-query-triples model
-                            query))))
+       (distinct (model-query-triples model
+                                      query)))))
+
+(defn- subject-vars
+  ([pattern]
+     (reduce (fn [ac [s p o]] (if (is-var-expr *sparql-framework* s) (conj ac s) ac)) [] pattern)))
+
+(defn- predicate-vars
+  ([pattern]
+     (reduce (fn [ac [s p o]] (if (is-var-expr *sparql-framework* p) (conj ac p) ac)) [] pattern)))
+
+(defn- object-vars
+  ([pattern]
+     (reduce (fn [ac [s p o]] (if (is-var-expr *sparql-framework* o) (conj ac o) ac)) [] pattern)))
+
+(defn not-empty-column-vars
+  ([pattern]
+     (let [sv (subject-vars pattern)]
+       (if (> 1 (count sv))
+         (let [pv (predicate-vars pattern)]
+           (if (> 1 (count pv))
+             (distinct (object-vars pattern))
+             (distinct pv)))
+         (distinct sv)))))
+
+
+(defn make-cw-filters
+  "Creates a list of filters to ensure all variables are considered distinct in a pattern"
+  ([pattern]
+     (let [vars (not-empty-column-vars pattern)]
+       (if (> (count vars) 1)
+         (loop [acum []
+                vars vars]
+           (if (> (count vars) 1)
+             (recur (conj acum (f :!= (first vars) (second vars)))
+                    (rest vars))
+             acum))
+         '()))))
+
+(defn model-pattern-apply-cws
+  "Applies a pattern to a Model using close world semantics (all variables are considered to be distinct"
+  ([model pattern-or-vector & filters-pre]
+     (let [pattern-pre (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
+           vars-pre (pattern-collect-vars pattern-pre)
+           vars (if-not (empty? vars-pre) vars-pre [:p])
+           [pattern filters-pre] (if-not (empty? vars-pre)
+                                   [pattern-pre filters-pre]
+                                   (let [s (nth (first pattern-pre) 0)
+                                         p (nth (first pattern-pre) 1)
+                                         o (nth (first pattern-pre) 2)]
+                                     [(cons [s ?p o] (rest pattern-pre))
+                                      (cons (f :sameTerm  ?p p) filters-pre)]))
+           filters (concat filters-pre (make-cw-filters pattern))
+           query (if (empty? filters)
+                   (defquery
+                     (query-set-pattern pattern)
+                     (query-set-type :select)
+                     (query-set-vars vars)
+                     (query-set-distinct))
+                   (defquery
+                     (query-set-pattern pattern)
+                     (query-set-type :select)
+                     (query-set-vars vars)
+                     (query-set-distinct)
+                     (query-set-filters filters)))]
+       (distinct (model-query-triples model
+                                      query)))))

@@ -42,7 +42,7 @@
   ([model query query-string]
 ;     (let [query (if (string? query-or-string) (sparql-to-query query-or-string) query-or-string)
 ;           query-string (if (string? query-or-string) query-or-string (str (build-query *sparql-framework* query)))]
-     ;(println (str "QUERYING JENA WITH: " query-string))
+     (println (str "QUERYING JENA WITH: " query-string))
      (model-critical-read model
                           (let [qexec (QueryExecutionFactory/create query-string (to-java model))
                                         ;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
@@ -75,7 +75,9 @@
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a resource")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a resource")))
   (literal-lexical-form [resource] (resource-id resource))
-  (toString [resource] (.getURI res)))
+  (toString [resource] (.getURI res))
+  (hashCode [resource] (.hashCode (resource-id resource)))
+  (equals [resource other-resource] (= (resource-id resource) (resource-id other-resource))))
 
 
 (deftype JenaBlank [res] RDFResource RDFNode JavaObjectWrapper RDFPrintable
@@ -93,7 +95,9 @@
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a resource")))
   (literal-lexical-form [resource] (str "_:" (resource-id resource)))
-  (toString [resource] (to-string resource)))
+  (toString [resource] (to-string resource))
+  (hashCode [resource] (.hashCode (resource-id resource)))
+  (equals [resource other-resource] (= (resource-id resource) (resource-id other-resource))))
 
 
 (deftype JenaLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
@@ -115,7 +119,9 @@
   (literal-datatype-obj [resource] (find-jena-datatype :xmlliteral))
   (literal-lexical-form [resource] (.getLexicalForm res))
   (find-datatype [resource literal] (find-jena-datatype literal))
-  (toString [resource] (to-string resource)))
+  (toString [resource] (to-string resource))
+  (hashCode [resource] (.hashCode (resource-id resource)))
+  (equals [resource other-resource] (= (resource-id resource) (resource-id other-resource))))
 
 (deftype JenaTypedLiteral [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
@@ -133,7 +139,9 @@
   (literal-datatype-obj [resource] (find-jena-datatype (.getDatatypeURI res)))
   (literal-lexical-form [resource] (.getLexicalForm res))
   (find-datatype [resource literal] (find-jena-datatype literal))
-  (toString [resource] (to-string resource)))
+  (toString [resource] (to-string resource))
+  (hashCode [resource] (.hashCode (resource-id resource)))
+  (equals [resource other-resource] (= (resource-id resource) (resource-id other-resource))))
 
 (deftype JenaProperty [res] RDFResource RDFNode RDFDatatypeMapper JavaObjectWrapper RDFPrintable
   (to-java [resource] res)
@@ -150,7 +158,9 @@
   (literal-datatype-uri [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-datatype-obj [resource] (throw (Exception. "Cannot retrieve datatype-uri for a blank node")))
   (literal-lexical-form [resource] (to-string res))
-  (toString [resource] (str res)))
+  (toString [resource] (str res))
+  (hashCode [resource] (.hashCode (resource-id resource)))
+  (equals [resource other-resource] (= (resource-id resource) (resource-id other-resource))))
 
 
 (deftype JenaModel [mod] RDFModel RDFDatatypeMapper JavaObjectWrapper RDFPrintable

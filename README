@@ -1,15 +1,11 @@
 # plaza
 
-FIXME: write description
+A Clojure library for working with RDF graphs, triple spaces and RESTful semantic web services
 
-## Usage
+## Usage and installation
 
-FIXME: write
-
-## Installation
-
-FIXME: write
+@see http://antoniogarrote.github.com/clj-plaza/
 
 ## License
 
-FIXME: write
+LGPL

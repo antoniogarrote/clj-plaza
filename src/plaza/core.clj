@@ -22,8 +22,13 @@
     "start-triple-space" (apply start-triple-space args)
     :else    (println (str "unknown command" command))))
 
+(defn show-help []
+  (println "plaza-standalone syntax: java -jar plaza-standalone.jar COMMAND [ARGS]")
+  (println "COMMAND: start-triple-space name port [:username rabbit-username :password rabbit-password :host rabbit-host :port rabbit-port :virtual-host rabbit-vh]"))
 
 (defn -main
   [& args]
-  (println (str "hello from clojure, args:" args)
-           (apply process-command args)))
+  (println (str "hello from Plaza, ARGS:" args))
+  (if (empty? args)
+    (show-help)
+    (apply process-command args)))

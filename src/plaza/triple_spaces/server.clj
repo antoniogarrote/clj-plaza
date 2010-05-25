@@ -86,9 +86,17 @@ will display a parse error in the :clj handler as well"
 
 
 (defn send-rd-operation
-  ([channel client-id pattern-or-vector filters]
-     (let [pattern (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
-           vars (pattern-collect-vars pattern)
+  ([channel client-id pattern-or-vector filters-pre]
+     (let [pattern-pre (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
+           vars-pre (pattern-collect-vars pattern-pre)
+           vars (if-not (empty? vars-pre) vars-pre [:p])
+           [pattern filters] (if-not (empty? vars-pre)
+                               [pattern-pre filters-pre]
+                               (let [s (nth (first pattern-pre) 0)
+                                     p (nth (first pattern-pre) 1)
+                                     o (nth (first pattern-pre) 2)]
+                                 [(cons [s ?p o] (rest pattern-pre))
+                                  (cons (f :sameTerm  ?p p) filters-pre)]))
            query (if (empty? filters)
                    (defquery
                      (query-set-pattern pattern)

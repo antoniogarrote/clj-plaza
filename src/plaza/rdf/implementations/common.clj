@@ -39,7 +39,8 @@
         (= "int" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDint
         (= "integer" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDinteger
         (= "long" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDlong
-        (= "string" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDstring))))
+        (= "string" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDstring
+        :else (throw (Exception. (str "Tyring to parse unknown/not supported datatype " lit)))))))
 
 (defn is-filter-expr
   "Tests if one Jena expression is a filter expression"
@@ -135,7 +136,9 @@
       (= (class expr) com.hp.hpl.jena.sparql.expr.E_Subtract) (parse-filter-expr-2 expr "-")
       (= (class expr) com.hp.hpl.jena.sparql.expr.E_Add) (parse-filter-expr-2 expr "+")
       (= (class expr) com.hp.hpl.jena.sparql.expr.E_Multiply) (parse-filter-expr-2 expr "*")
-      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Divide) (parse-filter-expr-2 expr "div"))))
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_Divide) (parse-filter-expr-2 expr "div")
+      (= (class expr) com.hp.hpl.jena.sparql.expr.E_SameTerm) (parse-filter-expr-2 expr "sameTerm")
+      :else (throw (Exception. (str "Trying to parse unknown/not supported filter: " expr))))))
 
 (defn sparql-to-pattern-filters
   "Parses a SPARQL query and transform it into a pattern and some filters"

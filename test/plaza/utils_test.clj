@@ -14,3 +14,8 @@
   (let [to-flatten (with-meta [:a [[:s :p :o] [:s :p :o]] :c [[:s :p :o]] :d] {:flatten true})
         flattened (flatten-1 to-flatten)]
     (is (= (meta to-flatten) (meta flattened)))))
+
+(deftest test-cmd-param-to-keywords
+  (is (= "hola" (cmd-param-to-keyword "hola")))
+  (is (= :hola (cmd-param-to-keyword :hola)))
+  (is (= :hola (cmd-param-to-keyword "-hola"))))

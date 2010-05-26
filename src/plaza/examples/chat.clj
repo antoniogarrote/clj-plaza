@@ -85,7 +85,7 @@
           #(let [author (literal-value (o (first (filter (tc (predicate? (uri? nick))) (first %1)))))]
              (println (str "*** agent user-logout - got triples: " %1))
              (send set-userlist-text (fn [ta] (let [old-text (clojure.contrib.str-utils2/split-lines (.getText ta))
-                                                    new-text (reduce (fn [ac nick] (if (= nick author) ac (str ac nick "\r\n"))) "" old-text)]
+                                                    new-text (reduce (fn [ac some-nick]  (if (not (= (.indexOf some-nick author) -1)) ac (str ac some-nick "\r\n"))) "" old-text)]
                                                 (.setText ta new-text) ta))))))
 
 ;; GUI
@@ -131,7 +131,6 @@
       (.setLayout (BorderLayout. 0 1))
       (.add chatArea BorderLayout/CENTER)
       (.add bottomPanel BorderLayout/PAGE_END)
-                                        ;     (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
       (.setResizable false)
       (.setSize 417 318)
       (.setVisible true))
@@ -148,11 +147,15 @@
       (.setSize 200 250)
       (.setVisible true))))
 
-(defn start-app [user-nick]
+(defonce *default-args* {:ts-host "localhost" :ts-port "7555" :host "localhost" :port "5672" :username "guest" :password "guest"})
+
+(defn start-app [user-nick orig-args]
   ;; setup the app
   (send set-chat-text #(do (.setText %1 "") %1))
   (dosync (ref-set *login* user-nick))
-  (start-connection "localhost" 7555 "localhost" 5672 "guest" "guest")
+  (let [final-args (check-default-values orig-args *default-args*)]
+
+    (start-connection (:ts-host final-args) (Integer/parseInt (:ts-port final-args)) (:host final-args) (Integer/parseInt (:port final-args)) (:username final-args) (:password final-args)))
 
   ;; we insert our user in the triplespace and load the initial list of users
   (out (ts :chat) [[(str "http://plaza.org/examples/chat/users/" @*login*) rdf:type user]

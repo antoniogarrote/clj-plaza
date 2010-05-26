@@ -102,3 +102,15 @@
 (defn thread-id
   "Returns the ID of the current thread"
   ([] (.getId (Thread/currentThread))))
+
+
+(defn cmd-param-to-keyword
+  "Transforms a command line argument (-something) into a keyword (:something)"
+  ([atom]
+     (if (keyword? atom)
+       atom
+       (if (.startsWith atom "-") (keyword (.substring atom 1)) atom))))
+
+(defn check-default-values
+  "Adds missing values from the default-rabbit-parameters map"
+  ([opts orig] (merge-with #(if (nil? %2) %1 %2) orig opts)))

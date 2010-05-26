@@ -3,7 +3,8 @@
 ;; @date 22.05.2010
 
 (ns plaza.triple-spaces.server.rabbit
-  (:use [clojure.contrib.logging :only [log]])
+  (:use [clojure.contrib.logging :only [log]]
+        [plaza utils])
   (:require [clojure.contrib.string :as string])
   (:import [java.util.concurrent LinkedBlockingQueue]
            [com.rabbitmq.client
@@ -27,16 +28,11 @@
   ([new-parameters]
      (alter-var-root #'*default-rabbit-parameters* (fn [_] new-parameters))))
 
-(defn check-default-values
-  "Adds missing values from the default-rabbit-parameters map"
-  ([opts] (merge-with #(if (nil? %2) %1 %2) *default-rabbit-parameters* opts))
-  ([opts orig] (merge-with #(if (nil? %2) %1 %2) orig opts)))
-
 (defn connect
   "Connects to a RabbitMQ server.
    Args: :username :password :host :port :virtual-host"
   ([& args]
-     (let [{:keys [username password virtual-host port host]} (check-default-values (apply array-map args))
+     (let [{:keys [username password virtual-host port host]} (check-default-values (apply array-map args) *default-rabbit-parameters*)
            #^ConnectionParameters params (doto (new ConnectionParameters)
                                            (.setUsername username)
                                            (.setPassword password)

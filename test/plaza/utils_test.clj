@@ -19,3 +19,8 @@
   (is (= "hola" (cmd-param-to-keyword "hola")))
   (is (= :hola (cmd-param-to-keyword :hola)))
   (is (= :hola (cmd-param-to-keyword "-hola"))))
+
+(deftest test-check-default-values
+  (let [optsp (check-default-values {:password "foo"} {:password "bar" :username "guest"})]
+    (is (= "foo" (:password optsp)))
+    (is (= "guest" (:username optsp)))))

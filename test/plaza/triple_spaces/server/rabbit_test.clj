@@ -5,11 +5,6 @@
 (deftest test-default-rabbit-parameters
   (is (= "guest" (:username *default-rabbit-parameters*))))
 
-(deftest test-check-default-values
-  (let [optsp (check-default-values {:password "foo"})]
-    (is (= "foo" (:password optsp)))
-    (is (= "guest" (:username optsp)))))
-
 (deftest test-connect
   (let [rabbit (connect)]
     (is (instance? com.rabbitmq.client.impl.AMQConnection (:connection rabbit)))

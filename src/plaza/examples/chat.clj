@@ -32,10 +32,11 @@
 (defn- update-users
   "Updates the list of connected users"
   ([triples]
-     (let [author (literal-value (o (first (filter (tc (predicate? (uri? nick))) (first triples)))))]
-       (println (str "*** agent user-login - got triples: " triples))
-       (send set-userlist-text (fn [ta] (let [old-text (.getText ta)]
-                                          (.setText ta (str old-text "\r\n " author)) ta))))))
+     (doseq [ts triples]
+       (let [author (literal-value (o (first (filter (tc (predicate? (uri? nick))) ts))))]
+         (println (str "*** agent user-login - got triples: " author))
+         (send set-userlist-text (fn [ta] (let [old-text (.getText ta)]
+                                            (.setText ta (str old-text "\r\n " author)) ta)))))))
 
 
 ;; Local triple spaces

@@ -50,7 +50,7 @@
   (create-typed-literal [model lit] [model lit type] "Creates a new RDF typed literal")
   (critical-write [model f] "Applies a function within a write lock")
   (critical-read [model f] "Applies a function within a read lock")
-  (add-triples [model triples] "Add some triples to the model")
+  (add-triples [model triples] [model triples graph] "Add some triples to the model")
   (remove-triples [model triples] "Remove triples from the model")
   (walk-triples [model f] "iterates through the triples of the model")
   (load-stream [model stream format] "Load triples from a stream")
@@ -510,6 +510,19 @@
            (= (.toLowerCase (keyword-to-string format)) "trig") "TRIG"
            (= (.toLowerCase (keyword-to-string format)) "trix") "TRIX"
            true "RDF/XML")))
+
+(defn valid-format
+  ([format]
+     (cond (= (.toLowerCase (keyword-to-string format)) "xml") true
+           (= (.toLowerCase (keyword-to-string format)) "ntriple") true
+           (= (.toLowerCase (keyword-to-string format)) "n3") true
+           (= (.toLowerCase (keyword-to-string format)) "ttl") true
+           (= (.toLowerCase (keyword-to-string format)) "turtle") true
+           (= (.toLowerCase (keyword-to-string format)) "xhtml") true
+           (= (.toLowerCase (keyword-to-string format)) "html") true
+           (= (.toLowerCase (keyword-to-string format)) "trig") true
+           (= (.toLowerCase (keyword-to-string format)) "trix") true
+           true false)))
 
 
 (defn optional

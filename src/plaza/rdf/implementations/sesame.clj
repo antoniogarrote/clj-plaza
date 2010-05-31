@@ -251,16 +251,14 @@
                                (catch RepositoryException e (.rollback connection))
                                (finally (.close connection)))))
   (critical-read [model f] (critical-write model f)) ;; is reading thread-safe in Sesame?
-  (add-triples [model triples] (let [connection (.getConnection mod)]
+  (add-triples [model triples] (let [connection (.getConnection mod)
+                                     graph (let [g (org.openrdf.model.impl.GraphImpl.)]
+                                             (doseq [[ms mp mo] triples] (.add g (to-java ms) (to-java mp) (to-java mo) (into-array org.openrdf.model.Resource []))) g)]
                                  (try
                                   (do
                                     (.setAutoCommit connection false)
-                                    (loop [acum triples]
-                                      (when (not (empty? acum))
-                                        (let [[ms mp mo] (first acum)]
-                                          (.add connection (to-java ms) (to-java mp) (to-java mo) (into-array org.openrdf.model.Resource []))
-                                          (recur (rest acum)))))
-                                    (.commit connection))
+                                    (.add connection graph (into-array org.openrdf.model.Resource []))
+                                     (.commit connection))
                                   (catch RepositoryException e (.rollback connection))
                                   (finally (.close connection)))
                                  model))

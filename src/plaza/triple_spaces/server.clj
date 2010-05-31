@@ -17,7 +17,7 @@
 (init-jena-framework)
 
 
-                                        ; handlers
+; handlers
 
 (defhandler #^{:doc
                "The MessageParser handler for parsing incoming messages"}

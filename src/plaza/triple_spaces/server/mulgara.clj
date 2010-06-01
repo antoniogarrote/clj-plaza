@@ -9,7 +9,7 @@
         [clojure.contrib.logging :only [log]]
         (plaza.triple-spaces core)
         (plaza.rdf core sparql)
-        (plaza.rdf.implementations sesame))
+        (plaza.rdf.implementations jena))
   (:import [java.util UUID]
            [java.net URL]))
 

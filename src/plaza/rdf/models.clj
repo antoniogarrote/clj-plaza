@@ -43,7 +43,6 @@
   (to-map [this triples-or-vector] (let [triples (if (:triples (meta triples-or-vector)) triples-or-vector (make-triples triples-or-vector))]
                                      (reduce (fn [ac it] (let [prop (str (resource-id (it properties)))
                                                                val (find-property prop triples)]
-                                                           (println (str "found: " val " for prop " prop))
                                                            (if (nil? val) ac (assoc ac it (nth val 2)))))
                                              {}
                                              (keys properties)))))

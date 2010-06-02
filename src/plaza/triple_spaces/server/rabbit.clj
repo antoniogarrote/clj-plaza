@@ -32,7 +32,8 @@
   "Connects to a RabbitMQ server.
    Args: :username :password :host :port :virtual-host"
   ([& args]
-     (let [{:keys [username password virtual-host port host]} (check-default-values (apply array-map args) *default-rabbit-parameters*)
+     (let [args-map (if (map? (first args)) (first args) (apply hash-map args))
+           {:keys [username password virtual-host port host]} (check-default-values args-map *default-rabbit-parameters*)
            #^ConnectionParameters params (doto (new ConnectionParameters)
                                            (.setUsername username)
                                            (.setPassword password)

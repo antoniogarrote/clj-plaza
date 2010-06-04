@@ -95,6 +95,7 @@
                                                                        (output-string m w :xml)
                                                                        (.write w "<ts:tokensep/>") w))
                                                           w triples-to-remove)]
+                                      (.write w "</ts:response>")
                                       (deliver-notify rabbit-conn name "in" (.toString w)))
                                     ;; returning triple sets
                                     triples-to-remove)))))
@@ -104,29 +105,33 @@
   (inb [this pattern] (inb this pattern []))
 
   (inb [this pattern filters]
-       (model-critical-write model
-                             (let [query (gen-query pattern filters)
-                                   triples-to-remove (query-triples model query)]
-                               (if (empty? triples-to-remove)
-                                 ;; no triples? block and wait for response
-                                 (let [prom (promise)]
-                                   (log :info "storing remote state in queue for inb")
-                                   (plaza.triple-spaces.multi-remote-server.auxiliary/store-blocking-rd queue [(query-to-string query) :inb (:client-id options)])
-                                   (process-in-blocking-op name true rabbit-conn options prom)
-                                   @prom)
-                                 ;; triples? delete and notify
-                                 (let [flattened-triples (flatten-1 triples-to-remove)]
-                                   ;; deleting read triples
-                                   (with-model model (model-remove-triples flattened-triples))
-                                   ;; delivering notifications
-                                   (let [w (java.io.StringWriter.)
-                                         triples (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
-                                                                      (output-string m w :xml)
-                                                                      (.write w "<ts:tokensep/>") w))
-                                                         w triples-to-remove)]
-                                     (deliver-notify rabbit-conn name "in" (.toString w)))
-                                   ;; returning triple sets
-                                   triples-to-remove)))))
+       (let [query (gen-query pattern filters)
+             res-inb (model-critical-write model
+                                           (let [triples-to-remove (query-triples model query)]
+                                             (if (empty? triples-to-remove)
+                                               ;; no triples? block and wait for response
+                                               :should-block
+                                               ;; triples? delete and notify
+                                               (let [flattened-triples (flatten-1 triples-to-remove)]
+                                                 ;; deleting read triples
+                                                 (model-critical-write model (with-model model (model-remove-triples flattened-triples)))
+                                                 ;; delivering notifications
+                                                 (let [w (java.io.StringWriter.)
+                                                       triples (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
+                                                                                    (output-string m w :xml)
+                                                                                    (.write w "<ts:tokensep/>") w))
+                                                                       w triples-to-remove)]
+                                                   (.write w "</ts:response>")
+                                                   (deliver-notify rabbit-conn name "in" (.toString w)))
+                                                 ;; returning triple sets
+                                                 triples-to-remove))))]
+         (if (= :should-block res-inb)
+           (let [prom (promise)]
+             (log :info "storing remote state in queue for inb")
+             (plaza.triple-spaces.multi-remote-server.auxiliary/store-blocking-rd queue [(query-to-string query) :inb (:client-id options)])
+             (process-in-blocking-op name true rabbit-conn options prom)
+             @prom)
+           res-inb)))
 
 
   ;; out operation
@@ -155,8 +160,9 @@
                                                 respo (response
                                                        (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                             (output-string m w :xml)
-                                                                            (.write w "</ts:response>") w))
+                                                                            (.write w "<ts:tokensep/>") w))
                                                                w results))]
+                                            (.write w "</ts:response>")
                                             (log :info (str "*** queue to blocked client: \r\n" respo))
                                             (rabbit/publish rabbit-conn name (str "exchange-" name) client-id respo)
                                             (recur (rest queues)
@@ -166,8 +172,9 @@
                                  (let [w (java.io.StringWriter.)
                                        triples (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                     (output-string m w :xml)
-                                                                    (.write w "</ts:response>") w))
+                                                                    (.write w "<ts:tokensep/>") w))
                                                        w [triples])]
+                                   (.write w "</ts:response>")
                                    (deliver-notify rabbit-conn name "out" (.toString w)))
                                  triples))))
 
@@ -205,8 +212,9 @@
                                                      respo (response
                                                             (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                                  (output-string m w :xml)
-                                                                                 (.write w "</ts:response>") w))
+                                                                                 (.write w "<ts:tokensep/>") w))
                                                                     w results))]
+                                                 (.write w "</ts:response>")
                                                  (when (= kind-op :inb)
                                                    (with-model model (model-remove-triples (flatten-1 results))))
                                                  (rabbit/publish rabbit-conn name (str "exchange-" name) client-id respo)
@@ -231,25 +239,30 @@
 (defn make-distributed-triple-space
   "Creates a new distributed triple space"
   ([name model & options]
-     (let [uuid (.toString (UUID/randomUUID))
-           opt-map (-> (apply array-map options)
-                       (assoc :routing-key uuid)
-                       (assoc :queue (str "box-" uuid)))
-           rabbit-conn (rabbit/connect opt-map)]
+     (let [registry (ref {})]
+       (fn []
+         (let [id (plaza.utils/thread-id)
+               ts (get @registry id)]
+           (if (nil? ts)
+             (let [uuid (.toString (UUID/randomUUID))
+                   opt-map (-> (apply array-map options)
+                               (assoc :routing-key uuid)
+                               (assoc :queue (str "box-" uuid)))
+                   rabbit-conn (rabbit/connect opt-map)]
 
-           ;; Creating a channel and declaring exchanges
-           (rabbit/make-channel rabbit-conn name)
-           (rabbit/declare-exchange rabbit-conn name (str "exchange-" name))
-           (rabbit/declare-exchange rabbit-conn name (str "exchange-out-" name))
-           (rabbit/declare-exchange rabbit-conn name (str "exchange-in-" name))
+               ;; Creating a channel and declaring exchanges
+               (rabbit/make-channel rabbit-conn name)
+               (rabbit/declare-exchange rabbit-conn name (str "exchange-" name))
+               (rabbit/declare-exchange rabbit-conn name (str "exchange-out-" name))
+               (rabbit/declare-exchange rabbit-conn name (str "exchange-in-" name))
 
-           ;; Creating queues and bindings
-           (rabbit/make-queue rabbit-conn name (str "queue-client-" uuid) (str "exchange-" name) uuid)
+               ;; Creating queues and bindings
+               (rabbit/make-queue rabbit-conn name (str "queue-client-" uuid) (str "exchange-" name) uuid)
 
-           ;; startint the server
-           (let [ts (plaza.triple-spaces.distributed-server.DistributedTripleSpace. name
-                                                                           model
-                                                                           (build-redis-connection-hash opt-map)
-                                                                           rabbit-conn
-                                                                           (assoc opt-map :client-id uuid))]
-             (fn [] ts)))))
+               ;; startint the server
+               (plaza.triple-spaces.distributed-server.DistributedTripleSpace. name
+                                                                               model
+                                                                               (build-redis-connection-hash opt-map)
+                                                                               rabbit-conn
+                                                                               (assoc opt-map :client-id uuid)))
+             ts))))))

@@ -316,7 +316,7 @@ will display a parse error in the :clj handler as well"
                ;; Creating queues and bindings
                (rabbit/make-queue rabbit-conn name (str "queue-client-" uuid) (str "exchange-" name) uuid)
 
-               ;; startint the server
+               ;; starting the server
                (let [tsp (plaza.triple-spaces.server.RemoteTripleSpace. name
                                                                         (start-triple-server-client (:ts-host opt-map) (:ts-port opt-map))
                                                                         rabbit-conn

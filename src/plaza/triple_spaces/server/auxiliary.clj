@@ -111,7 +111,7 @@
          (response
           (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                (output-string m w :xml)
-                               (.write w "</ts:response>") w))
+                               (.write w "<ts:tokensep/>") w))
                   w results))))))
 
 ;(when (= kind-op :inb)
@@ -139,7 +139,7 @@
                                           respo (response
                                                  (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                       (output-string m w :xml)
-                                                                      (.write w "</ts:response>") w))
+                                                                      (.write w "<ts:tokensep/>") w))
                                                          w results))]
                                       (log :info (str "*** queue to blocked client: \r\n" respo))
                                       (rabbit/publish rabbit-conn name (str "exchange-" name) client-id respo)
@@ -160,7 +160,7 @@
                              ;; returning triple sets
                              (let [triples (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                 (output-string m w :xml)
-                                                                (.write w "</ts:response>") w))
+                                                                (.write w "<ts:tokensep/>") w))
                                                    w triples-to-remove)]
                                (response triples))))))
 
@@ -180,7 +180,7 @@
                                  ;; returning triple sets
                                  (let [triples (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                     (output-string m w :xml)
-                                                                    (.write w "</ts:response>") w))
+                                                                    (.write w "<ts:tokensep/>") w))
                                                        w triples-to-remove)]
                                    (response triples))))))))
 
@@ -212,7 +212,7 @@
                                               respo (response
                                                      (reduce (fn [w ts] (let [m (defmodel (model-add-triples ts))]
                                                                           (output-string m w :xml)
-                                                                          (.write w "</ts:response>") w))
+                                                                          (.write w "<ts:tokensep/>") w))
                                                              w results))]
                                           (when (= kind-op :inb)
                                             (with-model model (model-remove-triples (flatten-1 results))))

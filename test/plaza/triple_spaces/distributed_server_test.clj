@@ -150,7 +150,7 @@
       (clean-ts (ts :ts))
       (let [prom (promise)]
         (.start (Thread. (fn [] (let [res (inb (ts :ts) [[?s ?p ?o]])]  (deliver prom [res (ts :ts)])))))
-        (breathe)
+;        (breathe)
         (out (ts :ts) [[:a :b :c]])
         (let [[res tsp] @prom]
           (is (= (resource-id (first (ffirst res))) "http://plaza.org/ontologies/a"))

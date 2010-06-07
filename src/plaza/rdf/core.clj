@@ -426,7 +426,9 @@
   ([format]
      (output-string *rdf-model* format))
   ([model format]
-     (output-string model format)))
+     (output-string model format))
+  ([model writer format]
+     (output-string model writer format)))
 
 
 (defn triples-to-format

@@ -16,7 +16,7 @@
 
 ;; Loading RDFa java
 
-                                        ;(Class/forName "net.rootdev.javardfa.RDFaReader")
+;(Class/forName "net.rootdev.javardfa.RDFaReader")
 
 ;; declaration of symbols
 (declare parse-sesame-object)
@@ -314,8 +314,8 @@
                      connection (.getConnection mod)]
                  (try
                   (if (string? stream)
-                    (.add connection (plaza.utils/grab-document-url stream) stream format)
-                    (.add connection stream *rdf-ns* format))
+                    (.add connection (plaza.utils/grab-document-url stream) stream format (into-array org.openrdf.model.Resource []))
+                    (.add connection stream *rdf-ns* format (into-array org.openrdf.model.Resource [])))
                   (finally (.close connection)))
                  model))
   (output-string  [model writer format]

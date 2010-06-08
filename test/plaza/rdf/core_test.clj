@@ -1,6 +1,6 @@
 (ns plaza.rdf.core-test
   (:use [plaza.rdf core] :reload-all)
-  (:use [plaza.rdf.implementations jena] :reload-all)
+  (:use [plaza.rdf.implementations jena common] :reload-all)
   (:use [clojure.test]))
 
 ;; rdf/xml used in the tests
@@ -232,3 +232,10 @@
 
 (deftest test-has-meta
   (is (:triples (meta (make-triples [[:a :b :c]])))))
+
+(deftest test-suppored-datatype
+  (is (supported-datatype? :int))
+  (is (not (supported-datatype? :foo))))
+
+(deftest datatype-uri-test
+  (is (= "http://www.w3.org/2001/XMLSchema#double" (datatype-uri :double))))

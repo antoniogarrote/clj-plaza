@@ -28,6 +28,7 @@
                    literal))]
        (cond
         (= "xmlliteral" (.toLowerCase (keyword-to-string lit))) XMLLiteralType/theXMLLiteralType
+        (= "literal" (.toLowerCase (keyword-to-string lit))) XMLLiteralType/theXMLLiteralType
         (= "anyuri" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDanyURI
         (= "boolean" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDboolean
         (= "byte" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDbyte
@@ -41,6 +42,23 @@
         (= "long" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDlong
         (= "string" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDstring
         :else (throw (Exception. (str "Tyring to parse unknown/not supported datatype " lit)))))))
+
+
+(defn supported-datatype?
+  "Returns true if the datatype sym is supported"
+  ([sym]
+     (try (do (find-jena-datatype sym) true)
+          (catch Exception ex false))))
+
+(defn datatype-uri
+  "Returns the URI for a datatype symbol like :int :decimal or :anyuri"
+  ([sym]
+     (.getURI (find-jena-datatype sym))))
+
+(defn parse-dataype-string
+  "Parses a string containing a datatype of type sym"
+  ([sym data]
+     (.parse (find-jena-datatype sym) data)))
 
 (defn is-filter-expr
   "Tests if one Jena expression is a filter expression"

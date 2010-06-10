@@ -93,7 +93,7 @@
       true atom)))
 
 
-(defn- parse-literal-lexical
+(defn parse-literal-lexical
   ([lit]
      (let [parts-a (.split lit "\\^\\^")
            val-a (aget parts-a 0)

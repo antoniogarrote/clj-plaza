@@ -1,131 +1,116 @@
+;; @author Antonio Garrote
+;; @email antoniogarrote@gmail.com
+;; @date 07.06.2010
+
 (ns plaza.examples.webapp
-  (:use compojure.core
+  (:use plaza.rest.core
+        plaza.rdf.implementations.jena
+        compojure.core
         compojure.response
         ring.adapter.jetty
+        [plaza.utils]
+        [plaza.rdf.core]
+        [plaza.rdf.schemas]
+        [plaza.triple-spaces.server.mulgara]
+        [plaza.triple-spaces.core]
+        [plaza.rdf.implementations.jena]
+        [plaza.triple-spaces.distributed-server]
         [clojure.contrib.logging :only [log]])
   (:require [compojure.route :as route]))
 
-(use 'plaza.utils)
-(use 'plaza.rdf.core)
-(use 'plaza.rdf.models)
-(use 'plaza.rdf.sparql)
-(use 'plaza.rdf.predicates)
-(use 'plaza.rdf.implementations.jena)
-(use 'plaza.triple-spaces.core)
-(use 'plaza.triple-spaces.distributed-server)
-
+;; we will use jena
 (init-jena-framework)
 
-(defn resource-argument-map [& mapping]
-  (let [args (partition 3 mapping)]
-    (reduce (fn [acum [k uri f]] (assoc acum k {:uri (if (seq? uri) (apply rdf-resource uri) (rdf-resource uri)) :mapper f})) {} args)))
-
-(defn model-argument-map [model & mapping]
-  (let [args (partition 2 mapping)]
-    (reduce (fn [acum [k f]] (assoc acum k {:uri (property-uri model k) :mapper f})) {} args)))
-
-(defn apply-resource-argument-map [params mapping]
-  (let [ks (keys mapping)]
-    (reduce (fn [acum k] (let [{uri :uri f :mapper} (k mapping)
-                               arg (get params (keyword-to-string k))]
-                           (if (nil? arg) acum (conj acum [uri (f arg)]))))
-            [] ks)))
-
-(defn random-uuid []
-  (.replace (str (java.util.UUID/randomUUID)) "-" ""))
-
-(defn random-resource-id [ns]
-  (str ns (random-uuid)))
-
-(defn build-triples-from-resource-map [uri mapping]
-  (let [resource-uri (if (seq? uri) (apply rdf-resource uri) (rdf-resource uri))]
-    (map #(cons resource-uri %1) mapping)))
-
-(defn build-query-from-resource-map [mapping resource-type]
-  (concat [[?s ?p ?o]
-           [?s rdf:type resource-type]]
-          (vec (map #(cons ?s %1) mapping))))
-
-(defn build-model-from-resource-map [uri map]
-  (defmodel (model-add-triples (build-triples-from-resource-map uri map))))
-
-(defn render-triples [triples format]
-  (let [m (defmodel (model-add-triples triples))
-        w (java.io.StringWriter.)]
-    (output-string m w format)
-    (.toString w)))
 
 (defonce *mulgara* (build-model :mulgara :rmi "rmi://localhost/server1"))
+
+
 (def-ts :resource (make-distributed-triple-space "test" *mulgara* :redis-host "localhost" :redis-db "testdist" :redis-port 6379))
 
 
-(defn supported-format [format]
-  (condp = format
-    "application/xml" :xml
-    "text/rdf+n3" :n3
-    "application/x-turtle" :turtle
-    "*/*" :xml
-    nil))
+(use 'plaza.rdf.vocabularies.foaf)
 
-(defn parse-accept-header [accept-str]
-  (if (nil? accept-str)
-    "application/xml"
-    (let [formats-str (aget (.split accept-str ";") 0)
-          formats (seq (.split formats-str ","))
-          supported (map supported-format formats)
-          selected (first (filter #(not (nil? %1)) supported))]
-      (if (nil? selected) :xml selected))))
-
-(defn mime-to-format [request]
-  (let [format (let [fmt (get (:params request) "format")]
-                 (if (nil? fmt)
-                   (keyword-to-string (parse-accept-header (get (:headers request) "accept")))
-                   fmt)) ]
-    (condp = format
-      "xml" :xml
-      "application/xml" :xml
-      "rdf" :xml
-      "n3" :n3
-      "text/rdf+n3" :n3
-      "ttl" :ttl
-      "application/x-turtle" :turtle
-      "turtle" :turtle
-      :xml)))
-
-(defn format-to-mime [request]
-  (let [format (let [fmt (get (:params request) "format")]
-                 (if (nil? fmt)
-                   (keyword-to-string (parse-accept-header (get (:headers request) "accept")))
-                   fmt)) ]
-    (condp = format
-      "xml" "application/xml"
-      "rdf" "application/xml"
-      "n3" "text/rdf+n3"
-      "ttl" "application/x-turtle"
-      "turtle" "application/x-turtle"
-      "application/xml")))
-
-(defn default-uuid-gen [prefix local request]
-  (random-resource-id (str prefix local)))
-
-(defmacro log-request [kind prefix local request & body]
-  `(let [pre# (System/currentTimeMillis)]
-     (log :info (str ~kind " (" ~prefix ~local "): \r\n" ~request "\r\n"))
-     (let [result# (do ~@body)
-           post# (System/currentTimeMillis)]
-       (log :info (str "FINISHED (" (:status result#) "): " (- post# pre#) " millisecs "))
-       result#)))
-
+(defn default-id-match
+  "Matches a resource using the requested URI"
+  ([request environment]
+     (let [pattern (str (:resource-qname-prefix environment) (:resource-qname-local environment))]
+       (clojure.contrib.str-utils2/replace pattern ":id" (get (:params request) "id")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Resource functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def *resource* (make-rdfs-model "http://test.com/Person"
-                                 :name   {:uri "http://test.com/name" :range :string}
-                                 :age    {:uri "http://test.com/age"  :range :int}))
+(defn make-environment-map [resource-or-symbol path ts opts]
+  (let [resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
+        resource-type (type-uri resource)
+        resource-map (model-to-argument-map resource)
+        id-gen (if (nil? (:id-gen-fn opts)) default-uuid-gen (:id-gen-fn opts))
+        resource-qname-prefix (:resouce-qname-prefix opts)
+        resource-qname-local path
+        resource-ts ts]
+    { :resource-map resource-map :resource-type resource-type :resource-qname-prefix resource-qname-prefix
+     :resource-qname-local resource-qname-local :id-gen-function id-gen :resource-ts resource-ts :resource resource
+     :path (str path "*") :path-re (re-pattern (str "(\\..*)?$"))}))
+
+(defn make-single-resource-environment-map [resource-or-symbol path ts opts]
+  (let [pre-map (make-environment-map resource-or-symbol path ts opts) resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
+        id-match (if (nil? (:id-match-fn opts)) default-id-match (:id-match-fn opts))]
+    (assoc pre-map :id-match-function id-match)))
+
+(defn build-default-qname-prefix
+  "Returns the domain of a RING request"
+  ([request]
+     (let [scheme (:scheme request)
+           host (:server-name request)]
+       (str (keyword-to-string scheme) "://" host))))
+
+(defmacro spawn-rest-collection-resource! [resource path ts & opts]
+  (let [opts (apply hash-map opts)]
+    `(let [env-pre# (make-environment-map ~resource ~path ~ts ~opts)]
+       (ANY  (:path env-pre#) request-pre# (wrap-request (str (.toUpperCase (keyword-to-string (:request-method request-pre#))) " collection")
+                                                         (:resource-qname-prefix env-pre#)
+                                                         (:resource-qname-local env-pre#)
+                                                         request-pre#
+                                                         (let [env# (if (nil? (:resource-qname-prefix env-pre#))
+                                                                      (assoc env-pre# :resource-qname-prefix (build-default-qname-prefix request-pre#))
+                                                                      env-pre#)
+                                                               old-params# (:params request-pre#)
+                                                               format# (let [fmt# (match-route-extension (:path-re env#) (:uri request-pre#))]
+                                                                         (if (nil? fmt#) nil (clojure.contrib.str-utils2/lower-case fmt#)))
+                                                               params# (assoc old-params# "format" format#)
+                                                               request# (assoc request-pre# :params params#)]
+                                                           (cond
+                                                            (= (:request-method request#) :get) (handle-get-collection request# env#)
+                                                            (= (:request-method request#) :post) (handle-post-collection request# env#)
+                                                            (= (:request-method request#) :delete) (handle-delete-collection request# env#)
+                                                            :else (handle-method-not-allowed request# env#))))))))
+
+(defmacro spawn-rest-resource! [resource path ts & opts]
+  (let [opts (apply hash-map opts)]
+    `(let [env-pre# (make-single-resource-environment-map ~resource ~path ~ts ~opts)]
+       (ANY  (:path env-pre#) request-pre# (wrap-request (str (.toUpperCase (keyword-to-string (:request-method request-pre#))) " resource")
+                                                         (:resource-qname-prefix env-pre#)
+                                                         (:resource-qname-local env-pre#)
+                                                         request-pre#
+                                                         (let [env# (if (nil? (:resource-qname-prefix env-pre#))
+                                                                      (assoc env-pre# :resource-qname-prefix (build-default-qname-prefix request-pre#))
+                                                                      env-pre#)
+                                                               old-params# (:params request-pre#)
+                                                               format# (let [fmt# (match-route-extension (:path-re env#) (:uri request-pre#))]
+                                                                         (if (nil? fmt#) nil (clojure.contrib.str-utils2/lower-case fmt#)))
+                                                               params# (assoc old-params# "format" format#)
+                                                               request# (assoc request-pre# :params params#)
+                                                               id# ((:id-match-function env#) request# env#)]
+                                                           (cond
+                                                            (= (:request-method request#) :get) (handle-get id# request# env#)
+                                                            (= (:request-method request#) :put) (handle-put id# request# env#)
+                                                            (= (:request-method request#) :delete) (handle-delete id# request# env#)
+                                                            :else (handle-method-not-allowed request# env#))))))))
+
+(def *resource* (make-rdfs-schema "http://test.com/Person"
+                                  :name   {:uri "http://test.com/name" :range :string}
+                                  :age    {:uri "http://test.com/age"  :range :int}))
 
 
-(def *resource-map* (model-argument-map *resource* :name #(l %1)
-                                                   :age #(d (Integer/parseInt %1))))
+(def *resource-map* (model-to-argument-map *resource*))
 
 (def *resource-type* "http://test.com/Person")
 (def *resource-qname-prefix* "http://test.com/")
@@ -133,47 +118,99 @@
 (def *id-gen-function* default-uuid-gen)
 (def *resource-ts* :resource)
 
-(defn handle-get-collection [request]
-  (log-request "GET collection" *resource-qname-prefix* *resource-qname-local* request
-               (let [mapping (apply-resource-argument-map (:params request) *resource-map*)
-                     query (build-query-from-resource-map mapping *resource-type*)
-      ;               _test (doseq [t query] (println t))
-                     results (rd (ts *resource-ts*) query)
-                     triples (distinct (flatten-1 results))]
-                 {:body (render-triples triples (mime-to-format request))
-                  :headers {"Content-Type" (format-to-mime request)}
-                  :status 200})))
+;;; Handlers
 
-(defn handle-post-collection [request]
-  (log-request "POST collection" *resource-qname-prefix* *resource-qname-local* request
-               (let [mapping (apply-resource-argument-map (:params request) *resource-map*)
-                     resource-id (*id-gen-function* *resource-qname-prefix* *resource-qname-local* request)
-                     triples-pre  (build-triples-from-resource-map resource-id mapping)
-                     triples (conj triples-pre [resource-id rdf:type *resource-type*])]
-                 (out (ts *resource-ts*) triples)
-                 {:body (render-triples triples :xml)
-                  :headers {"Content-Type" "application/xml"}
-                  :status 201})))
+(def *resource-map* (model-to-argument-map *resource*))
 
-(defn handle-delete-collection [request]
-  (log-request "DELETE collection" *resource-qname-prefix* *resource-qname-local* request
-               (let [mapping (apply-resource-argument-map (:params request) *resource-map*)
-                     query (build-query-from-resource-map mapping *resource-type*)
-                     results (rd (ts *resource-ts*) query)
-                     triples (distinct (flatten-1 results))]
-                 {:body (render-triples triples (mime-to-format request))
-                  :headers {"Content-Type" (format-to-mime request)}
-                  :status 200})))
+(def *resource-type* "http://test.com/Person")
+(def *resource-qname-prefix* "http://test.com/")
+(def *resource-qname-local* "Person")
+(def *id-gen-function* default-uuid-gen)
+(def *resource-ts* :resource)
+
+;;; Handlers
+
+(defn handle-get [id request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        query (build-single-resource-query-from-resource-map mapping id)
+        results (rd (ts (:resource-ts environment)) query)
+        triples (distinct (flatten-1 results))]
+        (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples))
+        {:body (render-triples triples (mime-to-format request))
+         :headers {"Content-Type" (format-to-mime request)}
+         :status 200}))
+
+(defn handle-put [id request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        query (build-single-resource-all-triples-query id)
+        triples-pre  (build-triples-from-resource-map id mapping)
+        triples-to-update (conj triples-pre [id rdf:type (:resource-type environment)])
+        results (swap (ts (:resource-ts environment)) query triples-to-update)
+        triples (distinct (flatten-1 results))]
+    (log :info (str "PUT REQUEST -> mapping:" mapping " query:" query))
+    (log :info (str "QUERY"))
+    (doseq [t query] (log :info t))
+    (log :info (str "VALUES"))
+    (doseq [t triples-to-update] (log :info t))
+    {:body (render-triples triples (mime-to-format request))
+     :headers {"Content-Type" (format-to-mime request)}
+     :status 200}))
+
+(defn handle-delete [id request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        query (build-single-resource-query-from-resource-map mapping id)
+        results (in (ts (:resource-ts environment)) query)
+        triples (distinct (flatten-1 results))]
+        (log :info (str "DELETE REQUEST -> mapping:" mapping " triples:" triples))
+        {:body (render-triples triples (mime-to-format request))
+         :headers {"Content-Type" (format-to-mime request)}
+         :status 200}))
+
+
+(defn handle-get-collection [request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        query (build-query-from-resource-map mapping (:resource-type environment))
+        results (rd (ts (:resource-ts environment)) query)
+        triples (distinct (flatten-1 results))]
+    (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples))
+    {:body (render-triples triples (mime-to-format request))
+     :headers {"Content-Type" (format-to-mime request)}
+     :status 200}))
+
+(defn handle-post-collection [request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        resource-id ((:id-gen-function environment) (:resource-qname-prefix environment) (:resource-qname-local environment) request)
+        triples-pre  (build-triples-from-resource-map resource-id mapping)
+        triples (conj triples-pre [resource-id rdf:type (:resource-type environment)])]
+    (log :info (str "POST REQUEST -> id:" resource-id " mapping:" mapping " triples:" triples))
+    (out (ts (:resource-ts environment)) triples)
+    {:body (render-triples triples :xml)
+     :headers {"Content-Type" "application/xml"}
+     :status 201}))
+
+(defn handle-delete-collection [request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        query (build-query-from-resource-map mapping (:resource-type environment))
+        results (in (ts (:resource-ts environment)) query)
+        triples (distinct (flatten-1 results))]
+    (log :info (str "GET REQUEST -> mapping:" mapping " query:" query))
+    {:body (render-triples triples (mime-to-format request))
+     :headers {"Content-Type" (format-to-mime request)}
+     :status 200}))
+
+(defn handle-method-not-allowed [request environment]
+  {:body "method not allowed"
+   :headers {"Content-Type" "text/plain"}
+   :status 405})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(tbox-register-schema :foaf-agent foaf:Agent-schema)
+
 (defroutes example
-  (GET "/" [] "<h1>Hello World Wide Web mod5!</h1>")
-
-  (POST "/Person" request (handle-post-collection request))
-  (GET "/Person.:format" request (handle-get-collection request))
-  (GET "/Person" request (handle-get-collection request))
-
+  (GET "/" [] "<h1>Testing plaza...</h1>")
+  (spawn-rest-resource! :foaf-agent "/Agent/:id" :resource)
+  (spawn-rest-collection-resource! :foaf-agent "/Agent" :resource)
   (route/not-found "Page not found"))
 
 ;(run-jetty (var example) {:port 8081})

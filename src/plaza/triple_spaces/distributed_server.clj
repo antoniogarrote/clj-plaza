@@ -122,6 +122,9 @@
                             (let [triples-to-remove (query-triples model (gen-query pattern filters))]
                               (if (empty? triples-to-remove) triples-to-remove
                                   (let [flattened-triples (flatten-1 triples-to-remove)]
+                                    (log :error (str "removing triplesb!!!!!"))
+                                    (log :error (str "flattened: " flattened-triples))
+                                    (doseq [t flattened-triples] (log :error (str "TRIPLE: " t)))
                                     ;; deleting read triples
                                     (with-model model (model-remove-triples flattened-triples))
                                     ;; delivering notifications
@@ -265,9 +268,11 @@
                (rabbit/make-queue rabbit-conn name (str "queue-client-" uuid) (str "exchange-" name) uuid)
 
                ;; startint the server
-               (plaza.triple-spaces.distributed-server.DistributedTripleSpace. name
-                                                                               model
-                                                                               (build-redis-connection-hash opt-map)
-                                                                               rabbit-conn
-                                                                               (assoc opt-map :client-id uuid)))
+               (let [tsp (plaza.triple-spaces.distributed-server.DistributedTripleSpace. name
+                                                                                         model
+                                                                                         (build-redis-connection-hash opt-map)
+                                                                                         rabbit-conn
+                                                                                         (assoc opt-map :client-id uuid))]
+                 (dosync (alter registry (fn [old] (assoc old id tsp))))
+                 tsp))
              ts))))))

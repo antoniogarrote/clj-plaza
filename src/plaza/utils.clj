@@ -66,15 +66,15 @@
 
 (defn flatten-1
   ([seq]
-     (let [old-meta (meta seq)]
-       (with-meta
-         (reduce (fn [acum item]
-                   (if (and (coll? item) (coll? (first item)))
-                     (vec (concat acum item))
-                     (conj acum item)))
-                 []
-                 seq)
-         old-meta))))
+     (let [old-meta (meta seq)
+           ts-pre (reduce (fn [acum item]
+                            (if (and (coll? item) (coll? (first item)))
+                              (concat acum item)
+                              (conj acum item)))
+                          []
+                          seq)
+           ts (vec (distinct ts-pre))]
+       (with-meta ts old-meta))))
 
 ;; (grab-document-url "http://hamish.blogs.com/mishmash/bib-take1.xml")
 (defn grab-document-url
@@ -114,3 +114,15 @@
 (defn check-default-values
   "Adds missing values from the default-rabbit-parameters map"
   ([opts orig] (merge-with #(if (nil? %2) %1 %2) orig opts)))
+
+(defn extract-exception-trace
+  "Extracts the information of an exception in a string"
+  ([e]
+     (let [sw (java.io.StringWriter.)
+           pw (java.io.PrintWriter. sw)]
+       (.print pw "[")
+       (.print pw (.. e getClass getName))
+       (.print pw "] ")
+       (.print pw (. e getMessage))
+       (. e (printStackTrace pw))
+       (str sw))))

@@ -1,8 +1,8 @@
-;; @author Antonio Garote
+;; @author Antonio Garrote
 ;; @email antoniogarrote@gmail.com
 ;; @date 26.05.2010
 
-(ns plaza.rdf.models
+(ns plaza.rdf.schemas
   (:use (plaza.rdf core sparql predicates)
         (plaza.rdf.implementations common)
         (plaza utils)))
@@ -14,12 +14,15 @@
 ;; Protocols
 (defprotocol OntologyModel
   "Functions that can be applied to a RDF ontology schema"
-  (type-uri [model] "Returns the URI of this model")
-  (to-pattern [model props] [model subject props] "Builds a pattern suitable to look for instances of this type. A list of properties can be passed optionally")
-  (to-map [model triples] "Transforms a RDF triple set into a map of properties using the provided keys")
-  (property-uri [model alias] "Returns the URI for the alias of a property")
-  (property-alias [model uri] "Returns the alias for a property URI")
-  (parse-prop-value [model alias val] "Parses the provided string value into the right java value for the property defined by alias"))
+  (type-uri [this] "Returns the URI of this model")
+  (to-pattern [this props] [this subject props] "Builds a pattern suitable to look for instances of this type. A list of properties can be passed optionally")
+  (to-map [this triples] "Transforms a RDF triple set into a map of properties using the provided keys")
+  (property-uri [this alias] "Returns the URI for the alias of a property")
+  (property-alias [this uri] "Returns the alias for a property URI")
+  (parse-prop-value [this alias val] "Parses the provided string value into the right java value for the property defined by alias")
+  (prop-value-to-triple-value [this alias val] "Transforms the provided value into the a valid Plaza triple literal, datatype literal or resource")
+  (to-rdf-triples [this] "Transforms this schema into a set of triples")
+  (aliases [this] "Returns all tha aliases for the properties of the model"))
 
 (defn- build-pattern-for-model
   ([type-uri subj props properties]
@@ -38,27 +41,39 @@
        (make-pattern (concat mandatory-pattern optional-pattern)))))
 
 ;; Types
-(deftype RDFSModel [type-uri properties ranges] OntologyModel
-  (type-uri [this] type-uri)
-  (toString [this] (str type-uri " " properties))
+(deftype RDFSModel [this-uri properties ranges] OntologyModel
+  (type-uri [this] this-uri)
+  (toString [this] (str this-uri " " properties))
   (to-pattern [this subject props] (let [subj (if (instance? plaza.rdf.core.RDFResource subject) subject (if (coll? subject) (apply rdf-resource subject) (rdf-resource subject) ))]
-                                     (build-pattern-for-model type-uri subj props properties)))
-  (to-pattern [this props] (build-pattern-for-model type-uri ?s props properties))
+                                     (build-pattern-for-model this-uri subj props properties)))
+  (to-pattern [this props] (build-pattern-for-model this-uri ?s props properties))
   (to-map [this triples-or-vector] (let [triples (if (:triples (meta triples-or-vector)) triples-or-vector (make-triples triples-or-vector))]
                                      (reduce (fn [ac it] (let [prop (str (resource-id (it properties)))
                                                                val (find-property prop triples)]
                                                            (if (nil? val) ac (assoc ac it (nth val 2)))))
                                              {}
                                              (keys properties))))
-  (property-uri [model alias] (alias properties))
-  (property-alias [model uri] (first (filter #(= (str (get properties %1)) (str uri)) (keys properties))))
-  (parse-prop-value [model alias val] (let [{kind :kind range :range} (get ranges alias)]
-                                        (if (= kind :resource) val
-                                            (.parse (find-jena-datatype range) val)))))
+  (property-uri [this alias] (alias properties))
+  (property-alias [this uri] (first (filter #(= (str (get properties %1)) (str uri)) (keys properties))))
+  (parse-prop-value [this alias val] (let [{kind :kind range :range} (get ranges alias)]
+                                        (if (= kind :resource) (rdf-resource val)
+                                            (.parse (find-jena-datatype (str range)) val))))
+  (prop-value-to-triple-value [this alias val] (let [{kind :kind range :range} (get ranges alias)]
+                                                 (if (= kind :resource) (rdf-resource val)
+                                                     (let [jena-type (find-jena-datatype (str range))]
+                                                       (parse-literal-lexical (str "\"" val "\"^^<" (.getURI jena-type) ">"))))))
+  (to-rdf-triples [this] (let [subject (rdf-resource (type-uri this))]
+                           (reduce (fn [ts k] (let [prop (get properties k)
+                                                    range (:range (get ranges k))
+                                                    tsp (conj ts [prop (rdf-resource rdfs:range) range])]
+                                                (conj tsp [prop (rdf-resource rdfs:domain) subject])))
+                                   [[subject (rdf-resource rdf:type) (rdf-resource rdfs:Class)]]
+                                   (keys properties))))
+  (aliases [this] (keys properties)))
 
 ;; Type constructor
 
-(defn make-rdfs-model
+(defn make-rdfs-schema
   ([type-uri-pre & properties]
      (let [type-uri (if (coll? type-uri-pre) (apply rdf-resource type-uri-pre) (rdf-resource type-uri-pre))
            props-map-pre (apply hash-map properties)
@@ -66,8 +81,8 @@
                           (let [{uri :uri range :range} (it props-map-pre)
                                 prop-val (if (coll? uri) (apply rdf-resource uri) (rdf-resource uri))
                                 range-val (if (supported-datatype? range)
-                                            {:kind :datatype :range (datatype-uri range)}
+                                            {:kind :datatype :range (rdf-resource (datatype-uri range))}
                                             {:kind :resource :range (if (coll? range) (apply rdf-resource range) range)})]
                             [(assoc ac-props it prop-val)
                              (assoc ac-ranges it range-val)])) [{} {}] (keys props-map-pre))]
-       (plaza.rdf.models.RDFSModel. type-uri (first maps) (second maps)))))
+       (plaza.rdf.schemas.RDFSModel. type-uri (first maps) (second maps)))))

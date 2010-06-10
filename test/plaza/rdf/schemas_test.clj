@@ -1,14 +1,14 @@
-(ns plaza.rdf.models-test
-  (:use [plaza.rdf core sparql models] :reload-all)
+(ns plaza.rdf.schemas-test
+  (:use [plaza.rdf core sparql schemas] :reload-all)
   (:use [plaza.rdf.implementations jena] :reload-all)
   (:use [clojure.test]))
 
 (init-jena-framework)
 
-(defonce *test-model* (make-rdfs-model ["http://something/" "Good"]
-                                       :name   {:uri "http://test.com/name"      :range :string}
-                                       :price  {:uri ["http://test.com/" :price] :range :float}
-                                       :number {:uri :number                     :range :int}))
+(defonce *test-model* (make-rdfs-schema ["http://something/" "Good"]
+                                        :name   {:uri "http://test.com/name"      :range :string}
+                                        :price  {:uri ["http://test.com/" :price] :range :float}
+                                        :number {:uri :number                     :range :int}))
 
 (deftest test-props
   (is (= "http://something/Good" (str (type-uri *test-model*)))))
@@ -36,3 +36,7 @@
 
 (deftest test-property-parse-value
   (is (= 2 (parse-prop-value *test-model* :number "2"))))
+
+(deftest test-schema-to-triples
+  (let [ts (to-rdf-triples foaf:Agent-schema)]
+    (is (= 37 (count ts)))))

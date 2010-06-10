@@ -36,6 +36,12 @@
     (is (= 1 (count (flatten-1 (in *ts* [[?s ?p ?o]])))))
     (is (= 0 (count (flatten-1 (rd *ts* [[?s ?p ?o]])))))))
 
+(deftest test-basic-in-2
+  (let [*ts* ((make-basic-triple-space))]
+    (out *ts* [[:a :b :c] [:a :f :g]])
+    (is (= 2 (count (flatten-1 (in *ts* [[?s ?p ?o] [?s :f :g]])))))
+    (is (= 0 (count (flatten-1 (rd *ts* [[?s ?p ?o]])))))))
+
 (deftest test-rdb-1
   (let [*ts* ((make-basic-triple-space))
         sync (promise)]

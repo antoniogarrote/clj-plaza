@@ -7,8 +7,8 @@
          [[1 2] [3 4]])))
 
 (deftest test-flatten-1
-  (is (= (flatten-1 [:a [[:s :p :o] [:s :p :o]] :c [[:s :p :o]] :d])
-         [:a [:s :p :o] [:s :p :o] :c [:s :p :o] :d])))
+  (is (= (set (flatten-1 [:a [[:s :p :o] [:s :p :o]] :c [[:s :p :o]] :d]))
+         (set [:a [:s :p :o] :c :d]))))
 
 (deftest test-flatten-1-preserves-meta
   (let [to-flatten (with-meta [:a [[:s :p :o] [:s :p :o]] :c [[:s :p :o]] :d] {:flatten true})

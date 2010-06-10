@@ -3,8 +3,8 @@
 ;; @date 07.06.2010
 
 (ns plaza.examples.webapp
-  (:use plaza.rest.core
-        plaza.rdf.implementations.jena
+  (:use [plaza.rest.core])
+  (:use plaza.rdf.implementations.jena
         compojure.core
         compojure.response
         ring.adapter.jetty
@@ -35,6 +35,7 @@
   ([request environment]
      (let [pattern (str (:resource-qname-prefix environment) (:resource-qname-local environment))]
        (clojure.contrib.str-utils2/replace pattern ":id" (get (:params request) "id")))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Resource functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -105,28 +106,6 @@
                                                             (= (:request-method request#) :delete) (handle-delete id# request# env#)
                                                             :else (handle-method-not-allowed request# env#))))))))
 
-(def *resource* (make-rdfs-schema "http://test.com/Person"
-                                  :name   {:uri "http://test.com/name" :range :string}
-                                  :age    {:uri "http://test.com/age"  :range :int}))
-
-
-(def *resource-map* (model-to-argument-map *resource*))
-
-(def *resource-type* "http://test.com/Person")
-(def *resource-qname-prefix* "http://test.com/")
-(def *resource-qname-local* "Person")
-(def *id-gen-function* default-uuid-gen)
-(def *resource-ts* :resource)
-
-;;; Handlers
-
-(def *resource-map* (model-to-argument-map *resource*))
-
-(def *resource-type* "http://test.com/Person")
-(def *resource-qname-prefix* "http://test.com/")
-(def *resource-qname-local* "Person")
-(def *id-gen-function* default-uuid-gen)
-(def *resource-ts* :resource)
 
 ;;; Handlers
 
@@ -136,7 +115,7 @@
         results (rd (ts (:resource-ts environment)) query)
         triples (distinct (flatten-1 results))]
         (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples))
-        {:body (render-triples triples (mime-to-format request))
+        {:body (render-triples triples (mime-to-format request) (:resource environment))
          :headers {"Content-Type" (format-to-mime request)}
          :status 200}))
 
@@ -152,7 +131,7 @@
     (doseq [t query] (log :info t))
     (log :info (str "VALUES"))
     (doseq [t triples-to-update] (log :info t))
-    {:body (render-triples triples (mime-to-format request))
+    {:body (render-triples triples (mime-to-format request) (:resource environment))
      :headers {"Content-Type" (format-to-mime request)}
      :status 200}))
 
@@ -160,7 +139,7 @@
   (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
         query (build-single-resource-query-from-resource-map mapping id)
         results (in (ts (:resource-ts environment)) query)
-        triples (distinct (flatten-1 results))]
+        triples (distinct (flatten-1 results) (:resource environment))]
         (log :info (str "DELETE REQUEST -> mapping:" mapping " triples:" triples))
         {:body (render-triples triples (mime-to-format request))
          :headers {"Content-Type" (format-to-mime request)}
@@ -172,8 +151,8 @@
         query (build-query-from-resource-map mapping (:resource-type environment))
         results (rd (ts (:resource-ts environment)) query)
         triples (distinct (flatten-1 results))]
-    (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples))
-    {:body (render-triples triples (mime-to-format request))
+     (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples))
+    {:body (render-triples triples (mime-to-format request) (:resource environment))
      :headers {"Content-Type" (format-to-mime request)}
      :status 200}))
 
@@ -184,7 +163,7 @@
         triples (conj triples-pre [resource-id rdf:type (:resource-type environment)])]
     (log :info (str "POST REQUEST -> id:" resource-id " mapping:" mapping " triples:" triples))
     (out (ts (:resource-ts environment)) triples)
-    {:body (render-triples triples :xml)
+    {:body (render-triples triples :xml (:resource environment))
      :headers {"Content-Type" "application/xml"}
      :status 201}))
 
@@ -194,7 +173,7 @@
         results (in (ts (:resource-ts environment)) query)
         triples (distinct (flatten-1 results))]
     (log :info (str "GET REQUEST -> mapping:" mapping " query:" query))
-    {:body (render-triples triples (mime-to-format request))
+    {:body (render-triples triples (mime-to-format request) (:resource environment))
      :headers {"Content-Type" (format-to-mime request)}
      :status 200}))
 

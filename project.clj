@@ -6,6 +6,7 @@
                  [com.hp.hpl.jena/arq "2.8.3"]
                  [net.rootdev/java-rdfa "0.3"]
                  [compojure "0.4.0-RC3"]
+                 [hiccup "0.2.5"]
                  [ring/ring-jetty-adapter "0.2.0"]
                  [nu.validator.htmlparser/htmlparser "1.2.0"]
                  [com.franz/openrdf-sesame-onejar "2.2"]

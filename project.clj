@@ -5,6 +5,7 @@
                  [com.hp.hpl.jena/jena "2.6.2"]
                  [com.hp.hpl.jena/arq "2.8.3"]
                  [net.rootdev/java-rdfa "0.3"]
+                 [clojure-http-client "1.1.0-SNAPSHOT"]
                  [compojure "0.4.0-RC3"]
                  [hiccup "0.2.5"]
                  [ring/ring-jetty-adapter "0.2.0"]

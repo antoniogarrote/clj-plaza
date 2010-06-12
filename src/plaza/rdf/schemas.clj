@@ -63,9 +63,9 @@
                                                      (let [jena-type (find-jena-datatype (str range))]
                                                        (parse-literal-lexical (str "\"" val "\"^^<" (.getURI jena-type) ">"))))))
   (to-rdf-triples [this] (let [subject (rdf-resource (type-uri this))]
-                           (reduce (fn [ts k] (let [prop (get properties k)
+                           (reduce (fn [ts k] (let [prop (rdf-resource (get properties k))
                                                     range (:range (get ranges k))
-                                                    tsp (conj ts [prop (rdf-resource rdfs:range) range])]
+                                                    tsp (conj ts [prop (rdf-resource rdfs:range) (rdf-resource range)])]
                                                 (conj tsp [prop (rdf-resource rdfs:domain) subject])))
                                    [[subject (rdf-resource rdf:type) (rdf-resource rdfs:Class)]]
                                    (keys properties))))
@@ -74,8 +74,8 @@
 ;; Type constructor
 
 (defn make-rdfs-schema
-  ([type-uri-pre & properties]
-     (let [type-uri (if (coll? type-uri-pre) (apply rdf-resource type-uri-pre) (rdf-resource type-uri-pre))
+  ([typeuri-pre & properties]
+     (let [typeuri (if (coll? typeuri-pre) (apply rdf-resource typeuri-pre) (rdf-resource typeuri-pre))
            props-map-pre (apply hash-map properties)
            maps (reduce (fn [[ac-props ac-ranges] it]
                           (let [{uri :uri range :range} (it props-map-pre)
@@ -85,4 +85,13 @@
                                             {:kind :resource :range (if (coll? range) (apply rdf-resource range) range)})]
                             [(assoc ac-props it prop-val)
                              (assoc ac-ranges it range-val)])) [{} {}] (keys props-map-pre))]
-       (plaza.rdf.schemas.RDFSModel. type-uri (first maps) (second maps)))))
+       (plaza.rdf.schemas.RDFSModel. typeuri (first maps) (second maps)))))
+
+;; RDFS schema
+
+(defn load-rdfs-schemas []
+  (defonce rdfs:Class-schema
+    (make-rdfs-schema rdfs:Class
+                      :type   {:ur  rdf:type    :range rdfs:Resource}
+                      :range  {:uri rdfs:range  :range rdfs:Class}
+                      :domain {:uri rdfs:domain :range rdfs:Class})))

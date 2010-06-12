@@ -1,4 +1,4 @@
-;; @author Antonio Garote
+;; @author Antonio Garrote
 ;; @email antoniogarrote@gmail.com
 ;; @date 30.04.2010
 
@@ -11,6 +11,7 @@
 (def rdfs "http://www.w3.org/2000/01/rdf-schema#")
 (def rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
 
+(def rdfs:Resource "http://www.w3.org/2000/01/rdf-schema#Resource")
 (def rdf:Property "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property")
 (def rdf:type "http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
 

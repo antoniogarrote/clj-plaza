@@ -4,6 +4,7 @@
   (:use [clojure.test]))
 
 (init-jena-framework)
+(use 'plaza.rdf.vocabularies.foaf)
 
 (defonce *test-model* (make-rdfs-schema ["http://something/" "Good"]
                                         :name   {:uri "http://test.com/name"      :range :string}

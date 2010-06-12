@@ -10,9 +10,139 @@
    [plaza.rdf.schemas]
    [plaza.rdf.sparql]
    [plaza.rdf.predicates]
+   [plaza.triple-spaces.core]
+   [compojure core response route]
    [clojure.contrib.logging :only [log]])
-  (:require [clojure.contrib.json :as json]))
+  (:require [clojure.contrib.json :as json]
+            [clojure.contrib.str-utils2 :as str2]))
 
+
+(defn default-css-text
+  []
+  "      * {
+         margin: 0;
+         padding: 0;
+         border: 0;
+         outline: 0;
+         font-weight: normal;
+         font-style: normal;
+         font-size: 100%;
+         font-family: Tahoma, Geneva, arial, sans-serif;
+         vertical-align: baseline
+      }
+
+      body {
+         line-height: 1
+      }
+
+      :focus {
+         outline: 0
+      }
+
+      ol, ul {
+         list-style: none
+      }
+
+      table {
+         border-collapse: collapse;
+         border-spacing: 0
+      }
+
+      blockquote:before, blockquote:after, q:before, q:after {
+         content: \"\"
+      }
+
+      blockquote, q {
+         quotes: \"\" \"\"
+      }
+
+      input, textarea {
+         margin: 0;
+         padding: 0
+      }
+
+      hr {
+         margin: 0;
+         padding: 0;
+         border: 0;
+         color: #000;
+         background-color: #000;
+         height: 1px
+      }
+      .resource-request
+      {
+         background-color: black;
+         font-size: 150%;
+         color: white;
+         padding-left: 20px;
+         padding-top: 20px;
+         padding-bottom: 20px
+      }
+
+      .resource
+      {
+         color: #45465b;
+         background-color:#eeeeee;
+         border-top:2px solid #aaaaaa;
+         margin:20px;
+         padding:20px;
+      }
+
+      .resource-title
+      {
+         font-size: 110%;
+         font-weight: bold
+      }
+
+      .properties-table
+      {
+         margin-top: 20px
+      }
+
+      table
+      {
+         border-color: #dddddd;
+         border-style: solid;
+         border-width: 2px
+      }
+
+      thead
+      {
+         background-color: e7eef6
+      }
+
+      #plaza-logo
+      {
+         color: e7eef6;
+         float: right;
+         font-family: arial;
+         font-size: 70%;
+         font-weight: bold;
+         margin-right: 40px;
+         margin-top: 4px;
+      }
+
+      td
+      {
+         background-color: white
+      }
+
+      td, th
+      {
+         padding: 10px
+      }
+
+      th
+      {
+         font-weight: bold
+      }
+
+      td
+      {
+         border-top-color: #dddddd;
+         border-top-style: solid;
+         border-top-width: 2px
+      }")
 
 (defn resource-argument-map [& mapping]
   (let [args (partition 3 mapping)]
@@ -77,10 +207,12 @@
                                (if (is-literal o)
                                  (let [pred (property-alias schema (str p))
                                        value (literal-value o)]
-                                   (if (nil? pred) acum
+                                   (if (nil? pred) (assoc acum (str p) value)
                                        (assoc acum pred value)))
                                  (let [pred (property-alias schema (str p))]
-                                   (if (nil? pred) acum
+                                   (if (nil? pred) (if (= (str p) rdf:type)
+                                                     (assoc acum :type (str o))
+                                                     (assoc acum (str p) (str o)))
                                        (assoc acum pred (str o))))))
                              {} (first (vals gts)))]
              (json/json-str (assoc tsp :uri (str (first (keys gts))))))
@@ -97,6 +229,12 @@
                                                     {} tss)]
                                    (assoc jsts :uri (str s))))
                                gts)))))))
+
+(defn to-js3-triples-jsonp
+  ([ts schema callback] (str callback "(" (to-js3-triples ts schema) ")")))
+
+(defn to-json-triples-jsonp
+  ([ts schema callback] (str callback "(" (to-json-triples ts schema) ")")))
 
 (defn extract-ns [uri]
   (if (empty? (filter #(= \# %1) uri))
@@ -134,40 +272,59 @@
 
 (defn to-rdfa-triple
   ([s ts schema nsmap]
-     [:div {:about (str s)} [:a {:href (str s)} (str s)]
-      [:ul (map (fn [[s p o]]
-                  [:li (if (is-literal o)
-                         [:span (str (keyword-to-string (property-alias schema (str p))) ": ")
-                          [:span {:property (build-curie nsmap (str p)) :datatype (literal-datatype-uri o)} (literal-value o)]]
-                         [:span (str (keyword-to-string (property-alias schema (str p))) ": ")
-                          [:a {:href (str o) :rel (build-curie nsmap (str p))} (str o)]])]) ts)]]))
+     [:div {:about (str s) :class "resource"}
+      [:span {:class "resource-title"} "Resource: " [:a {:href (str s) :class "resource-uri"} (str s)]]
+      [:table {:class "properties-table"}
+       [:thead [:th "name"] [:th "property URI"] [:th "range value"] [:th "range URI"]]
+       (map (fn [[s p o]]
+              (if (is-literal o)
+                [:tr
+                 [:td (keyword-to-string (property-alias schema (str p)))]
+                 [:td (str p)]
+                 [:td {:property (build-curie nsmap (str p)) :datatype (literal-datatype-uri o)} (literal-value o)]
+                 [:td {:class "datatype"} (literal-datatype-uri o)]]
+                [:tr
+                 [:td (if (= rdf:type (str p)) "type" (keyword-to-string (property-alias schema (str p))))]
+                 [:td (str p)]
+                 [:td [:a {:href (str o) :rel (build-curie nsmap (str p))} (str o)]]
+                 [:td {:class "resourcetype"} rdfs:Resource]])) ts)]]))
 
 (defn ns-list [nsmap]
   (reduce (fn [acum [k v]] (if (= k "/") acum (assoc acum (str "xmlns:" v) k))) {} nsmap))
 
 (defn to-rdfa-triples
-  ([ts schema]
+  ([ts schema request]
      (let [nsmap (collect-ns ts)
            gts (group-by (fn [[s p o]] (str s)) ts)
            rdfa-ts (map (fn [[s tsp]] (to-rdfa-triple s tsp schema nsmap)) gts)
            nslistp (assoc  (ns-list nsmap) :xmlns "http://www.w3.org/1999/xhtml")
            nslistpp (assoc nslistp :version "XHTML+RDFa 1.0")]
        (html [:html nslistpp
-              [:head [:title ""]]
+              [:head [:title (str (clojure.contrib.string/upper-case (keyword-to-string (:request-method request))) " " (:uri request))]]
               [:body
-               rdfa-ts]]))))
+               [:style {:type "text/css" :media "screen"} (default-css-text)]
+               [:div {:class "resource-body"}
+                [:div {:class "resource-request"} (str "Request: " (clojure.contrib.string/upper-case (keyword-to-string (:request-method request)) ) " "
+                                                       (keyword-to-string (:scheme request)) "://" (:server-name request) (:uri request))
+                 [:span {:id "plaza-logo"} "( plaza )"]]
+                [:span {:class "resource-list"}
+                 rdfa-ts]]]]))))
 
-(defn render-triples [triples format schema]
-  (if (or (= format :json) (= format :js3) (= format :js))
-    (if (or (= format :json) (= format :js))
-      (to-json-triples triples schema)
-      (to-js3-triples triples))
-    (if (or (= format :html) (= format :xhtml) (= format :rdfa))
-      (to-rdfa-triples triples schema)
-      (let [m (defmodel (model-add-triples triples))
-            w (java.io.StringWriter.)]
-        (output-string m w format)
-        (.toString w)))))
+(defn render-triples [triples format schema request]
+  (if (or (= format :json-jsonp) (= format :js3-jsonp) (= format :js-jsonp))
+    (if (or (= format :json-jsonp) (= format :js-jsonp))
+      (to-json-triples-jsonp triples schema (:jsonp-callback request))
+      (to-js3-triples-jsonp triples (:jsonp-callback request)))
+    (if (or (= format :json) (= format :js3) (= format :js))
+      (if (or (= format :json) (= format :js))
+        (to-json-triples triples schema)
+        (to-js3-triples triples))
+      (if (or (= format :html) (= format :xhtml) (= format :rdfa))
+        (to-rdfa-triples triples schema request)
+        (let [m (defmodel (model-add-triples triples))
+              w (java.io.StringWriter.)]
+          (output-string m w format)
+          (.toString w))))))
 
 (defn supported-format [format]
   (condp = format
@@ -203,8 +360,11 @@
       "application/x-turtle" :turtle
       "turtle" :turtle
       "json" :json
+      "json:jsonp" :json-jsonp
       "js" :json
+      "js:jsonp" :json-jsonp
       "js3" :js3
+      "js3:jsonp" :js3-jsonp
       "xhtml" :rdfa
       "html" :rdfa
       "text/html" :rdfa
@@ -226,6 +386,9 @@
       "json" "application/json"
       "js" "application/json"
       "js3" "application/json"
+      "json:jsonp" "application/json"
+      "js:jsonp" "application/json"
+      "js3:jsonp" "application/json"
       "rdfa" "application/html+xml"
       "html" "text/html"
       "xhtml" "application/html+xml"
@@ -273,3 +436,221 @@
      (if (not (nil? (get @*tbox* alias-or-uri)))
        (get @*tbox* alias-or-uri)
        (first (filter #(= (str alias-or-uri) (str (type-uri %1))) (vals @*tbox*))))))
+(defn default-id-match
+  "Matches a resource using the requested URI"
+  ([request environment]
+     (let [pattern (str (:resource-qname-prefix environment) (:resource-qname-local environment))]
+       (str2/replace pattern ":id" (get (:params request) "id")))))
+
+(defn default-service-metadata-matcher-fn
+  ([request environment]
+     (if (nil? (re-find  #"service(\..*)?$" (:uri request))) false true)))
+
+(defn default-schema-metadata-matcher-fn
+  ([request environment]
+     (if (nil? (re-find  #"schema(\..*)?$" (:uri request))) false true)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Resource functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn hRESTS-collection-service-description
+  "Builds a triple set describing the service offered by the current request"
+  ([path resource]
+     {:uri path}))
+
+
+(defn make-environment-map [resource-or-symbol path ts opts]
+  (let [resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
+        resource-type (type-uri resource)
+        resource-map (model-to-argument-map resource)
+        id-gen (if (nil? (:id-gen-fn opts)) default-uuid-gen (:id-gen-fn opts))
+        service-matcher-fn (if (nil? (:service-metadata-matcher-fn opts)) default-schema-metadata-matcher-fn (:service-metadata-matcher-fn))
+        schema-matcher-fn (if (nil? (:schema-metadata-matcher-fn opts)) default-schema-metadata-matcher-fn (:schema-metadata-matcher-fn))
+        handle-service-metadata (if (nil? (:handle-service-metadata opts)) true (:handle-service-metadata opts))
+        handle-schema-metadata (if (nil? (:handle-schema-metadata opts)) true (:handle-schema-metadata opts))
+        resource-qname-prefix (:resouce-qname-prefix opts)
+        resource-qname-local path
+        resource-ts ts]
+    {:resource-map resource-map :resource-type resource-type :resource-qname-prefix resource-qname-prefix
+     :resource-qname-local resource-qname-local :id-gen-function id-gen :resource-ts resource-ts :resource resource
+     :path (str path "*") :path-re (re-pattern (str "(\\..*)?$")) :service-matcher-fn service-matcher-fn
+     :schema-matcher-fn schema-matcher-fn :handle-schema-metadata handle-schema-metadata
+     :handle-service-metadata handle-service-metadata}))
+
+(defn make-single-resource-environment-map [resource-or-symbol path ts opts]
+  (let [pre-map (make-environment-map resource-or-symbol path ts opts) resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
+        id-match (if (nil? (:id-match-fn opts)) default-id-match (:id-match-fn opts))]
+    (assoc pre-map :id-match-function id-match)))
+
+(defn build-default-qname-prefix
+  "Returns the domain of a RING request"
+  ([request]
+     (let [scheme (:scheme request)
+           host (:server-name request)]
+       (str (keyword-to-string scheme) "://" host))))
+
+(defn parse-standard-request-params
+  "Transforms the request to use conventions like _method param for DELETE and PUT methods or jsonp callback arg"
+  ([request]
+     (let [request-methods (let [meth (get (:params request) "_method")]
+                             (if (not (nil? meth)) (cond (or (= meth "post") (= meth "POST")) (let [paramsp (dissoc (:params request) "_method")]
+                                                                                                (-> request (assoc  :request-method :post)
+                                                                                                    (assoc :params paramsp)))
+                                                         (or (= meth "put") (= meth "PUT")) (let [paramsp (dissoc (:params request) "_method")]
+                                                                                              (-> request (assoc  :request-method :put)
+                                                                                                  (assoc :params paramsp)))
+                                                         (or (= meth "delete") (= meth "DELETE")) (let [paramsp (dissoc (:params request) "_method")]
+                                                                                                    (-> request (assoc  :request-method :delete)
+                                                                                                        (assoc :params paramsp)))
+                                                         (or (= meth "get") (= meth "GET")) (let [paramsp (dissoc (:params request) "_method")]
+                                                                                              (-> request (assoc  :request-method :get)
+                                                                                                  (assoc :params paramsp)))
+                                                         :else request)
+                                 request))
+           jsonp-request (let [callback (get (:params request-methods) "_callback")
+                               format (get (:params request-methods) "format")]
+                           (if (and (not (nil? callback)) (or (= format "json") (= format "js") (= format "js3")))
+                             (let [paramsp (-> (:params request-methods)
+                                               (assoc "format" (str format ":jsonp"))
+                                               (dissoc "_callback"))]
+                               (-> request-methods (assoc :jsonp-callback callback)
+                                   (assoc :params paramsp)))
+                             request-methods))]
+       jsonp-request)))
+
+(defn check-tbox-request
+ "Checks if the request is asking for TBox metadata instead of the actual service data"
+ ([request environment]
+    (if (:handle-schema-metadata environment)
+      (if ((:schema-matcher-fn environment) request environment)
+        {:body (render-triples (to-rdf-triples (:resource environment)) (mime-to-format request) plaza.rdf.schemas/rdfs:Class-schema request)
+         :headers {"Content-Type" (format-to-mime request)}
+         :status 200}
+        false)
+      false)))
+
+(defmacro spawn-rest-collection-resource! [resource path ts & opts]
+  (let [opts (apply hash-map opts)]
+    `(let [env-pre# (make-environment-map ~resource ~path ~ts ~opts)]
+       (ANY  (:path env-pre#) request-pre# (wrap-request (str (.toUpperCase (keyword-to-string (:request-method request-pre#))) " collection")
+                                                         (:resource-qname-prefix env-pre#)
+                                                         (:resource-qname-local env-pre#)
+                                                         request-pre#
+                                                         (let [env# (if (nil? (:resource-qname-prefix env-pre#))
+                                                                      (assoc env-pre# :resource-qname-prefix (build-default-qname-prefix request-pre#))
+                                                                      env-pre#)
+                                                               old-params# (:params request-pre#)
+                                                               format# (let [fmt# (match-route-extension (:path-re env#) (:uri request-pre#))]
+                                                                         (if (nil? fmt#) nil (clojure.contrib.str-utils2/lower-case fmt#)))
+                                                               params# (assoc old-params# "format" format#)
+                                                               request# (parse-standard-request-params (assoc request-pre# :params params#))
+                                                               tbox-metadata# (check-tbox-request request# env#)]
+                                                           (if (not tbox-metadata#)
+                                                             (cond
+                                                              (= (:request-method request#) :get) (handle-get-collection request# env#)
+                                                              (= (:request-method request#) :post) (handle-post-collection request# env#)
+                                                              (= (:request-method request#) :delete) (handle-delete-collection request# env#)
+                                                              :else (handle-method-not-allowed request# env#))
+                                                             tbox-metadata#)))))))
+
+(defmacro spawn-rest-resource! [resource path ts & opts]
+  (let [opts (apply hash-map opts)]
+    `(let [env-pre# (make-single-resource-environment-map ~resource ~path ~ts ~opts)]
+       (ANY  (:path env-pre#) request-pre# (wrap-request (str (.toUpperCase (keyword-to-string (:request-method request-pre#))) " resource")
+                                                         (:resource-qname-prefix env-pre#)
+                                                         (:resource-qname-local env-pre#)
+                                                         request-pre#
+                                                         (let [env# (if (nil? (:resource-qname-prefix env-pre#))
+                                                                      (assoc env-pre# :resource-qname-prefix (build-default-qname-prefix request-pre#))
+                                                                      env-pre#)
+                                                               old-params# (:params request-pre#)
+                                                               format# (let [fmt# (match-route-extension (:path-re env#) (:uri request-pre#))]
+                                                                         (if (nil? fmt#) nil (clojure.contrib.str-utils2/lower-case fmt#)))
+                                                               params# (assoc old-params# "format" format#)
+                                                               request# (parse-standard-request-params (assoc request-pre# :params params#))
+                                                               id# ((:id-match-function env#) request# env#)
+                                                               tbox-metadata# (check-tbox-request request# env#)]
+                                                           (if (not tbox-metadata#)
+                                                             (cond
+                                                              (= (:request-method request#) :get) (handle-get id# request# env#)
+                                                              (= (:request-method request#) :put) (handle-put id# request# env#)
+                                                              (= (:request-method request#) :delete) (handle-delete id# request# env#)
+                                                              :else (handle-method-not-allowed request# env#))
+                                                             tbox-metadata#)))))))
+
+
+;;; Handlers
+
+(defn handle-get [id request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        query (build-single-resource-query-from-resource-map mapping id)
+        results (rd (ts (:resource-ts environment)) query)
+        triples (distinct (flatten-1 results))]
+    (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples))
+    {:body (render-triples triples (mime-to-format request) (:resource environment) request)
+     :headers {"Content-Type" (format-to-mime request)}
+     :status 200}))
+
+(defn handle-put [id request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        query (build-single-resource-all-triples-query id)
+        triples-pre  (build-triples-from-resource-map id mapping)
+        triples-to-update (conj triples-pre [id rdf:type (:resource-type environment)])
+        results (swap (ts (:resource-ts environment)) query triples-to-update)
+        triples (distinct (flatten-1 results))]
+    (log :info (str "PUT REQUEST -> mapping:" mapping " query:" query))
+    (log :info (str "QUERY"))
+    (doseq [t query] (log :info t))
+    (log :info (str "VALUES"))
+    (doseq [t triples-to-update] (log :info t))
+    {:body (render-triples triples (mime-to-format request) (:resource environment) request)
+     :headers {"Content-Type" (format-to-mime request)}
+     :status 200}))
+
+(defn handle-delete [id request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        query (build-single-resource-query-from-resource-map mapping id)
+        results (in (ts (:resource-ts environment)) query)
+        triples (distinct (flatten-1 results))]
+    (log :info (str "DELETE REQUEST -> mapping:" mapping " triples:" triples))
+    {:body (render-triples triples (mime-to-format request) (:resource environment) request)
+     :headers {"Content-Type" (format-to-mime request)}
+     :status 200}))
+
+
+(defn handle-get-collection [request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        query (build-query-from-resource-map mapping (:resource-type environment))
+        results (rd (ts (:resource-ts environment)) query)
+        triples (distinct (flatten-1 results))]
+    (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples))
+    {:body (render-triples triples (mime-to-format request) (:resource environment) request)
+     :headers {"Content-Type" (format-to-mime request)}
+     :status 200}))
+
+(defn handle-post-collection [request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        resource-id ((:id-gen-function environment) (:resource-qname-prefix environment) (:resource-qname-local environment) request)
+        triples-pre  (build-triples-from-resource-map resource-id mapping)
+        triples (conj triples-pre [resource-id rdf:type (:resource-type environment)])]
+    (log :info (str "POST REQUEST -> id:" resource-id " mapping:" mapping " triples:" triples))
+    (out (ts (:resource-ts environment)) triples)
+    {:body (render-triples triples :xml (:resource environment) request)
+     :headers {"Content-Type" "application/xml"}
+     :status 201}))
+
+(defn handle-delete-collection [request environment]
+  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+        query (build-query-from-resource-map mapping (:resource-type environment))
+        results (in (ts (:resource-ts environment)) query)
+        triples (distinct (flatten-1 results))]
+    (log :info (str "DELETE REQUEST -> mapping:" mapping " query:" query))
+    {:body (render-triples triples (mime-to-format request) (:resource environment) request)
+     :headers {"Content-Type" (format-to-mime request)}
+     :status 200}))
+
+(defn handle-method-not-allowed [request environment]
+  {:body "method not allowed"
+   :headers {"Content-Type" "text/plain"}
+   :status 405})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

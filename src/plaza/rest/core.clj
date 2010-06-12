@@ -469,12 +469,18 @@
         handle-schema-metadata (if (nil? (:handle-schema-metadata opts)) true (:handle-schema-metadata opts))
         resource-qname-prefix (:resouce-qname-prefix opts)
         resource-qname-local path
-        resource-ts ts]
+        resource-ts ts
+        allowed-methods (:allowed-methods opts)
+        get-handle-fn (:get-handle-fn opts)
+        post-handle-fn (:post-handle-fn opts)
+        put-handle-fn (:put-handle-fn opts)
+        delete-handle-fn (:delete-handle-fn opts)]
     {:resource-map resource-map :resource-type resource-type :resource-qname-prefix resource-qname-prefix
      :resource-qname-local resource-qname-local :id-gen-function id-gen :resource-ts resource-ts :resource resource
      :path (str path "*") :path-re (re-pattern (str "(\\..*)?$")) :service-matcher-fn service-matcher-fn
      :schema-matcher-fn schema-matcher-fn :handle-schema-metadata handle-schema-metadata
-     :handle-service-metadata handle-service-metadata}))
+     :handle-service-metadata handle-service-metadata :allowed-methods allowed-methods :get-handle-fn get-handle-fn
+     :post-handle-fn post-handle-fn :put-handle-fn put-handle-fn :delete-handle-fn delete-handle-fn}))
 
 (defn make-single-resource-environment-map [resource-or-symbol path ts opts]
   (let [pre-map (make-environment-map resource-or-symbol path ts opts) resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
@@ -518,64 +524,22 @@
        jsonp-request)))
 
 (defn check-tbox-request
- "Checks if the request is asking for TBox metadata instead of the actual service data"
- ([request environment]
-    (if (:handle-schema-metadata environment)
-      (if ((:schema-matcher-fn environment) request environment)
-        {:body (render-triples (to-rdf-triples (:resource environment)) (mime-to-format request) plaza.rdf.schemas/rdfs:Class-schema request)
-         :headers {"Content-Type" (format-to-mime request)}
-         :status 200}
-        false)
-      false)))
+  "Checks if the request is asking for TBox metadata instead of the actual service data"
+  ([request environment]
+     (if (:handle-schema-metadata environment)
+       (if ((:schema-matcher-fn environment) request environment)
+         {:body (render-triples (to-rdf-triples (:resource environment)) (mime-to-format request) plaza.rdf.schemas/rdfs:Class-schema request)
+          :headers {"Content-Type" (format-to-mime request)}
+          :status 200}
+         false)
+       false)))
 
-(defmacro spawn-rest-collection-resource! [resource path ts & opts]
-  (let [opts (apply hash-map opts)]
-    `(let [env-pre# (make-environment-map ~resource ~path ~ts ~opts)]
-       (ANY  (:path env-pre#) request-pre# (wrap-request (str (.toUpperCase (keyword-to-string (:request-method request-pre#))) " collection")
-                                                         (:resource-qname-prefix env-pre#)
-                                                         (:resource-qname-local env-pre#)
-                                                         request-pre#
-                                                         (let [env# (if (nil? (:resource-qname-prefix env-pre#))
-                                                                      (assoc env-pre# :resource-qname-prefix (build-default-qname-prefix request-pre#))
-                                                                      env-pre#)
-                                                               old-params# (:params request-pre#)
-                                                               format# (let [fmt# (match-route-extension (:path-re env#) (:uri request-pre#))]
-                                                                         (if (nil? fmt#) nil (clojure.contrib.str-utils2/lower-case fmt#)))
-                                                               params# (assoc old-params# "format" format#)
-                                                               request# (parse-standard-request-params (assoc request-pre# :params params#))
-                                                               tbox-metadata# (check-tbox-request request# env#)]
-                                                           (if (not tbox-metadata#)
-                                                             (cond
-                                                              (= (:request-method request#) :get) (handle-get-collection request# env#)
-                                                              (= (:request-method request#) :post) (handle-post-collection request# env#)
-                                                              (= (:request-method request#) :delete) (handle-delete-collection request# env#)
-                                                              :else (handle-method-not-allowed request# env#))
-                                                             tbox-metadata#)))))))
-
-(defmacro spawn-rest-resource! [resource path ts & opts]
-  (let [opts (apply hash-map opts)]
-    `(let [env-pre# (make-single-resource-environment-map ~resource ~path ~ts ~opts)]
-       (ANY  (:path env-pre#) request-pre# (wrap-request (str (.toUpperCase (keyword-to-string (:request-method request-pre#))) " resource")
-                                                         (:resource-qname-prefix env-pre#)
-                                                         (:resource-qname-local env-pre#)
-                                                         request-pre#
-                                                         (let [env# (if (nil? (:resource-qname-prefix env-pre#))
-                                                                      (assoc env-pre# :resource-qname-prefix (build-default-qname-prefix request-pre#))
-                                                                      env-pre#)
-                                                               old-params# (:params request-pre#)
-                                                               format# (let [fmt# (match-route-extension (:path-re env#) (:uri request-pre#))]
-                                                                         (if (nil? fmt#) nil (clojure.contrib.str-utils2/lower-case fmt#)))
-                                                               params# (assoc old-params# "format" format#)
-                                                               request# (parse-standard-request-params (assoc request-pre# :params params#))
-                                                               id# ((:id-match-function env#) request# env#)
-                                                               tbox-metadata# (check-tbox-request request# env#)]
-                                                           (if (not tbox-metadata#)
-                                                             (cond
-                                                              (= (:request-method request#) :get) (handle-get id# request# env#)
-                                                              (= (:request-method request#) :put) (handle-put id# request# env#)
-                                                              (= (:request-method request#) :delete) (handle-delete id# request# env#)
-                                                              :else (handle-method-not-allowed request# env#))
-                                                             tbox-metadata#)))))))
+(defn should-handle-method
+  "Checks if a request with a certain methods should be handled"
+  ([method request environemnt]
+     (and (= (:request-method request) method)
+          (or (nil? (:allowed-methods environemnt))
+              (not (nil? (some #(= method %1) (:allowed-methods environemnt))))))))
 
 
 ;;; Handlers
@@ -654,3 +618,63 @@
    :status 405})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn dispatch-to-handler
+  "Dispatches the request to the user provided hander function or to the default handler
+   using the HTTP method information"
+  ([kind method request environment]
+     (condp = method
+       :get (if (nil? (:get-handle-fn environment)) (if (= kind :collection) handle-get-collection handle-get) (:get-handle-fn environment))
+       :post (if (nil? (:post-handle-fn environment)) handle-post-collection (:post-handle-fn environment))
+       :put (if (nil? (:put-handle-fn environment)) handle-put (:put-handle-fn environment))
+       :delete (if (nil? (:delete-handle-fn environment)) (if (= kind :collection) handle-delete-collection handle-delete) (:delete-handle-fn environment)))))
+
+(defmacro spawn-rest-collection-resource! [resource path ts & opts]
+  (let [opts (apply hash-map opts)]
+    `(let [env-pre# (make-environment-map ~resource ~path ~ts ~opts)]
+       (ANY  (:path env-pre#) request-pre# (wrap-request (str (.toUpperCase (keyword-to-string (:request-method request-pre#))) " collection")
+                                                         (:resource-qname-prefix env-pre#)
+                                                         (:resource-qname-local env-pre#)
+                                                         request-pre#
+                                                         (let [env# (if (nil? (:resource-qname-prefix env-pre#))
+                                                                      (assoc env-pre# :resource-qname-prefix (build-default-qname-prefix request-pre#))
+                                                                      env-pre#)
+                                                               old-params# (:params request-pre#)
+                                                               format# (let [fmt# (match-route-extension (:path-re env#) (:uri request-pre#))]
+                                                                         (if (nil? fmt#) nil (clojure.contrib.str-utils2/lower-case fmt#)))
+                                                               params# (assoc old-params# "format" format#)
+                                                               request# (parse-standard-request-params (assoc request-pre# :params params#))
+                                                               tbox-metadata# (check-tbox-request request# env#)]
+                                                           (if (not tbox-metadata#)
+                                                             (cond
+                                                              (should-handle-method :get request# env#) ((dispatch-to-handler :collection :get request# env#) request# env#)
+                                                              (should-handle-method :post request# env#) ((dispatch-to-handler :collection :post request# env#) request# env#)
+                                                              (should-handle-method :delete request# env#) ((dispatch-to-handler :collection :delete request# env#) request# env#)
+                                                              :else (handle-method-not-allowed request# env#))
+                                                             tbox-metadata#)))))))
+
+(defmacro spawn-rest-resource! [resource path ts & opts]
+  (let [opts (apply hash-map opts)]
+    `(let [env-pre# (make-single-resource-environment-map ~resource ~path ~ts ~opts)]
+       (ANY  (:path env-pre#) request-pre# (wrap-request (str (.toUpperCase (keyword-to-string (:request-method request-pre#))) " resource")
+                                                         (:resource-qname-prefix env-pre#)
+                                                         (:resource-qname-local env-pre#)
+                                                         request-pre#
+                                                         (let [env# (if (nil? (:resource-qname-prefix env-pre#))
+                                                                      (assoc env-pre# :resource-qname-prefix (build-default-qname-prefix request-pre#))
+                                                                      env-pre#)
+                                                               old-params# (:params request-pre#)
+                                                               format# (let [fmt# (match-route-extension (:path-re env#) (:uri request-pre#))]
+                                                                         (if (nil? fmt#) nil (clojure.contrib.str-utils2/lower-case fmt#)))
+                                                               params# (assoc old-params# "format" format#)
+                                                               request# (parse-standard-request-params (assoc request-pre# :params params#))
+                                                               id# ((:id-match-function env#) request# env#)
+                                                               tbox-metadata# (check-tbox-request request# env#)]
+                                                           (if (not tbox-metadata#)
+                                                             (cond
+                                                              (should-handle-method :get request# env#) ((dispatch-to-handler :single :get request# env#) id# request# env#)
+                                                              (should-handle-method :put request# env#) ((dispatch-to-handler :single :put request# env#) id# request# env#)
+                                                              (should-handle-method :delete request# env#) ((dispatch-to-handler :single :delete request# env#) id# request# env#)
+                                                              :else (handle-method-not-allowed request# env#))
+                                                             tbox-metadata#)))))))

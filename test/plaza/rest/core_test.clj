@@ -27,7 +27,7 @@
 (defn- build-mulgara
   ([] (build-model :mulgara :rmi "rmi://localhost/server1")))
 
-(defonce *should-test* false)
+(defonce *should-test* true)
 
 
 (when *should-test*
@@ -64,7 +64,20 @@
    ;; Application routes
    (defroutes example
      (spawn-rest-resource! :foaf-agent "/Agent/:id" :resource)
-     (spawn-rest-collection-resource! :foaf-agent "/Agent" :resource))
+     (spawn-rest-collection-resource! :foaf-agent "/Agent" :resource)
+     ; testing of forbidden methods
+     (spawn-rest-collection-resource! :foaf-agent "/WriteOnlyResource" :resource
+                                      :allowed-methods [:post :delete])
+     (spawn-rest-collection-resource! :foaf-agent "/CustomGetCollection" :resource
+                                      :allowed-methods [:get]
+                                      :get-handle-fn (fn [request environment] {:body "custom get handler"
+                                                                                :headers {"Content-Type" "text-plain"}
+                                                                                :status 200}))
+     (spawn-rest-resource! :foaf-agent "/CustomGet/:id" :resource
+                           :allowed-methods [:get]
+                           :get-handle-fn (fn [id request environment] {:body "custom get handler"
+                                                                        :headers {"Content-Type" "text-plain"}
+                                                                        :status 200})))
 
    ;; Runnin the application
    (future (run-jetty (var example) {:port 8082}))
@@ -141,5 +154,38 @@
          (is (= "http://xmlns.com/foaf/0.1/Agent" (:type ts)))
          (is (= 4 (count (keys ts)))))))
 
-   (finally (shutdown-agents))
-   ))
+  (deftest test-del-post-get-form
+    (println "***************************************************\n DELETE - POST FORM \n******************************************************")
+    (clojure-http.resourcefully/delete "http://localhost:8082/Agent")
+    (let [res (clojure-http.resourcefully/post "http://localhost:8082/Agent" {} {"age" 20 "gender" "male"})
+          m (build-model :jena)]
+      (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
+      (is (= 3 (count (model-to-triples m))))
+      (let [subj-pre (str (first (first (model-to-triples m))))
+            subj (clojure.contrib.str-utils2/replace subj-pre "localhost" "localhost:8082")
+            res2 (clojure-http.resourcefully/get (str subj ".json"))
+            ts (clojure.contrib.json/read-json (apply str (:body-seq res2)))]
+        (log :info (str "triples: " ts))
+        (is (= 20 (:age ts)))
+        (is (= "male" (:gender ts)))
+        (is (= "http://xmlns.com/foaf/0.1/Agent" (:type ts)))
+        (is (= 4 (count (keys ts)))))))
+
+(deftest test-get-fobidden
+    (println "***************************************************\n DELETE - GET FORBIDEN \n******************************************************")
+    (clojure-http.resourcefully/delete "http://localhost:8082/WriteOnlyResource")
+    (let [res-post (clojure-http.resourcefully/post "http://localhost:8082/WriteOnlyResource" {} {"age" 20 "gender" "male"})]
+      (try (clojure-http.resourcefully/get "http://localhost:8082/WriteOnlyResource")
+           (is false) ;; this method is not allowed, this should not be executed
+           (catch java.io.IOException ex (is true)))))
+
+(deftest test-custom-get
+    (println "***************************************************\n CUSTOM HANDLERS \n******************************************************")
+    (let [res1 (clojure-http.resourcefully/get "http://localhost:8082/CustomGet/something")
+          res2 (clojure-http.resourcefully/get "http://localhost:8082/CustomGetCollection")]
+      (is (= "custom get handler" (apply str (:body-seq res1))))
+      (is (= "custom get handler" (apply str (:body-seq res2))))))
+
+  (catch Exception ex (throw ex))
+  (finally (do (log :info "CLEANING...")
+               (shutdown-agents)))))

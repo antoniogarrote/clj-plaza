@@ -133,7 +133,7 @@ ol#tag-cloud li.tier-6 {
    line-height:1.5em;
    margin:0 auto 2em;
    text-align:left;
-   width:900px;
+   width:1000px;
 }
 #site #sidebar {
    float:right;
@@ -201,9 +201,15 @@ ol#tag-cloud li.tier-6 {
 #post {
    width: 700px
 }
+
 #post h1 {
    margin-bottom:0;
 }
+
+#post p {
+   width: 700px
+}
+
 #post .subtitle {
    color:#BBBBBB;
    font-size:13px;

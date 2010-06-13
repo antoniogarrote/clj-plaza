@@ -35,7 +35,8 @@ p {
    margin:1em 0;
 }
 div#img_wrapper {
-   text-align: center
+   text-align: left;
+   margin-left: 20px
 }
 a {
    color:#0000AA;

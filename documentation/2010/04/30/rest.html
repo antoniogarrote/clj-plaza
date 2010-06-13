@@ -1,0 +1,372 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html lang="en-US" xml:lang="en-US" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+    <title>RESTful semantic resources</title>
+    <meta content="Antonio Garrrote Hern&aacute;ndez" name="author" />
+   <link href="/clj-plaza/css/screen.css" rel="stylesheet" type="text/css" />
+   <link href="/clj-plaza/css/syntax.css" rel="stylesheet" type="text/css" />
+ </head>
+<script type="text/javascript">
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+try {
+var pageTracker = _gat._getTracker("UA-15922180-1");
+pageTracker._trackPageview();
+} catch(err) {}</script>
+  <body>
+    <div id="site">
+      <div id="sidebar">
+        <div id="title">
+          <p><a href="/clj-plaza/"><img src="/clj-plaza/images/logo.png" alt="" /></a></p>
+          <p><a href="/clj-plaza/">clj-plaza</a></p>
+        </div>
+        <p>
+
+          A Clojure library to work with semantic meta-data.
+
+        <div id="github">
+          Fork me at <br/>
+          <a href="http://github.com/antoniogarrote/clj-plaza">
+          <img src="http://github.com/images/modules/header/logov3.png"></img>
+          </a>
+        </div>
+     </div>
+
+        <div id="post"
+  <h1> RESTful semantic resources </h1>
+  <p class="subtitle">
+ </p>
+<div id="content">
+  <p>
+<ul>
+        <li><a href="#definition_rest">What is a RESTful semantic resource?</a></li>
+        <li><a href="#defining_resources">Defining RESTful resources</a></li>
+        <li><a href="#consuming_resources">RESTful semantic resources default features</a></li>
+        <li><a href="#customizing_resources">Customizing RESTful semantic resources</a></li>
+</ul>
+</p>
+<h2 id="definition_rest">What is a RESTful semantic resource?</h2>
+<p>Web development is changing quickly. Data APIs and rich clients (wether web or mobile) are becoming increasingly important, at the same way, web infrastructure is becoming increasingly distributed where complex interactions among components happening outside the request-response cycle: <span class="caps">SQL</span> databases, key value stores, memory caches, messaging systems, application servers and front-end javascript are some of the mobile parts that are part of today&#8217;s web heterogeneous infrastructure. The classical impedance mismatch problem between relational databases and the objects in the application layer has worsened and now a piece of data stored in a database table is transformed into a set of ruby object that are stored in <span class="caps">YAML</span> format in a memcache transient memory zone, or travels through a <span class="caps">AMQP</span> message bus to finally be serialized as <span class="caps">JSON</span> and consumed by javascript code being executed in the browser. All these subsystems doesn&#8217;t share a common understanding of the data and perform ad-hoc transformations on the data through fragile interfaces always prone to break, making these systems hard to maintain, extend and reuse.</p>
+<p>Plaza tries to explore ways to address these problems combining semantic meta data and RESTful architectural principles. Is our understanding that common semantics and a shared general data model could simplify the design of web infrastructure and allow easy reuse and composition of data.</p>
+<p><span class="caps">REST</span> is an architectural approach to the design of web systems introduced by Roy Fielding famous <a href="http://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm"> doctoral thesis</a> and has become one of the preferred design guidelines to build web applications.<br />
+At the same time, semantic technologies developed by the W3C, have become a mature technology that could allow a new generation of web services where the discovery and consumption of web data can become fully automated.</p>
+<p>Plaza builds on these foundations to provide a way of building web applications offering:</p>
+
+	<ul>
+		<li>a sound theoretical model based on process calculi and generative communication theory</li>
+		<li>a powerful data model with well defined semantics provided by W3C semantic standards like <span class="caps">RDF</span>, <span class="caps">RDFS</span>, <span class="caps">SPARQL</span> or <span class="caps">OWL</span></li>
+		<li>a flexible distributed infrastructure based on the use of triple spaces, processes and triple space operations</li>
+	</ul><p>In these section we will show how Plaza triple spaces can be exposed as RESTful <span class="caps">HTTP</span> resources to be consumed by application clients.</p>
+<p>The first question to address is the exact nature of a <span class="caps">REST</span> resource, the disjunctive between the use of RESTful web resource or RESTful web service shows two possible ways of understanding web interfaces: as <strong>remote processes</strong> that perform actions that are invoked through <span class="caps">HTTP</span> requests or as <strong>data</strong> in the form of resources that are manipulated using the <span class="caps">HTTP</span> protocol verbs. The first approach is close to the <span class="caps">RPC</span> view of web services representative of WS-* web services standards, the latter one is closer to the <span class="caps">REST</span> approach to web resources. Nevertheless the <span class="caps">REST</span> approach also requires to think about resources as processes to a certain degree: resources are created and destroyed, new identifiers (URIs) are created and bound to the resources etc. This point of view is also present in Fielding thesis when analyzing the process and data views of <span class="caps">REST</span> architectures.</p>
+<p>Plaza model describes RESTful semantic resources as processes with an associated <span class="caps">URI</span> accepting <span class="caps">HTTP</span> requests and manipulating their associated triple spaces according to <span class="caps">REST</span> semantics.</p>
+<p>The main intuition of these approach is that the main components of <span class="caps">REST</span> architectures can be mapped to triple spaces architectures, using a process with an associated <span class="caps">URI</span> as the translator between both:</p>
+
+	<ul>
+		<li>a <span class="caps">URI</span> identifying a <span class="caps">REST</span> resource identifies a <span class="caps">RDF</span> graph in a triple space and a triple space process</li>
+		<li>a <span class="caps">HTTP</span> <span class="caps">GET</span> operation becomes a <strong>rd</strong> triple space operation</li>
+		<li>a <span class="caps">HTTP</span> <span class="caps">POST</span> operation becomes introduces a new <span class="caps">URI</span> and spawns a process associated process and <span class="caps">RDF</span> graph that is stored in the triple space with an <strong>out</strong> operation</li>
+		<li>a <span class="caps">HTTP</span> <span class="caps">PUT</span> operation becomes a <strong>swap</strong> triple space operation</li>
+		<li>a <span class="caps">HTTP</span> <span class="caps">DELETE</span> operation becomes a <strong>in</strong> operation, extracting the <span class="caps">RDF</span> graph for the triple space and finishing the execution of the triple space process</li>
+	</ul><h2 id="defining_resources">Defining RESTful resources</h2>
+<p>The support for RESTful semantic resources in plaza can be found in the <code>plaza.rest.core</code> all the code is integrated with the Compojure Clojure web framework and the Ring middleware infrastructure so it can be safely used in a regular Compojure application.</p>
+<p>The definition of a RESTful semantic resources requires three components: a <span class="caps">RDF</span> model describing the kind of <span class="caps">RDF</span> graphs that will be exposed by the resource, a triple space where the triples will be stored and manipulated and the registry of a process with the <span class="caps">URI</span> for the resource.</p>
+<h3>Defining the <span class="caps">RDF</span> model</h3>
+<p>The definition of the resource can be accomplished using the <code>plaza.rdf.schemas</code> package and the <span class="caps">RDF</span> ontologies included in the Plaza library or defined by the developer. For example, the following snipped defines a new model call <code>ComputationCelebrity</code> describing famous people in the computer science field. This model can be described with the following clojure code, using the bundled <span class="caps">FOAF</span> vocabulary:</p>
+<div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">core</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">implementations</span><span class="o">.</span><span class="nv">jena</span><span class="p">)</span>
+
+<span class="c1">;; We start Plaza using Jena as the backend</span>
+<span class="p">(</span><span class="nf">init-jena-framework</span><span class="p">)</span>
+
+<span class="c1">;; We will use the FOAF vocabulary to describe our model</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">vocabularies</span><span class="o">.</span><span class="nv">foaf</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">def </span><span class="nv">ComputationCelebrity-schema</span>
+     <span class="p">(</span><span class="nf">make-rdfs-schema</span> <span class="nv">foaf:Person</span>
+                       <span class="nv">:name</span>                  <span class="p">{</span><span class="nv">:uri</span> <span class="nv">foaf:name</span>                  <span class="nv">:range</span> <span class="nv">:string</span><span class="p">}</span>
+                       <span class="nv">:surname</span>             <span class="p">{</span><span class="nv">:uri</span> <span class="nv">foaf:surname</span>            <span class="nv">:range</span> <span class="nv">:string</span><span class="p">}</span>
+                       <span class="nv">:nick</span>                    <span class="p">{</span><span class="nv">:nick</span> <span class="nv">foaf:nick</span>                 <span class="nv">:range</span> <span class="nv">:string</span><span class="p">}</span>
+                       <span class="nv">:birthday</span>              <span class="p">{</span><span class="nv">:uri</span> <span class="nv">foaf:birthday</span>             <span class="nv">:range</span> <span class="nv">:date</span><span class="p">}</span>
+                       <span class="nv">:interest</span>               <span class="p">{</span><span class="nv">:uri</span> <span class="nv">foaf:topic_interest</span>    <span class="nv">:range</span> <span class="nv">:string</span><span class="p">}</span>
+                       <span class="nv">:wikipedia_entry</span>  <span class="p">{</span><span class="nv">:uri</span> <span class="nv">foaf:holdsAccount</span>   <span class="nv">:range</span> <span class="nv">rdfs:Resource</span><span class="p">}))</span>
+
+<span class="p">(</span><span class="nf">tbox-register-schema</span> <span class="nv">:celebrity</span> <span class="nv">ComputationCelebrity-schema</span><span class="p">)</span>
+</code></pre>
+</div><p>The previous code declares a new <span class="caps">RDF</span> schema named <code>ComputationCelebrity</code> defined using the <code>make-rdfs-schema</code> declared to be of class <code>foaf:Person</code>. In that function we also provide a map with the properties of the model with their defining <span class="caps">URI</span> and ranges, as well as an alias for that property. For example the name of the celebrity is defined as a <span class="caps">FOAF</span> name property that can hold a value of type string and receives the alias name.</p>
+<p>Once the model is defined it is stored in the <a href="http://en.wikipedia.org/wiki/Tbox">TBox</a> of the application using the function <code>tbox-register-schema</code>. The TBox or &#8220;terminological box&#8221; can be regarded as a special triple space where meta data about the meta data is stored.</p>
+<h3>Defining triple spaces</h3>
+<p>After defining the model for the resource, we need to define a triple space where the <span class="caps">RDF</span> graphs for that resource will be stored. In this case we will use a <code>plaza.triple-spaces.distributed-server.DistributedTripleSpace</code> with a Mulgara backend.</p>
+<div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">triple-spaces</span><span class="o">.</span><span class="nv">server</span><span class="o">.</span><span class="nv">mulgara</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">triple-spaces</span><span class="o">.</span><span class="nv">distributed-server</span><span class="p">)</span>
+
+<span class="c1">;; We create a Triple Space for the resources</span>
+<span class="p">(</span><span class="nf">defonce</span> <span class="nv">*mulgara-backend*</span> <span class="p">(</span><span class="nf">build-model</span> <span class="nv">:mulgara</span> <span class="nv">:rmi</span> <span class="s">&quot;rmi://localhost/server1&quot;</span><span class="p">))</span>
+<span class="p">(</span><span class="nf">def-ts</span> <span class="nv">:celebrities</span> <span class="p">(</span><span class="nf">make-distributed-triple-space</span> <span class="s">&quot;test&quot;</span> <span class="nv">*mulgara-backend*</span> <span class="nv">:redis-host</span> <span class="s">&quot;localhost&quot;</span> <span class="nv">:redis-db</span> <span class="s">&quot;testdist&quot;</span> <span class="nv">:redis-port</span> <span class="mi">6379</span><span class="p">))</span>
+</code></pre>
+</div><h3>Registering the resource</h3>
+<p>Once the triple space is defined and the resource model is registered in the TBox, we can create a new resource process that will accept <span class="caps">HTTP</span> requests for a certain <span class="caps">URI</span> and will manipulate the <span class="caps">RDF</span> graph in the associated triple space. We can use the functions <code>spawn-rest-resource!</code> and <code>spawn-rest-collection-resource!</code> to start new resource process in a Compojure application.</p>
+<div class="highlight"><pre><code class="clojure"><span class="c1">;; Application routes for a new Compojure application</span>
+<span class="p">(</span><span class="nf">defroutes</span> <span class="nv">example</span>
+
+  <span class="c1">;;  a regular Compojure request</span>
+  <span class="p">(</span><span class="nf">GET</span> <span class="s">&quot;/&quot;</span> <span class="p">[]</span> <span class="s">&quot;&lt;h1&gt;Testing plaza...&lt;/h1&gt;&quot;</span><span class="p">)</span>
+
+  <span class="c1">;; a RESTful semantic resource accepting GET, PUT and DELETE requests</span>
+  <span class="p">(</span><span class="nf">spawn-rest-resource!</span> <span class="nv">:celebrity</span> <span class="s">&quot;/Celebrity/:id&quot;</span> <span class="nv">:celebrities</span><span class="p">)</span>
+
+  <span class="c1">;; a RESTful semantic resource accepting GET, POST and DELETE requests</span>
+  <span class="p">(</span><span class="nf">spawn-rest-collection-resource!</span> <span class="nv">:celebrity</span> <span class="s">&quot;/Celebrity&quot;</span> <span class="nv">:celebrities</span><span class="p">)</span>
+
+  <span class="c1">;; a default Compojure handler</span>
+  <span class="p">(</span><span class="nf">route/not-found</span> <span class="s">&quot;Page not found&quot;</span><span class="p">))</span>
+
+<span class="c1">;; Running the application</span>
+<span class="p">(</span><span class="nf">run-jetty</span> <span class="p">(</span><span class="nf">var</span> <span class="nv">example</span><span class="p">)</span> <span class="p">{</span><span class="nv">:port</span> <span class="mi">8081</span><span class="p">})</span>
+</code></pre>
+</div><p>Both functions accept 3 mandatory parameters: the name of the resource registered in the TBox, the <span class="caps">URI</span> path of the resource, and the name of the registered triple space to manipulate. The definition of the resources can be mixed with regular Compojure routes.</p>
+<p>Two different kinds of default RESTful semantic resources can be defined: collection resources and individual resources. Collection resources manage sets of <span class="caps">RDF</span> graphs where the subject are all of the same kind, creating new resources with <span class="caps">POST</span> requests, retrieving full collections with <span class="caps">GET</span> requests and deleting collections with <span class="caps">DELETE</span> requests. Individual resources manage <span class="caps">RDF</span> graphs with the same subject, pattern the <span class="caps">URI</span> of the resource. These graphs can be retrieved with <span class="caps">GET</span> requests, modified with <span class="caps">PUT</span> requests and deleted with <span class="caps">DELETE</span> requests. Default definition of individual resources require to include the <code>:id</code> key in the <span class="caps">URI</span> pattern, so the newly created identifier for the resource can be inserted.</p>
+<p>The following table summarizes the requests for each kind of resource and</p>
+<table>
+	<tr>
+		<th><span class="caps">HTTP</span> Method </th>
+		<th>Collection Resource </th>
+		<th>Individual Resource </th>
+		<th>Triple Space Operation  </th>
+	</tr>
+	<tr>
+		<td>         <span class="caps">GET</span>           </td>
+		<td>              Yes                 </td>
+		<td>            Yes                  </td>
+		<td>                  rd                  </td>
+	</tr>
+	<tr>
+		<td>        <span class="caps">POST</span>          </td>
+		<td>              Yes                 </td>
+		<td>            No                   </td>
+		<td>                  out                </td>
+	</tr>
+	<tr>
+		<td>        <span class="caps">PUT</span>            </td>
+		<td>              No                  </td>
+		<td>            Yes                  </td>
+		<td>                  swap             </td>
+	</tr>
+	<tr>
+		<td>        <span class="caps">DELETE</span>      </td>
+		<td>              Yes                 </td>
+		<td>             Yes                  </td>
+		<td>                  in                  </td>
+	</tr>
+</table>
+<p>All the code shown before can be found in the <code>plaza.examples.webapp</code> namespace inside the Plaza source code.</p>
+<h2 id="consuming_resources">RESTful semantic resources default features</h2>
+<h3>Retrieving <span class="caps">RDF</span> graphs</h3>
+<p>Once the application is running, in the example using the Jetty application server, it can be accessed through any <span class="caps">HTTP</span> regular agent, for example using <strong>curl</strong>.<br />
+If we want to retrieve all the resources of kind Celebrity, we can issue a <span class="caps">GET</span> request to the collection RESTful resource:</p>
+<pre>
+nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity"
+&lt;rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" &gt;
+&lt;/rdf:RDF&gt;
+</pre>
+<h3>Creating <span class="caps">RDF</span> graphs</h3>
+<p>We can create a new <span class="caps">RDF</span> graph for a resource that will be inserted in the triple space issuing a <span class="caps">HTTP</span> <span class="caps">POST</span> request to the <span class="caps">URI</span> of a collection RESTful semantic resource. We can pass the values for the properties of the new resource as <span class="caps">URL</span> parameters or as form encoded parameters. The name of the parameters matches the alias defined in the resource description inserted in the TBox. A new <span class="caps">URI</span> for the resource will be created and will be used for the subject component of the triples of the new resource:</p>
+<pre>
+nb-agarrote ~$ curl -X POST "http://localhost:8081/Celebrity?name=Alonzo&amp;surname=Church&amp;birthday=1904-06-14&amp;wikipedia_entry=http://en.wikipedia.org/wiki/Alonzo_Church"
+&lt;rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:j.0="http://xmlns.com/foaf/0.1/" &gt;
+  &lt;rdf:Description rdf:about="http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd"&gt;
+    &lt;j.0:birthday rdf:datatype="http://www.w3.org/2001/XMLSchema#date"&gt;1904-06-14&lt;/j.0:birthday&gt;
+    &lt;j.0:holdsAccount rdf:resource="http://en.wikipedia.org/wiki/Alonzo_Church"/&gt;
+    &lt;j.0:surname rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Church&lt;/j.0:surname&gt;
+    &lt;j.0:name rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Alonzo&lt;/j.0:name&gt;
+    &lt;rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Person"/&gt;
+  &lt;/rdf:Description&gt;
+&lt;/rdf:RDF&gt;
+</pre>
+<p>The newly created graph will be returned with a <code>201</code> <span class="caps">HTTP</span> status code if the creation of the resource is successful. Due to the <a hre="http://en.wikipedia.org/wiki/Open_world_assumption">Open World semantics</a> of <span class="caps">RDF</span>, not all the properties are required for the creation of the resource. A newly created <span class="caps">URI</span> will be introduced for the resource. By default a <span class="caps">UUID</span> will be assigned used for the <span class="caps">URI</span>.</p>
+<h3>Supported encodings</h3>
+<p>Since we don&#8217;t have created any Celebrity resource the triple space is empty and the retrieved <span class="caps">RDF</span> graph is also empty. By default, Plaza resources return <span class="caps">XML</span>/<span class="caps">RDF</span> encoded triples. This behavior can be modified sending the right <code>Accept</code> <span class="caps">HTTP</span> header or appending an extension to the resource <span class="caps">URI</span>.<br />
+I we would like obtaining the NTriples representation of the same <span class="caps">RDF</span> graph, we could pass the corresponding header of extension:</p>
+<pre>
+nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity.n3"
+&lt;http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd&gt;
+      a       &lt;http://xmlns.com/foaf/0.1/Person&gt; ;
+      &lt;http://xmlns.com/foaf/0.1/birthday&gt;
+              "1904-06-14"^^&lt;http://www.w3.org/2001/XMLSchema#date&gt; ;
+      &lt;http://xmlns.com/foaf/0.1/holdsAccount&gt;
+              &lt;http://en.wikipedia.org/wiki/Alonzo_Church&gt; ;
+      &lt;http://xmlns.com/foaf/0.1/name&gt;
+              "Alonzo"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+      &lt;http://xmlns.com/foaf/0.1/surname&gt;
+              "Church"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; .
+
+nb-agarrote ~$ curl -X GET -H "accept: text/rdf+n3" "http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd"
+&lt;http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd&gt;
+      a       &lt;http://xmlns.com/foaf/0.1/Person&gt; ;
+      &lt;http://xmlns.com/foaf/0.1/birthday&gt;
+              "1904-06-14"^^&lt;http://www.w3.org/2001/XMLSchema#date&gt; ;
+      &lt;http://xmlns.com/foaf/0.1/holdsAccount&gt;
+              &lt;http://en.wikipedia.org/wiki/Alonzo_Church&gt; ;
+      &lt;http://xmlns.com/foaf/0.1/name&gt;
+              "Alonzo"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+      &lt;http://xmlns.com/foaf/0.1/surname&gt;
+              "Church"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; .
+</pre>
+<h3><span class="caps">JSON</span> encoding of <span class="caps">RDF</span> graphs</h3>
+<p>Plaza semantic RESTful resources support <span class="caps">JSON</span> encoded for the resources in two different flavors.  If we ask for a <span class="caps">JSON</span> representation of the forma we will obtain a <span class="caps">JSON</span> object where all the values have been encoded as properties whose name is the alias provided for the property in the TBox. Additionally, a <code>uri</code> property is added with the <span class="caps">URI</span> of the resource:</p>
+<pre>
+nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd.json"
+{"uri":"http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","birthday":"1904-06-14","wikipedia_entry":"http:\/\/en.wikipedia.org\/wiki\/Alonzo_Church","surname":"Church","name":"Alonzo","type":"http:\/\/xmlns.com\/foaf\/0.1\/Person"}
+</pre>
+<p>The other possible encoding of the graph as <span class="caps">JSON</span> returns the full list of triples in the <span class="caps">RDF</span> graph as an array of array where the first element is the subject for the triple, the second one is the predicate and the third one is <span class="caps">URI</span> or a new object with two keys, the value of the object and the <span class="caps">URI</span> of the data type for that value.</p>
+<pre>
+nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd.js3"
+[["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","http:\/\/www.w3.org\/1999\/02\/22-rdf-syntax-ns#type","http:\/\/xmlns.com\/foaf\/0.1\/Person"],["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","http:\/\/xmlns.com\/foaf\/0.1\/name",{"value":"Alonzo","datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}],["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","http:\/\/xmlns.com\/foaf\/0.1\/surname",{"value":"Church","datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}],["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","http:\/\/xmlns.com\/foaf\/0.1\/holdsAccount","http:\/\/en.wikipedia.org\/wiki\/Alonzo_Church"],["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","http:\/\/xmlns.com\/foaf\/0.1\/birthday",{"value":"1904-06-14","datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#date"}]]
+</pre>
+<p>.h3 <span class="caps">JSONP</span> support</p>
+<p>Plaza RESTful semantic resources support <span class="caps">JSONP</span> requests by the means of an extra &#8220;_callback&#8221; parameter where the name of the returning function can be provided:</p>
+<pre>
+nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd.json?_callback=foo"
+foo({"uri":"http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","birthday":"1904-06-14","wikipedia_entry":"http:\/\/en.wikipedia.org\/wiki\/Alonzo_Church","surname":"Church","name":"Alonzo","type":"http:\/\/xmlns.com\/foaf\/0.1\/Person"})
+</pre>
+<p>.h3 RDFa support</p>
+<p>Plaza also offers a default representation of <span class="caps">RDF</span> graphs using <span class="caps">HTML</span> with RDFa annotations. These representation can be retrieved using a <code>text/hml</code> accept <span class="caps">HTTP</span> header or a <code>html, rdfa</code> or <code>xhtml</code> extensions. These allow users to browse Plaza resources from a web browser:</p>
+<div id="img_wrapper">
+<p><img src="/clj-plaza/images/plaza_rest1.png"></img></p>
+</div>
+<p>.h3 Updating resources</p>
+<p>An individual RESTful resource can be updated passing the new state for the resource encoded in a <span class="caps">HTTP</span> <span class="caps">PUT</span> request:</p>
+<pre>
+nb-agarrote ~$ curl -X PUT "http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd?name=Alonzo&amp;surname=Church&amp;birthday=1903-06-14&amp;wikipedia_entry=http://en.wikipedia.org/wiki/Alonzo_Church"
+&lt;rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:j.0="http://xmlns.com/foaf/0.1/" &gt;
+  &lt;rdf:Description rdf:about="http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd"&gt;
+    &lt;j.0:birthday rdf:datatype="http://www.w3.org/2001/XMLSchema#date"&gt;1904-06-14&lt;/j.0:birthday&gt;
+    &lt;j.0:holdsAccount rdf:resource="http://en.wikipedia.org/wiki/Alonzo_Church"/&gt;
+    &lt;j.0:surname rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Church&lt;/j.0:surname&gt;
+    &lt;j.0:name rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Alonzo&lt;/j.0:name&gt;
+    &lt;rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Person"/&gt;
+  &lt;/rdf:Description&gt;
+&lt;/rdf:RDF&gt;
+</pre>
+<p>The previous state of the resource is returned as a response from the resource process.</p>
+<p>.h3 Selecting parts of a <span class="caps">RDF</span> graph</p>
+<p>In order to select parts of a <span class="caps">RDF</span> graph values can be passed to the <span class="caps">GET</span> request of a collection resource, only the resources matching this value will be returned:</p>
+<pre>
+nb-agarrote ~$ curl -X POST "http://localhost:8081/Celebrity?name=Yukihiro&amp;surname=Matsumoto&amp;birthday=1965-04-14&amp;wikipedia_entry=http://en.wikipedia.org/wiki/Yukihiro_Matsumoto&amp;interest=ruby"
+&lt;rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:j.0="http://xmlns.com/foaf/0.1/" &gt;
+  &lt;rdf:Description rdf:about="http://localhost:8081/Celebrity/917512c59efb4b1e876762ba8595a8d7"&gt;
+    &lt;j.0:birthday rdf:datatype="http://www.w3.org/2001/XMLSchema#date"&gt;1965-04-14&lt;/j.0:birthday&gt;
+    &lt;j.0:holdsAccount rdf:resource="http://en.wikipedia.org/wiki/Yukihiro_Matsumoto"/&gt;
+    &lt;j.0:surname rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Matsumoto&lt;/j.0:surname&gt;
+    &lt;j.0:name rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Yukihiro&lt;/j.0:name&gt;
+    &lt;j.0:topic_interest rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;ruby&lt;/j.0:topic_interest&gt;
+    &lt;rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Person"/&gt;
+  &lt;/rdf:Description&gt;
+&lt;/rdf:RDF&gt;
+
+nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity?interest=ruby&gt; "
+&lt;rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:j.0="http://xmlns.com/foaf/0.1/" &gt;
+  &lt;rdf:Description rdf:about="http://localhost:8081/Celebrity/917512c59efb4b1e876762ba8595a8d7"&gt;
+    &lt;j.0:birthday rdf:datatype="http://www.w3.org/2001/XMLSchema#date"&gt;1965-04-14&lt;/j.0:birthday&gt;
+    &lt;j.0:holdsAccount rdf:resource="http://en.wikipedia.org/wiki/Yukihiro_Matsumoto"/&gt;
+    &lt;j.0:surname rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Matsumoto&lt;/j.0:surname&gt;
+    &lt;j.0:name rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Yukihiro&lt;/j.0:name&gt;
+    &lt;j.0:topic_interest rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;ruby&lt;/j.0:topic_interest&gt;
+    &lt;rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Person"/&gt;
+  &lt;/rdf:Description&gt;
+&lt;/rdf:RDF&gt;
+
+nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity?surname=Church"
+&lt;rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:j.0="http://xmlns.com/foaf/0.1/" &gt;
+  &lt;rdf:Description rdf:about="http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd"&gt;
+    &lt;j.0:birthday rdf:datatype="http://www.w3.org/2001/XMLSchema#date"&gt;1903-06-14&lt;/j.0:birthday&gt;
+    &lt;j.0:holdsAccount rdf:resource="http://en.wikipedia.org/wiki/Alonzo_Church"/&gt;
+    &lt;j.0:name rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Alonzo&lt;/j.0:name&gt;
+    &lt;j.0:surname rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Church&lt;/j.0:surname&gt;
+    &lt;rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Person"/&gt;
+  &lt;/rdf:Description&gt;
+&lt;/rdf:RDF&gt;
+</pre>
+<p>.h3 Deleting <span class="caps">RDF</span> graphs</p>
+<p><span class="caps">RDF</span> graphs can be deleted sending <span class="caps">DELETE</span> <span class="caps">HTTP</span> requests to the resource. The deleted <span class="caps">RDF</span> graph will be returned as the response:</p>
+<pre>
+nb-agarrote ~$ curl -X DELETE "http://localhost:8081/Celebrity/a44f1be3e1b84c4d9c8e342aa5dcf054"
+&lt;rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:j.0="http://xmlns.com/foaf/0.1/" &gt;
+  &lt;rdf:Description rdf:about="http://localhost:8081/Celebrity/a44f1be3e1b84c4d9c8e342aa5dcf054"&gt;
+    &lt;j.0:birthday rdf:datatype="http://www.w3.org/2001/XMLSchema#date"&gt;1903-06-14&lt;/j.0:birthday&gt;
+    &lt;j.0:holdsAccount rdf:resource="http://en.wikipedia.org/wiki/Alonzo_Church"/&gt;
+    &lt;j.0:surname rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Church&lt;/j.0:surname&gt;
+    &lt;j.0:name rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;Alonzo&lt;/j.0:name&gt;
+    &lt;rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Person"/&gt;
+  &lt;/rdf:Description&gt;
+&lt;/rdf:RDF&gt;
+</pre>
+<p>.h3 Simulating <span class="caps">HTTP</span> methods</p>
+<p>Some <span class="caps">HTTP</span> agents, most notably web browsers, cannot send requests using all the <span class="caps">HTTP</span> methods. Requests for a different method can be simulated using the special <pre><em>method</pre> parameter in the <span class="caps">URL</span>. For example, the previous <span class="caps">DELETE</span> request could have been requested using a <span class="caps">GET</span> request and a <code></em>method=delete</code> parameter:</p>
+<pre>
+nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity/a44f1be3e1b84c4d9c8e342aa5dcf054?_method=delete"
+</pre>
+<h2>Customizing RESTful semantic resources</h2>
+<p>In the previous sections we have explored the default features of Plaza RESTful semantic resources. This standard behavior can be nevertheless customized to suit a specific use case for a resource. This customization can be achieved using a number of options that can be passed as additional arguments in the description of the resource.</p>
+<p>.h3 The request environment</p>
+<p>All the customization handlers will receive a couple of arguments, the Ring request hash, with all the information about the request, and a environment argument with the current state in the processing of the semantic request: the resource being requested, the triple space for the resource, or the functions handling <span class="caps">GET</span>, <span class="caps">PUT</span>, <span class="caps">POST</span> and <span class="caps">DELETE</span> requests. This information can be used to generate the right behavior for the request.</p>
+<p>.h3 Allowed methods</p>
+<p>The <code>:allowed-methods</code> option can be passed providing a collection of methods allowed for a resource. If a request with a different method is issued the resource will answer with a <pre>405 not allowed</pre> response:</p>
+<div class="highlight"><pre><code class="clojure"><span class="c1">;;  defining a read-only resource</span>
+<span class="p">(</span><span class="nf">spawn-rest-collection-resource!</span> <span class="nv">:my-resource</span> <span class="s">&quot;/WriteOnlyResource&quot;</span> <span class="nv">:resource-ts</span>
+                                                      <span class="nv">:allowed-methods</span> <span class="p">[</span><span class="nv">:post</span> <span class="nv">:delete</span><span class="p">])</span>
+</code></pre>
+</div><p>.h3 Custom URIs</p>
+<p>The  <span class="caps">URI</span> generated for the new resource can be customized passing a pair of function identified by the keys <code>:id-gen-fn</code> and the <code>:id-match-fn</code>. The <code>id-gen-fn</code> can be passed to a collection resource, it will be invoked in all the <strong><span class="caps">POST</span></strong> requests passing the request and the environment for that request and must generate the <span class="caps">URI</span> for the new resource.<br />
+The complementary <code>id-match-fn</code> can be passed to a single resource definition, receiving a request and environment. It must generate the <span class="caps">URI</span> for the resource that is being requested.</p>
+<p>In the following example, two resources are created for a <span class="caps">FOAF</span> Agent resource, that will generate URIs for the resources based on the <code>foaf:name</code> property of the resource:</p>
+<div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">require</span> <span class="p">[</span><span class="nv">clojure</span><span class="o">.</span><span class="nv">contrib</span><span class="o">.</span><span class="nv">str-utils2</span> <span class="nv">:as</span> <span class="nv">str2</span><span class="p">])</span>
+
+<span class="p">(</span><span class="nf">spawn-rest-resource!</span> <span class="nv">:foaf-agent</span> <span class="s">&quot;/CustomIds/:name&quot;</span> <span class="nv">:resource</span>
+                      <span class="nv">:allowed-methods</span> <span class="p">[</span><span class="nv">:get</span><span class="p">]</span>
+                      <span class="nv">:id-match-fn</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">req</span> <span class="nv">env</span><span class="p">]</span>
+                                     <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">pattern</span> <span class="p">(</span><span class="nb">str </span><span class="p">(</span><span class="nf">:resource-qname-prefix</span> <span class="nv">env</span><span class="p">)</span> <span class="p">(</span><span class="nf">:resource-qname-local</span> <span class="nv">env</span><span class="p">))]</span>
+                                       <span class="p">(</span><span class="nf">str2/replace</span> <span class="nv">pattern</span> <span class="s">&quot;:name&quot;</span> <span class="p">(</span><span class="nb">get </span><span class="p">(</span><span class="nf">:params</span> <span class="nv">req</span><span class="p">)</span> <span class="s">&quot;name&quot;</span><span class="p">)))))</span>
+
+<span class="p">(</span><span class="nf">spawn-rest-collection-resource!</span> <span class="nv">:foaf-agent</span> <span class="s">&quot;/CustomIds&quot;</span> <span class="nv">:resource</span>
+                                 <span class="nv">:allowed-methods</span> <span class="p">[</span><span class="nv">:post</span><span class="p">]</span>
+                                 <span class="nv">:id-gen-fn</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">req</span> <span class="nv">env</span><span class="p">]</span>
+                                              <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">prefix</span> <span class="p">(</span><span class="nf">:resource-qname-prefix</span> <span class="nv">env</span><span class="p">)</span>
+                                                    <span class="nv">local</span> <span class="p">(</span><span class="nf">:resource-qname-local</span> <span class="nv">env</span><span class="p">)]</span>
+                                                <span class="p">(</span><span class="nb">str </span><span class="nv">prefix</span> <span class="nv">local</span> <span class="s">&quot;/&quot;</span> <span class="p">(</span><span class="nb">get </span><span class="p">(</span><span class="nf">:params</span> <span class="nv">req</span><span class="p">)</span> <span class="s">&quot;name&quot;</span><span class="p">))))))</span>
+</code></pre>
+</div><p>.h3 Custom handlers</p>
+<p>Developers can fully customize the behavior of the agent passing as optional arguments handler functions for each type of request using the keys <code>:get-handle-fn :post-handle-fn :put-handle-fn :delete-handle-fn</code>. This functions will receive the Ring request and the environment and must generate the suitable Ring response hash for the request. Single resources will receive additionally the identifier <span class="caps">URI</span> for the resource.</p>
+<p>Developers can use all the regular operation over triple spaces to fulfill the requests besides the functions defined in the <code>plaza.rest.core</code> namespace to parse the parameters in the request or generating the right representation for the <span class="caps">RDF</span> graph.</p>
+<p>The following example shows a simple handler that just returns a fixed string as a response</p>
+<div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">spawn-rest-resource!</span> <span class="nv">:foaf-agent</span> <span class="s">&quot;/CustomGet/:id&quot;</span> <span class="nv">:resource</span>
+                      <span class="nv">:allowed-methods</span> <span class="p">[</span><span class="nv">:get</span><span class="p">]</span>
+                      <span class="nv">:get-handle-fn</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">id</span> <span class="nv">request</span> <span class="nv">environment</span><span class="p">]</span> <span class="p">{</span><span class="nv">:body</span> <span class="s">&quot;custom get handler&quot;</span>
+                                                                                            <span class="nv">:headers</span> <span class="p">{</span><span class="s">&quot;Content-Type&quot;</span> <span class="s">&quot;text-plain&quot;</span><span class="p">}</span>
+                                                                                                <span class="nv">:status</span> <span class="mi">200</span><span class="p">}))</span>
+</code></pre>
+</div><p>Custom handles must be careful in not breaking the semantics of the RESTful interface for the resource, as the shown example does.</p>
+</div>
+
+
+      <p id="footer">
+      </p>
+
+    </div>
+  </body>
+</html>

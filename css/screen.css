@@ -7,7 +7,12 @@ body {
    font:13.34px helvetica,arial,clean,sans-serif;
    padding:40px 20px 0;
    text-align:center;
+   witdh: 1024
 }
+#home {
+   margin-left: 200px
+}
+
 h1, h2, h3, h4, h5, h6 {
    font-size:100%;
 }
@@ -48,6 +53,9 @@ a img {
 }
 table {
    font-size:inherit;
+}
+td {
+   padding: 10px
 }
 blockquote {
    font-style:italic;
@@ -176,7 +184,7 @@ ol#tag-cloud li.tier-6 {
 }
 #site #content {
    margin-left:1em;
-   width:650px;
+   width:550px;
 }
 #site #footer {
    clear:both;
@@ -191,6 +199,7 @@ ol#tag-cloud li.tier-6 {
    margin:0 15px 5px 0;
 }
 #post {
+   width: 700px
 }
 #post h1 {
    margin-bottom:0;

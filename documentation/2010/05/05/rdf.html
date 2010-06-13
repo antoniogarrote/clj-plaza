@@ -90,8 +90,8 @@ with triples. The previous graph can be encoded with <strong>clj-plaza</strong> 
                   <span class="s">&quot;http://www.example.org/staffid/85740&quot;</span><span class="p">]])</span>
 </code></pre>
 </div><p>This way of describing data is quite verbose so it is a good idea to define the namespaces we are<br />
-going to use. This way the description of data can be less tedious. <strong>clj-plaza</strong> offers some functions for<br />
-dealing with namespaces:</p>
+going to use. This way the description of data can be less tedious. <strong>clj-plaza</strong> offers some<br />
+functions for dealing with namespaces:</p>
 <div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">register-rdf-ns</span> <span class="nv">:ex</span> <span class="s">&quot;http://www.example.org/index.html&quot;</span><span class="p">)</span>
 <span class="p">(</span><span class="nf">register-rdf-ns</span> <span class="nv">:dc</span> <span class="s">&quot;http://purl.org/dc/elements/1.1/&quot;</span><span class="p">)</span>
 <span class="p">(</span><span class="nf">make-triples</span> <span class="p">[[[</span><span class="nv">:ex</span> <span class="nv">:index</span><span class="o">.</span><span class="nv">html</span><span class="p">]</span> <span class="p">[</span><span class="nv">:dc</span> <span class="nv">:creator</span><span class="p">]</span> <span class="p">[</span><span class="nv">:ex</span> <span class="s">&quot;staffid/85740&quot;</span><span class="p">]]])</span>
@@ -119,9 +119,9 @@ resource. For instance, if you need to describe a graph like:</p>
                       <span class="nv">:s</span> <span class="nv">:d</span><span class="p">]]])</span>
 </code></pre>
 </div><h2 id="working_triples">Literals and typed literals</h2>
-<p>When describing a graph, some properties will be relations between resources, identified by URIs, and<br />
-some other properties will link resources to data describing that resource. These latest values are inserted<br />
-into the <span class="caps">RDF</span> graph as <em>literal nodes</em>. Literal nodes can have an associated type as described in the<br />
+<p>When describing a graph, some properties will be relations between resources, identified by URIs,<br />
+and some other properties will link resources to data describing that resource. These latest values<br />
+are inserted into the <span class="caps">RDF</span> graph as <em>literal nodes</em>. Literal nodes can have an associated type as described in the<br />
 <a href="http://www.w3.org/TR/2004/REC-rdf-concepts-20040210/#section-Datatypes"><span class="caps">RDF</span> specification</a>.</p>
 <p>We can use the functions <code>rdf-literal</code> and <code>rdf-typed-literal</code> to add some<br />
 values to a graph:</p>
@@ -317,7 +317,7 @@ expressive:</p>
                           <span class="p">(</span><span class="nf">object?</span> <span class="p">(</span><span class="nf">and?</span>  <span class="p">(</span><span class="nf">is-literal?</span><span class="p">)</span>
                                             <span class="p">(</span><span class="nf">regex?</span> <span class="o">#</span><span class="s">&quot;test[a-z]*&quot;</span><span class="p">)))))</span>
           <span class="nv">*ts*</span><span class="p">)</span>
-
+ 
 </code></pre>
 </div><p>Two special predicates are <code>fn-apply?</code> and <code>fn-triple-apply?</code> that receive a<br />
 lambda function as an argument returning a boolean value and pass as the only argument the current<br />

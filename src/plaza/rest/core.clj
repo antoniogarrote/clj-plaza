@@ -17,9 +17,8 @@
             [clojure.contrib.str-utils2 :as str2]))
 
 
-(defn default-css-text
-  []
-  "      * {
+(defn default-css-text []
+  "   * {
          margin: 0;
          padding: 0;
          border: 0;
@@ -192,7 +191,10 @@
   ([ts]
      (let [tsp (map (fn [[s p o]]
                       (if (is-literal o)
-                        [(str s) (str p) {:value (literal-value o) :datatype (literal-datatype-uri o)}]
+                        (let [value-pre (literal-value o)
+                              value (if (or (instance? com.hp.hpl.jena.datatypes.xsd.XSDDateTime value-pre))
+                                      (str value-pre) value-pre)]
+                          [(str s) (str p) {:value value :datatype (literal-datatype-uri o)}])
                         [(str s) (str p) (str o)]))
                     ts)]
        (json/json-str tsp))))
@@ -206,7 +208,9 @@
            (let [tsp (reduce (fn [acum [s p o]]
                                (if (is-literal o)
                                  (let [pred (property-alias schema (str p))
-                                       value (literal-value o)]
+                                       value-pre (literal-value o)
+                                       value (if (or (instance? com.hp.hpl.jena.datatypes.xsd.XSDDateTime value-pre))
+                                               (str value-pre) value-pre)]
                                    (if (nil? pred) (assoc acum (str p) value)
                                        (assoc acum pred value)))
                                  (let [pred (property-alias schema (str p))]
@@ -389,13 +393,16 @@
       "json:jsonp" "application/json"
       "js:jsonp" "application/json"
       "js3:jsonp" "application/json"
-      "rdfa" "application/html+xml"
+      "rdfa" "text/html"
       "html" "text/html"
-      "xhtml" "application/html+xml"
+      "xhtml" "text/html"
       "application/xml")))
 
-(defn default-uuid-gen [prefix local request]
-  (random-resource-id (str prefix local)))
+(defn default-uuid-gen [request environment]
+  (let [prefix (:resource-qname-prefix environment)
+        local (:resource-qname-local environment)
+        port (if (= (:server-port request) 80) "" (str ":" (:server-port request)))]
+    (random-resource-id (str prefix port local))))
 
 (defmacro wrap-request [kind prefix local request & body]
   `(let [pre# (System/currentTimeMillis)]
@@ -436,10 +443,12 @@
      (if (not (nil? (get @*tbox* alias-or-uri)))
        (get @*tbox* alias-or-uri)
        (first (filter #(= (str alias-or-uri) (str (type-uri %1))) (vals @*tbox*))))))
+
 (defn default-id-match
   "Matches a resource using the requested URI"
   ([request environment]
-     (let [pattern (str (:resource-qname-prefix environment) (:resource-qname-local environment))]
+     (let [port (if (= (:server-port request) 80) "" (str ":" (:server-port request)))
+           pattern (str (:resource-qname-prefix environment) port (:resource-qname-local environment))]
        (str2/replace pattern ":id" (get (:params request) "id")))))
 
 (defn default-service-metadata-matcher-fn
@@ -549,7 +558,7 @@
         query (build-single-resource-query-from-resource-map mapping id)
         results (rd (ts (:resource-ts environment)) query)
         triples (distinct (flatten-1 results))]
-    (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples))
+    (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples " for query " query " and id " id))
     {:body (render-triples triples (mime-to-format request) (:resource environment) request)
      :headers {"Content-Type" (format-to-mime request)}
      :status 200}))
@@ -593,7 +602,7 @@
 
 (defn handle-post-collection [request environment]
   (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
-        resource-id ((:id-gen-function environment) (:resource-qname-prefix environment) (:resource-qname-local environment) request)
+        resource-id ((:id-gen-function environment) request environment)
         triples-pre  (build-triples-from-resource-map resource-id mapping)
         triples (conj triples-pre [resource-id rdf:type (:resource-type environment)])]
     (log :info (str "POST REQUEST -> id:" resource-id " mapping:" mapping " triples:" triples))

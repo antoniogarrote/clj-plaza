@@ -199,6 +199,7 @@ suspending its execution until other agent writes triple matching that pattern:<
 </code></pre>
 </div><p>The <code>spawn!</code> function can be used to start a new agent whose<br />
 execution will start concurrently.</p>
+<p>After finishing the execution of triple space processes, a call to <code>shutdown-agents</code> can be used to clean remaining agent threads.</p>
 <p>The following diagram shows the  three stages happening atomically in the triple<br />
 space:</p>
 <div id="img_wrapper">

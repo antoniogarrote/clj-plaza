@@ -235,10 +235,10 @@
                                gts)))))))
 
 (defn to-js3-triples-jsonp
-  ([ts schema callback] (str callback "(" (to-js3-triples ts schema) ")")))
+  ([ts schema callback] (str callback "(" (to-js3-triples ts schema) ");")))
 
 (defn to-json-triples-jsonp
-  ([ts schema callback] (str callback "(" (to-json-triples ts schema) ")")))
+  ([ts schema callback] (str callback "(" (to-json-triples ts schema) ");")))
 
 (defn extract-ns [uri]
   (if (empty? (filter #(= \# %1) uri))

@@ -21,6 +21,7 @@
 
 ;; We load the Friend Of A Friend vocabulary
 ;; and register the Agent schema in the TBox
+(load-rdfs-schemas)
 (use 'plaza.rdf.vocabularies.foaf)
 
 (def ComputationCelebrity-schema

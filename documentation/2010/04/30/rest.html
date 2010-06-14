@@ -322,6 +322,20 @@ nb-agarrote ~$ curl -X DELETE "http://localhost:8081/Celebrity/a44f1be3e1b84c4d9
 <pre>
 nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity/a44f1be3e1b84c4d9c8e342aa5dcf054?_method=delete"
 </pre>
+<h3>Querying the TBox</h3>
+<p>For every defined collection or individual resource defined it is possible to<br />
+query the application TBox for information about the service and schema of the<br />
+resource exposed.</p>
+<p>To query for the schema of any resource the prefix <code>/schema</code> can be<br />
+appended to the resource <span class="caps">URI</span>.</p>
+<p>For example. to query about the schema of the previously created<br />
+<code>http://localhost:8081/Celebrity/917512c59efb4b1e876762ba8595a8d7</code> a<br />
+query with <span class="caps">URI</span><br />
+<code>http://localhost:8081/Celebrity/917512c59efb4b1e876762ba8595a8d7/schema</code><br />
+can be issued. The <span class="caps">RDF</span> graph describing the resource will be returned:</p>
+<div id="img_wrapper">
+<p><img src="/clj-plaza/images/plaza_rest2.png"></img></p>
+</div>
 <h2>Customizing RESTful semantic resources</h2>
 <p>In the previous sections we have explored the default features of Plaza RESTful semantic resources. This standard behavior can be nevertheless customized to suit a specific use case for a resource. This customization can be achieved using a number of options that can be passed as additional arguments in the description of the resource.</p>
 <h3>The request environment</h3>

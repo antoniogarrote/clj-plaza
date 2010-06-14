@@ -191,7 +191,8 @@ nb-agarrote ~$ curl -X POST "http://localhost:8081/Celebrity?name=Alonzo&amp;sur
 <p>The newly created graph will be returned with a <code>201</code> <span class="caps">HTTP</span> status code if the creation of the resource is successful. Due to the <a hre="http://en.wikipedia.org/wiki/Open_world_assumption">Open World semantics</a> of <span class="caps">RDF</span>, not all the properties are required for the creation of the resource. A newly created <span class="caps">URI</span> will be introduced for the resource. By default a <span class="caps">UUID</span> will be used for the new <span class="caps">URI</span>.</p>
 <h3>Supported encodings</h3>
 <p>Since we don&#8217;t have created any <code>Celebrity</code> resource, the triple space is empty and the retrieved <span class="caps">RDF</span> graph is also empty. By default, Plaza resources return <span class="caps">XML</span>/<span class="caps">RDF</span> encoded triples. This behavior can be modified sending the right <code>Accept</code> <span class="caps">HTTP</span> header or appending an extension to the resource <span class="caps">URI</span>.<br />
-If we would prefer obtaining the NTriples representation of the same <span class="caps">RDF</span> graph, we could pass the corresponding header of extension:</p>
+If we would prefer obtaining the NTriples representation of the same <span class="caps">RDF</span> graph,<br />
+we could pass the corresponding accept header for that reprsentation:</p>
 <pre>
 nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity.n3"
 &lt;http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd&gt;

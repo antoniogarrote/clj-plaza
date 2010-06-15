@@ -345,10 +345,10 @@ nb-agarrote ~$ curl -X DELETE "http://localhost:8081/Celebrity/a44f1be3e1b84c4d9
 &lt;/rdf:RDF&gt;
 </pre>
 <h3>Offset and limit params</h3>
-<p>Plaza collection resources supports two additional parameters in the queries: <code>_limit</code> and <code>_offset</code>. These methods can be used to paginate a collection of results returned by the server:<br />
-<pre><br />
-http://localhost:8081/Celebrity?<em>limit=2&amp;</em>offset=2<br />
-</pre></p>
+<p>Plaza collection resources supports two additional parameters in the queries: <code>_limit</code> and <code>_offset</code>. These methods can be used to paginate a collection of results returned by the server:</p>
+<pre>
+nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity?_limit=2&amp;_offset=2"
+</pre>
 <h3>Simulating <span class="caps">HTTP</span> methods</h3>
 <p>Some <span class="caps">HTTP</span> agents, most notably web browsers, cannot send requests using all the <span class="caps">HTTP</span> methods. Requests for a different method can be simulated using the special <code>_method</code> parameter in the <span class="caps">URL</span>. For example, the previous <span class="caps">DELETE</span> request could have been requested using a <span class="caps">GET</span> request and a <code>_method=delete</code> parameter:</p>
 <pre>

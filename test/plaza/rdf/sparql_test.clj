@@ -1,4 +1,5 @@
 (ns plaza.rdf.sparql-test
+  (:use [plaza.utils])
   (:use [plaza.rdf predicates core sparql] :reload-all)
   (:use [plaza.rdf.implementations jena] :reload-all)
   (:use [clojure.test]))
@@ -182,3 +183,10 @@
     (is (not (= (.indexOf (to-string s) "ba") -1)))
     (is (not (= (.indexOf (to-string p) "type") -1)))
     (is (not (= (.indexOf (to-string o) "Post") -1)))))
+
+(deftest test-model-pattern-apply-limit-offset
+  (let [m (defmodel (model-add-triples [[:a :b :c] [:a :b :e] [:a :b :f]]))
+        result (flatten-1 (model-pattern-apply m [[:a :b ?p]] (f :limit 2) (f :offset 0)))
+        result2 (flatten-1 (model-pattern-apply m [[:a :b ?p]] (f :limit 2) (f :offset 2)))]
+    (is (= 2 (count result)))
+    (is (= 1 (count result2)))))

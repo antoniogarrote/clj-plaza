@@ -136,6 +136,11 @@
   ([limit]
      (fn [query] (query-set-limit limit))))
 
+(defn chain-limit
+  "Used to conditionally insert limit in the threaded definition of a query"
+  ([h limit]
+     (if (nil? limit) h (assoc h :limit (if (string? (first limit)) (Integer/parseInt (first limit)) (first limit))))))
+
 (defn query-unset-limit
   "Removes the limit constrain in the number of results"
   ([query]
@@ -178,6 +183,11 @@
   ([offset]
      (fn [query] (query-set-offset offset))))
 
+(defn chain-offset
+  "Used to conditionally insert offset in the threaded definition of a query"
+  ([h offset]
+     (if (nil? offset) h (assoc h :offset (if (string? (first offset)) (Integer/parseInt (first offset)) (first offset))))))
+
 (defn query-unset-offset
   "Removes the offset constraint in the results"
   ([query]
@@ -205,6 +215,13 @@
      (assoc query :pattern pattern))
   ([pattern]
      (fn [query] (query-set-pattern query pattern))))
+
+(defn query-set-order-by
+  "Sets the pattern for the query"
+  ([query order-by]
+     (assoc query :order-by order-by))
+  ([order-by]
+     (fn [query] (query-set-order-by query order-by))))
 
 ;; Parsing a SPARQL string query into a query pattern representation
 
@@ -247,6 +264,16 @@
   ([name & args]
      (apply make-filter (cons name args))))
 
+(defn limit
+  "Defines limit as a filter"
+  ([max]
+     (:expression :limit :args max)))
+
+(defn offset
+  "Defines offset as a filter"
+  ([val]
+     (:expression :offset :args val)))
+
 ;; Querying a model
 
 (defn model-query
@@ -280,9 +307,18 @@
                         (triple-object (get binding-map o))
                         o)]
                (if (:optional (meta t))
-                 (optional [sp pp op])
+                 (with-meta [sp pp op] {:optional true})
                  [sp pp op])))
            pattern))))
+
+(defn pattern-reject-unbound
+  "Binds variables in a pattern rejecting the pattern triples that has not been bound"
+  ([pattern]
+     (filter (fn [[s p o]]
+               (and (not (keyword? s))
+                    (not (keyword? p))
+                    (not (keyword? o)))) pattern)))
+
 
 (defn pattern-apply
   "Applies a pattern to a set of triples"
@@ -290,24 +326,34 @@
      (let [pattern-pre (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
            vars-pre (pattern-collect-vars pattern-pre)
            vars (if-not (empty? vars-pre) vars-pre [:p])
-           [pattern filters] (if-not (empty? vars-pre)
-                               [pattern-pre filters-pre]
-                               (let [s (nth (first pattern-pre) 0)
-                                     p (nth (first pattern-pre) 1)
-                                     o (nth (first pattern-pre) 2)]
-                                 [(cons [s ?p o] (rest pattern-pre))
-                                  (cons (f :sameTerm  ?p p) filters-pre)]))
+           [pattern filterspp] (if-not (empty? vars-pre)
+                                 [pattern-pre filters-pre]
+                                 (let [s (nth (first pattern-pre) 0)
+                                       p (nth (first pattern-pre) 1)
+                                       o (nth (first pattern-pre) 2)]
+                                   [(cons [s ?p o] (rest pattern-pre))
+                                    (cons (f :sameTerm  ?p p) filters-pre)]))
+           [limit filtersp] (if (some #(= :limit (:expression %1)) filterspp)
+                              [(:args (first (filter #(= :limit (:expression %1)) filterspp))) (filter #(not (= :limit (:expression %1))) filterspp)]
+                              [nil filterspp])
+           [offset filters] (if (some #(= :offset (:expression %1)) filtersp)
+                              [(:args (first (filter #(= :offset (:expression %1)) filtersp))) (filter #(not (= :offset (:expression %1))) filtersp)]
+                              [nil filtersp])
            query (if (empty? filters)
                    (defquery
                      (query-set-pattern pattern)
                      (query-set-type :select)
                      (query-set-vars vars)
-                     (query-set-distinct))
+                     (query-set-distinct)
+                     (chain-limit limit)
+                     (chain-offset offset))
                    (defquery
                      (query-set-pattern pattern)
                      (query-set-type :select)
                      (query-set-vars vars)
                      (query-set-distinct)
+                     (chain-limit limit)
+                     (chain-offset offset)
                      (query-set-filters filters)))]
        (distinct (model-query-triples (defmodel (model-add-triples triples))
                                       query)))))
@@ -323,24 +369,34 @@
      (let [pattern-pre (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
            vars-pre (pattern-collect-vars pattern-pre)
            vars (if-not (empty? vars-pre) vars-pre [:p])
-           [pattern filters] (if-not (empty? vars-pre)
-                               [pattern-pre filters-pre]
-                               (let [s (nth (first pattern-pre) 0)
-                                     p (nth (first pattern-pre) 1)
-                                     o (nth (first pattern-pre) 2)]
-                                 [(cons [s ?p o] (rest pattern-pre))
-                                  (cons (f :sameTerm  ?p p) filters-pre)]))
+           [pattern filterspp] (if-not (empty? vars-pre)
+                                 [pattern-pre filters-pre]
+                                 (let [s (nth (first pattern-pre) 0)
+                                       p (nth (first pattern-pre) 1)
+                                       o (nth (first pattern-pre) 2)]
+                                   [(cons [s ?p o] (rest pattern-pre))
+                                    (cons (f :sameTerm  ?p p) filters-pre)]))
+           [limit filtersp] (if (some #(= :limit (:expression %1)) filterspp)
+                              [(:args (first (filter #(= :limit (:expression %1)) filterspp))) (filter #(not (= :limit (:expression %1))) filterspp)]
+                              [nil filterspp])
+           [offset filters] (if (some #(= :offset (:expression %1)) filtersp)
+                              [(:args (first (filter #(= :offset (:expression %1)) filtersp))) (filter #(not (= :offset (:expression %1))) filtersp)]
+                              [nil filtersp])
            query (if (empty? filters)
                    (defquery
                      (query-set-pattern pattern)
                      (query-set-type :select)
                      (query-set-vars vars)
-                     (query-set-distinct))
+                     (query-set-distinct)
+                     (chain-limit limit)
+                     (chain-offset offset))
                    (defquery
                      (query-set-pattern pattern)
                      (query-set-type :select)
                      (query-set-vars vars)
                      (query-set-distinct)
+                     (chain-limit limit)
+                     (chain-offset offset)
                      (query-set-filters filters)))]
        (distinct (model-query-triples model
                                       query)))))
@@ -387,25 +443,35 @@
      (let [pattern-pre (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
            vars-pre (pattern-collect-vars pattern-pre)
            vars (if-not (empty? vars-pre) vars-pre [:p])
-           [pattern filters-pre] (if-not (empty? vars-pre)
-                                   [pattern-pre filters-pre]
-                                   (let [s (nth (first pattern-pre) 0)
-                                         p (nth (first pattern-pre) 1)
-                                         o (nth (first pattern-pre) 2)]
-                                     [(cons [s ?p o] (rest pattern-pre))
-                                      (cons (f :sameTerm  ?p p) filters-pre)]))
+           [pattern filterspp] (if-not (empty? vars-pre)
+                                 [pattern-pre filters-pre]
+                                 (let [s (nth (first pattern-pre) 0)
+                                       p (nth (first pattern-pre) 1)
+                                       o (nth (first pattern-pre) 2)]
+                                   [(cons [s ?p o] (rest pattern-pre))
+                                    (cons (f :sameTerm  ?p p) filters-pre)]))
+           [limit filtersp] (if (some #(= :limit (:expression %1)) filterspp)
+                              [(:args (first (filter #(= :limit (:expression %1)) filterspp))) (filter #(not (= :limit (:expression %1))) filterspp)]
+                              [nil filterspp])
+           [offset filters] (if (some #(= :offset (:expression %1)) filtersp)
+                              [(:args (first (filter #(= :offset (:expression %1)) filtersp))) (filter #(not (= :offset (:expression %1))) filtersp)]
+                              [nil filtersp])
            filters (concat filters-pre (make-cw-filters pattern))
            query (if (empty? filters)
                    (defquery
                      (query-set-pattern pattern)
                      (query-set-type :select)
                      (query-set-vars vars)
-                     (query-set-distinct))
+                     (query-set-distinct)
+                     (chain-limit limit)
+                     (chain-offset offset))
                    (defquery
                      (query-set-pattern pattern)
                      (query-set-type :select)
                      (query-set-vars vars)
                      (query-set-distinct)
+                     (chain-limit limit)
+                     (chain-offset offset)
                      (query-set-filters filters)))]
        (distinct (model-query-triples model
                                       query)))))

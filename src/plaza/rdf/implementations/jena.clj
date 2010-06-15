@@ -42,11 +42,12 @@
   ([model query query-string]
 ;     (let [query (if (string? query-or-string) (sparql-to-query query-or-string) query-or-string)
 ;           query-string (if (string? query-or-string) query-or-string (str (build-query *sparql-framework* query)))]
-;     (println (str "QUERYING JENA WITH: " query-string))
+;     (println (str "QUERYING JENA WITH:\r\n" query-string))
      (model-critical-read model
                           (let [qexec (QueryExecutionFactory/create query-string (to-java model))
-                                        ;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
+                          ;     (let [qexec (QueryExecutionFactory/create (build-query query)  @model)
                                 results (iterator-seq (cond (= (:kind query) :select) (.execSelect qexec)))]
+;                                _results (println (str "BINDING RESULTS: " results))]
                             (map #(process-model-query-result model %1) results)))))
 
 (defn- model-query-triples-fn
@@ -55,7 +56,7 @@
      (let [query (if (string? query-or-string) (sparql-to-query query-or-string) query-or-string)
            query-string (if (string? query-or-string) query-or-string (str (build-query *sparql-framework* query-or-string)))
            results (model-query-fn model query query-string)]
-       (map #(pattern-bind (:pattern query) %1) results))))
+       (map #(pattern-reject-unbound (pattern-bind (:pattern query) %1)) results))))
 
 
 ;; JENA implementation

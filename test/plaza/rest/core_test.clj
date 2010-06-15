@@ -28,7 +28,7 @@
 (defn- build-mulgara
   ([] (build-model :mulgara :rmi "rmi://localhost/server1")))
 
-(defonce *should-test* true)
+(defonce *should-test* false)
 
 
 (when *should-test*
@@ -149,7 +149,6 @@
        (let [subj (str (first (first (model-to-triples m))))
              res2 (clojure-http.resourcefully/get (str subj ".js3"))
              ts (clojure.contrib.json/read-json (apply str (:body-seq res2)))]
-         (doseq [t ts] (log :info t))
          (is (= 3 (count ts))))))
 
    (deftest test-del-post-get-json
@@ -212,6 +211,25 @@
          (is (= 3 (count (model-to-triples m2))))
          (is (= (str (first (first (model-to-triples m2))))
                 (str (first (first (model-to-triples m)))))))))
+
+   (deftest test-del-get-offset-limit
+     (println "***************************************************\n GET OFFSET LIMIT \n******************************************************")
+     (clojure-http.resourcefully/delete "http://localhost:8082/Agent")
+     (let [res1 (clojure-http.resourcefully/post "http://localhost:8082/Agent?age=20&gender=male")
+           res2 (clojure-http.resourcefully/post "http://localhost:8082/Agent?age=21&gender=male")
+           res3 (clojure-http.resourcefully/post "http://localhost:8082/Agent?age=22&gender=male")
+           m1 (build-model :jena)
+           m2 (build-model :jena)
+           some0 (clojure-http.resourcefully/get "http://localhost:8082/Agent.n3")
+           some1 (clojure-http.resourcefully/get "http://localhost:8082/Agent.n3?_limit=2&_offset=0")
+           some2 (clojure-http.resourcefully/get "http://localhost:8082/Agent.n3?_limit=2&_offset=2")]
+       (log :error (str "*** RES 0\r\n" some0))
+       (log :error (str "*** RES 1\r\n" some1))
+       (log :error (str "*** RES 2\r\n" some2))
+       (with-model m1 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq some1)))) :n3))
+       (with-model m2 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq some2)))) :n3))
+       (is (= 6 (count (model-to-triples m1))))
+       (is (= 3 (count (model-to-triples m2))))))
 
 
    (catch Exception ex (throw ex))

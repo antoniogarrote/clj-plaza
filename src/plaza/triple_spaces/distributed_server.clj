@@ -22,22 +22,32 @@
      (let [pattern-pre (if (:pattern (meta pattern-or-vector)) pattern-or-vector (make-pattern pattern-or-vector))
            vars-pre (pattern-collect-vars pattern-pre)
            vars (if-not (empty? vars-pre) vars-pre [:p])
-           [pattern filters] (if-not (empty? vars-pre)
-                               [pattern-pre filters-pre]
-                               (let [s (nth (first pattern-pre) 0)
-                                     p (nth (first pattern-pre) 1)
-                                     o (nth (first pattern-pre) 2)]
-                                 [(cons [s ?p o] (rest pattern-pre))
-                                  (cons (f :sameTerm  ?p p) filters-pre)]))
+           [pattern filterspp] (if-not (empty? vars-pre)
+                                 [pattern-pre filters-pre]
+                                 (let [s (nth (first pattern-pre) 0)
+                                       p (nth (first pattern-pre) 1)
+                                       o (nth (first pattern-pre) 2)]
+                                   [(cons [s ?p o] (rest pattern-pre))
+                                    (cons (f :sameTerm  ?p p) filters-pre)]))
+           [limit filtersp] (if (some #(= :limit (:expression %1)) filterspp)
+                              [(:args (first (filter #(= :limit (:expression %1)) filterspp))) (filter #(not (= :limit (:expression %1))) filterspp)]
+                              [nil filterspp])
+           [offset filters] (if (some #(= :offset (:expression %1)) filtersp)
+                              [(:args (first (filter #(= :offset (:expression %1)) filtersp))) (filter #(not (= :offset (:expression %1))) filtersp)]
+                              [nil filtersp])
            query (if (empty? filters)
                    (defquery
                      (query-set-pattern pattern)
                      (query-set-type :select)
-                     (query-set-vars vars))
+                     (query-set-vars vars)
+                     (chain-limit limit)
+                     (chain-offset offset))
                    (defquery
                      (query-set-pattern pattern)
                      (query-set-type :select)
                      (query-set-vars vars)
+                     (chain-limit limit)
+                     (chain-offset offset)
                      (query-set-filters filters)))]
        query)))
 
@@ -108,7 +118,6 @@
              ts (query-triples model query)]
          (if (empty? ts)
            (let [prom (promise)]
-             (log :info "storing remote state in queue for rdb")
              (plaza.triple-spaces.multi-remote-server.auxiliary/store-blocking-rd queue [(query-to-string query) :rdb (:client-id options)])
              (process-in-blocking-op name false rabbit-conn options prom)
              @prom) ts)))
@@ -122,9 +131,6 @@
                             (let [triples-to-remove (query-triples model (gen-query pattern filters))]
                               (if (empty? triples-to-remove) triples-to-remove
                                   (let [flattened-triples (flatten-1 triples-to-remove)]
-                                    (log :error (str "removing triplesb!!!!!"))
-                                    (log :error (str "flattened: " flattened-triples))
-                                    (doseq [t flattened-triples] (log :error (str "TRIPLE: " t)))
                                     ;; deleting read triples
                                     (with-model model (model-remove-triples flattened-triples))
                                     ;; delivering notifications

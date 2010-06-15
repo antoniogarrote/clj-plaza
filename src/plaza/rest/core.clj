@@ -157,10 +157,11 @@
 
 (defn apply-resource-argument-map [params mapping]
   (let [ks (keys mapping)]
-    (reduce (fn [acum k] (let [{uri :uri f :mapper} (k mapping)
-                               arg (get params (keyword-to-string k))]
-                           (if (nil? arg) acum (conj acum [uri (f arg)]))))
-            [] ks)))
+    (last
+     (reduce (fn [[c acum] k] (let [{uri :uri f :mapper} (k mapping)
+                                    arg (get params (keyword-to-string k))]
+                                (if (nil? arg) [(inc c) (conj acum [uri (keyword (str "?o" c))])] [c (conj acum [uri (f arg)])])))
+             [0 []] ks))))
 
 (defn random-uuid []
   (.replace (str (java.util.UUID/randomUUID)) "-" ""))
@@ -170,16 +171,25 @@
 
 (defn build-triples-from-resource-map [uri mapping]
   (let [resource-uri (if (seq? uri) (apply rdf-resource uri) (rdf-resource uri))]
-    (map #(cons resource-uri %1) mapping)))
+    (reduce (fn [acum [p o]]
+              (if (keyword? o)
+                acum
+                (conj acum [resource-uri p o])))
+            [] mapping)))
 
 (defn build-query-from-resource-map [mapping resource-type]
-  (concat [[?s ?p ?o]
-           [?s rdf:type resource-type]]
-          (vec (map #(cons ?s %1) mapping))))
+  (concat [[?s rdf:type resource-type]]
+          (vec (map (fn [[p o]]
+                      (if (keyword? o)
+                        (optional [?s p o])
+                        [?s p o])) mapping))))
 
 (defn build-single-resource-query-from-resource-map [mapping resource-id]
-  (concat [[resource-id ?p ?o]]
-          (vec (map #(cons resource-id %1) mapping))))
+  (concat [[resource-id rdf:type :?rt]]
+          (vec (map (fn [[p o]]
+                      (if (keyword? o)
+                        (optional [resource-id p o])
+                        [resource-id p o])) mapping))))
 
 (defn build-single-resource-all-triples-query [resource-id]
   [[resource-id ?p ?o]])
@@ -529,8 +539,22 @@
                                                (dissoc "_callback"))]
                                (-> request-methods (assoc :jsonp-callback callback)
                                    (assoc :params paramsp)))
-                             request-methods))]
-       jsonp-request)))
+                             request-methods))
+           limit-request (let [limit (get (:params jsonp-request) "_limit")]
+                           (if-not (nil? limit)
+                             (let [paramsp (-> (:params jsonp-request)
+                                               (dissoc "_limit"))]
+                               (-> jsonp-request (assoc :limit limit)
+                                   (assoc :params paramsp)))
+                             jsonp-request))
+           offset-request (let [offset (get (:params limit-request) "_offset")]
+                            (if-not (nil? offset)
+                              (let [paramsp (-> (:params limit-request)
+                                                (dissoc "_offset"))]
+                                (-> limit-request (assoc :offset offset)
+                                    (assoc :params paramsp)))
+                              limit-request))]
+       offset-request)))
 
 (defn check-tbox-request
   "Checks if the request is asking for TBox metadata instead of the actual service data"
@@ -558,7 +582,6 @@
         query (build-single-resource-query-from-resource-map mapping id)
         results (rd (ts (:resource-ts environment)) query)
         triples (distinct (flatten-1 results))]
-    (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples " for query " query " and id " id))
     {:body (render-triples triples (mime-to-format request) (:resource environment) request)
      :headers {"Content-Type" (format-to-mime request)}
      :status 200}))
@@ -570,10 +593,7 @@
         triples-to-update (conj triples-pre [id rdf:type (:resource-type environment)])
         results (swap (ts (:resource-ts environment)) query triples-to-update)
         triples (distinct (flatten-1 results))]
-    (log :info (str "PUT REQUEST -> mapping:" mapping " query:" query))
-    (log :info (str "QUERY"))
     (doseq [t query] (log :info t))
-    (log :info (str "VALUES"))
     (doseq [t triples-to-update] (log :info t))
     {:body (render-triples triples (mime-to-format request) (:resource environment) request)
      :headers {"Content-Type" (format-to-mime request)}
@@ -584,7 +604,6 @@
         query (build-single-resource-query-from-resource-map mapping id)
         results (in (ts (:resource-ts environment)) query)
         triples (distinct (flatten-1 results))]
-    (log :info (str "DELETE REQUEST -> mapping:" mapping " triples:" triples))
     {:body (render-triples triples (mime-to-format request) (:resource environment) request)
      :headers {"Content-Type" (format-to-mime request)}
      :status 200}))
@@ -593,9 +612,11 @@
 (defn handle-get-collection [request environment]
   (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
         query (build-query-from-resource-map mapping (:resource-type environment))
-        results (rd (ts (:resource-ts environment)) query)
+        results (let [rd-argspp []
+                      rd-argsp (if (:limit request) (conj rd-argspp (f :limit (:limit request))) rd-argspp)
+                      rd-args (if (:offset request) (conj rd-argsp (f :offset (:offset request))) rd-argsp)]
+                  (rd (ts (:resource-ts environment)) query rd-args))
         triples (distinct (flatten-1 results))]
-    (log :info (str "GET REQUEST -> mapping:" mapping " triples:" triples))
     {:body (render-triples triples (mime-to-format request) (:resource environment) request)
      :headers {"Content-Type" (format-to-mime request)}
      :status 200}))
@@ -605,7 +626,6 @@
         resource-id ((:id-gen-function environment) request environment)
         triples-pre  (build-triples-from-resource-map resource-id mapping)
         triples (conj triples-pre [resource-id rdf:type (:resource-type environment)])]
-    (log :info (str "POST REQUEST -> id:" resource-id " mapping:" mapping " triples:" triples))
     (out (ts (:resource-ts environment)) triples)
     {:body (render-triples triples :xml (:resource environment) request)
      :headers {"Content-Type" "application/xml"}
@@ -616,7 +636,6 @@
         query (build-query-from-resource-map mapping (:resource-type environment))
         results (in (ts (:resource-ts environment)) query)
         triples (distinct (flatten-1 results))]
-    (log :info (str "DELETE REQUEST -> mapping:" mapping " query:" query))
     {:body (render-triples triples (mime-to-format request) (:resource environment) request)
      :headers {"Content-Type" (format-to-mime request)}
      :status 200}))

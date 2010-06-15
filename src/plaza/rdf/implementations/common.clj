@@ -288,21 +288,25 @@
                                           optional (:optional acum)]
                                       (if (:optional (meta item))
                                         ;; add it to the optional elem
-                                        (.addTriplePattern optional (com.hp.hpl.jena.graph.Triple/create (build-query-atom (nth item 0))
-                                                                                                         (build-query-atom (nth item 1))
-                                                                                                         (build-query-atom (nth item 2))))
+                                        (let [optg (com.hp.hpl.jena.sparql.syntax.ElementGroup.)]
+                                          (.addTriplePattern optg (com.hp.hpl.jena.graph.Triple/create (build-query-atom (nth item 0))
+                                                                                                       (build-query-atom (nth item 1))
+                                                                                                       (build-query-atom (nth item 2))))
+                                          {:building building
+                                           :optional (conj optional optg)})
                                         ;; Is not an optional triple
-                                        (.addTriplePattern building (com.hp.hpl.jena.graph.Triple/create (build-query-atom (nth item 0))
-                                                                                                         (build-query-atom (nth item 1))
-                                                                                                         (build-query-atom (nth item 2)))))
-                                      {:building building
-                                       :optional optional}))
+                                        (do (.addTriplePattern building (com.hp.hpl.jena.graph.Triple/create (build-query-atom (nth item 0))
+                                                                                                             (build-query-atom (nth item 1))
+                                                                                                             (build-query-atom (nth item 2))))
+                                            {:building building
+                                             :optional optional}))))
                                   {:building (com.hp.hpl.jena.sparql.syntax.ElementGroup.)
-                                   :optional (com.hp.hpl.jena.sparql.syntax.ElementGroup.)}
+                                   :optional []}
                                   pattern)
            built-pattern (do
                            (when (not (.isEmpty (:optional built-patterns)))
-                             (.addElement (:building built-patterns) (com.hp.hpl.jena.sparql.syntax.ElementOptional. (:optional built-patterns))))
+                             (doseq [optg (:optional built-patterns)]
+                               (.addElement (:building built-patterns) (com.hp.hpl.jena.sparql.syntax.ElementOptional. optg))))
                            (:building built-patterns))
            built-filters (loop [bfs (map (fn [f] (build-filter builder f)) (if (nil? (:filters query)) [] (:filters query)))]
                            (if (not (empty? bfs))
@@ -328,4 +332,6 @@
            (.setDistinct built-query true))
          (when (:reduced query)
            (.setReduced built-query true))
+         (when (:order-by query)
+           (.addOrderBy built-query (keyword-to-variable (:order-by query)) 1))
          built-query))))

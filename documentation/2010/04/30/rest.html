@@ -222,18 +222,45 @@ nb-agarrote ~$ curl -X GET -H "accept: text/rdf+n3" "http://localhost:8081/Celeb
 <p>Plaza semantic RESTful resources support <span class="caps">JSON</span> encoded for the resources in two different flavors.  If we ask for a <span class="caps">JSON</span> representation of the forma we will obtain a <span class="caps">JSON</span> object where all the values have been encoded as properties whose name is the alias provided for the property in the TBox. Additionally, a <code>uri</code> property is added with the <span class="caps">URI</span> of the resource:</p>
 <pre>
 nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd.json"
-{"uri":"http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","birthday":"1904-06-14","wikipedia_entry":"http:\/\/en.wikipedia.org\/wiki\/Alonzo_Church","surname":"Church","name":"Alonzo","type":"http:\/\/xmlns.com\/foaf\/0.1\/Person"}
+{"uri":"http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd",
+ "birthday":"1904-06-14",
+ "wikipedia_entry":"http:\/\/en.wikipedia.org\/wiki\/Alonzo_Church",
+ "surname":"Church",
+ "name":"Alonzo",
+ "type":"http:\/\/xmlns.com\/foaf\/0.1\/Person"}
 </pre>
 <p>The other possible encoding of the graph as <span class="caps">JSON</span> returns the full list of triples in the <span class="caps">RDF</span> graph as an array of array where the first element is the subject for the triple, the second one is the predicate and the third one is a <span class="caps">URI</span> or a new object with two keys, the value of the object and the <span class="caps">URI</span> of the data type for that value.</p>
 <pre>
 nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd.js3"
-[["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","http:\/\/www.w3.org\/1999\/02\/22-rdf-syntax-ns#type","http:\/\/xmlns.com\/foaf\/0.1\/Person"],["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","http:\/\/xmlns.com\/foaf\/0.1\/name",{"value":"Alonzo","datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}],["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","http:\/\/xmlns.com\/foaf\/0.1\/surname",{"value":"Church","datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}],["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","http:\/\/xmlns.com\/foaf\/0.1\/holdsAccount","http:\/\/en.wikipedia.org\/wiki\/Alonzo_Church"],["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","http:\/\/xmlns.com\/foaf\/0.1\/birthday",{"value":"1904-06-14","datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#date"}]]
+[["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd",
+  "http:\/\/www.w3.org\/1999\/02\/22-rdf-syntax-ns#type",
+  "http:\/\/xmlns.com\/foaf\/0.1\/Person"],
+ ["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd",
+  "http:\/\/xmlns.com\/foaf\/0.1\/name",
+  {"value":"Alonzo",
+   "datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}],
+ ["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd",
+  "http:\/\/xmlns.com\/foaf\/0.1\/surname",
+  {"value":"Church",
+   "datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}],
+ ["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd",
+  "http:\/\/xmlns.com\/foaf\/0.1\/holdsAccount",
+  "http:\/\/en.wikipedia.org\/wiki\/Alonzo_Church"],
+ ["http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd",
+  "http:\/\/xmlns.com\/foaf\/0.1\/birthday",
+  {"value":"1904-06-14",
+   "datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#date"}]]
 </pre>
 <h3><span class="caps">JSONP</span> support</h3>
 <p>Plaza RESTful semantic resources support <span class="caps">JSONP</span> requests by the means of an extra &#8220;_callback&#8221; parameter where the name of the returning function can be provided:</p>
 <pre>
 nb-agarrote ~$ curl -X GET "http://localhost:8081/Celebrity/42cc3fa6754548499d56f81cb1fc22cd.json?_callback=foo"
-foo({"uri":"http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd","birthday":"1904-06-14","wikipedia_entry":"http:\/\/en.wikipedia.org\/wiki\/Alonzo_Church","surname":"Church","name":"Alonzo","type":"http:\/\/xmlns.com\/foaf\/0.1\/Person"});
+foo({"uri":"http:\/\/localhost:8081\/Celebrity\/42cc3fa6754548499d56f81cb1fc22cd",
+       "birthday":"1904-06-14",
+       "wikipedia_entry":"http:\/\/en.wikipedia.org\/wiki\/Alonzo_Church",
+       "surname":"Church",
+       "name":"Alonzo",
+       "type":"http:\/\/xmlns.com\/foaf\/0.1\/Person"});
 </pre>
 <h3>RDFa support</h3>
 <p>Plaza also offers a default representation of <span class="caps">RDF</span> graphs using <span class="caps">HTML</span> with RDFa annotations. These representation can be retrieved using a <code>text/hml</code> accept <span class="caps">HTTP</span> header or a <code>html, rdfa</code> or <code>xhtml</code> extensions. This allows users to browse Plaza resources from a web browser:</p>
@@ -317,6 +344,11 @@ nb-agarrote ~$ curl -X DELETE "http://localhost:8081/Celebrity/a44f1be3e1b84c4d9
   &lt;/rdf:Description&gt;
 &lt;/rdf:RDF&gt;
 </pre>
+<h3>Offset and limit params</h3>
+<p>Plaza collection resources supports two additional parameters in the queries: <code>_limit</code> and <code>_offset</code>. These methods can be used to paginate a collection of results returned by the server:<br />
+<pre><br />
+http://localhost:8081/Celebrity?<em>limit=2&amp;</em>offset=2<br />
+</pre></p>
 <h3>Simulating <span class="caps">HTTP</span> methods</h3>
 <p>Some <span class="caps">HTTP</span> agents, most notably web browsers, cannot send requests using all the <span class="caps">HTTP</span> methods. Requests for a different method can be simulated using the special <code>_method</code> parameter in the <span class="caps">URL</span>. For example, the previous <span class="caps">DELETE</span> request could have been requested using a <span class="caps">GET</span> request and a <code>_method=delete</code> parameter:</p>
 <pre>

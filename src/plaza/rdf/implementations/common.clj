@@ -18,6 +18,13 @@
            (com.hp.hpl.jena.sparql.expr E_Str E_Lang E_Datatype E_Bound E_IsIRI E_IsURI E_IsBlank E_IsLiteral E_GreaterThanOrEqual E_GreaterThan
                                         E_LessThanOrEqual E_LessThan E_NotEquals E_Equals E_Subtract E_Add E_Multiply E_Divide)))
 
+(defn make-custom-type
+  "Builds a datatype for a custom XSD datatype URI based on the String basic type"
+  ([uri]
+     (proxy [com.hp.hpl.jena.datatypes.BaseDatatype] [uri]
+       (unparse [v] v)
+       (parse [lf] lf)
+       (isEqual [v1 v2] (= v1 v2)))))
 
 (defn find-jena-datatype
   "Finds the right datatype object from the string representation"
@@ -41,7 +48,7 @@
         (= "integer" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDinteger
         (= "long" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDlong
         (= "string" (.toLowerCase (keyword-to-string lit))) XSDDatatype/XSDstring
-        :else (throw (Exception. (str "Tyring to parse unknown/not supported datatype " lit)))))))
+        :else (make-custom-type literal)))))
 
 
 (defn supported-datatype?

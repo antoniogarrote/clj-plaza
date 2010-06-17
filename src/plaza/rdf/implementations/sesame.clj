@@ -44,7 +44,8 @@
         (= "int" (.toLowerCase (keyword-to-string lit))) "http://www.w3.org/2001/XMLSchema#int"
         (= "integer" (.toLowerCase (keyword-to-string lit))) "http://www.w3.org/2001/XMLSchema#integer"
         (= "long" (.toLowerCase (keyword-to-string lit))) "http://www.w3.org/2001/XMLSchema#long"
-        (= "string" (.toLowerCase (keyword-to-string lit))) "http://www.w3.org/2001/XMLSchema#string"))))
+        (= "string" (.toLowerCase (keyword-to-string lit))) "http://www.w3.org/2001/XMLSchema#string"
+        :else literal))))
 
 (defn sesame-typed-literal-tojava
   "Transforms a sesame typed literal into the equivalente Java object"

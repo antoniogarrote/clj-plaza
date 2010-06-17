@@ -5,7 +5,6 @@
                  [com.hp.hpl.jena/jena "2.6.2"]
                  [com.hp.hpl.jena/arq "2.8.3"]
                  [net.rootdev/java-rdfa "0.3"]
-                 [clojure-http-client "1.1.0-SNAPSHOT"]
                  [compojure "0.4.0-RC3"]
                  [hiccup "0.2.5"]
                  [ring/ring-jetty-adapter "0.2.0"]
@@ -16,6 +15,7 @@
                  [com.rabbitmq/amqp-client "1.7.2"]
                  [log4j/log4j "1.2.14"]]
   :dev-dependencies [[leiningen/lein-swank "1.2.0-SNAPSHOT"]
+                     [clojure-http-client "1.1.0-SNAPSHOT"]
                      [autodoc "0.7.1"]
                      [lein-clojars         "0.5.0-SNAPSHOT"]]
   :main     plaza.core

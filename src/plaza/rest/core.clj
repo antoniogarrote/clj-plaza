@@ -10,6 +10,7 @@
    [plaza.rdf.schemas]
    [plaza.rdf.sparql]
    [plaza.rdf.predicates]
+   [plaza.rdf.vocabularies wsmo-lite hrests plaza]
    [plaza.triple-spaces.core]
    [compojure core response route]
    [clojure.contrib.logging :only [log]])
@@ -167,7 +168,7 @@
   (.replace (str (java.util.UUID/randomUUID)) "-" ""))
 
 (defn random-resource-id [ns]
-  (str ns "/" (random-uuid)))
+  (random-uuid))
 
 (defn build-triples-from-resource-map [uri mapping]
   (let [resource-uri (if (seq? uri) (apply rdf-resource uri) (rdf-resource uri))]
@@ -408,11 +409,23 @@
       "xhtml" "text/html"
       "application/xml")))
 
+(defn make-full-request-uri [request environment]
+  (let [prefix (:resource-qname-prefix environment)
+        local (:uri request)
+        port (if (= (:server-port request) 80) "" (str ":" (:server-port request)))]
+    (str prefix port local)))
+
+(defn make-request-domain [request environment]
+  (let [prefix (:resource-qname-prefix environment)
+        port (if (= (:server-port request) 80) "" (str ":" (:server-port request)))]
+    (str prefix port)))
+
 (defn default-uuid-gen [request environment]
   (let [prefix (:resource-qname-prefix environment)
         local (:resource-qname-local environment)
-        port (if (= (:server-port request) 80) "" (str ":" (:server-port request)))]
-    (random-resource-id (str prefix port local))))
+        port (if (= (:server-port request) 80) "" (str ":" (:server-port request)))
+        id (random-resource-id)]
+    {:id id :uri (str (str prefix port local) "/" id) :property-alias :id}))
 
 (defmacro wrap-request [kind prefix local request & body]
   `(let [pre# (System/currentTimeMillis)]
@@ -441,6 +454,7 @@
 ;; TBox
 
 (defonce *tbox* (ref {}))
+(defonce *services-tbox* (ref {}))
 
 (defn tbox-register-schema
   "Adds a new model to the TBox"
@@ -454,6 +468,24 @@
        (get @*tbox* alias-or-uri)
        (first (filter #(= (str alias-or-uri) (str (type-uri %1))) (vals @*tbox*))))))
 
+(defn tbox-register-service
+  "Adds a new model to the TBox"
+  ([path service-model]
+     (log :info (str "*** registering service " (:uri service-model) " at " path))
+     (dosync (alter *services-tbox* #(assoc %1 path service-model)))))
+
+(defn tbox-find-service
+  "Checks if the provided alias or URI points to a schema in the TBox"
+  ([path]
+     (get @*services-tbox* path)))
+
+(defn tbox-find-parent-service
+  "Checks if there is a collection resource in a super path for the current service"
+  ([path]
+     (let [parent-path (str (clojure.contrib.str-utils2/join "/" (drop-last (clojure.contrib.str-utils2/split path #"/"))) "*")
+           key (first (filter #(= %1 parent-path) (keys @*services-tbox*)))]
+       (get @*services-tbox* key))))
+
 (defn default-id-match
   "Matches a resource using the requested URI"
   ([request environment]
@@ -463,7 +495,10 @@
 
 (defn default-service-metadata-matcher-fn
   ([request environment]
-     (if (nil? (re-find  #"service(\..*)?$" (:uri request))) false true)))
+     (if (nil? (re-find  #"collection_resource_service(\..*)?$" (:uri request)))
+       (if (nil? (re-find  #"single_resource_service(\..*)?$" (:uri request)))
+         false :individual)
+       :collection)))
 
 (defn default-schema-metadata-matcher-fn
   ([request environment]
@@ -471,18 +506,155 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Resource functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn make-hRESTS-collection-operation
+  "Builds the description of a hRESTS allowed operation on a collection resource"
+  ([method path resource environment]
+     (log :info (str "*** PATH (col):" path))
+     (let [resource-type (type-uri resource)
+           resource-schema (str path "/schema")]
+       (condp = method
+         :get {:identifier (name method)
+               :label (str "HTTP " (name method) " method")
+               :method (name method)
+               :address path
+               :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
+               :output-messages {:name "theResources" :description "The returned resources" :model resource-schema :model-type resource-type}}
+         :post {:identifier (name method)
+                :label (str "HTTP " (name method) " method")
+                :method (name method)
+                :address path
+                :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
+                :output-messages {:name "theResource" :description "The newly created resource" :model resource-schema :model-type resource-type}}
+         :delete {:identifier (name method)
+                  :label (str "HTTP " (name method) " method")
+                  :method (name method)
+                  :address path
+                  :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
+                  :output-messages {:name "deletedResources" :description "The deleted resources" :model resource-schema :model-type resource-type}}))))
+
+(defn make-hRESTS-single-operation
+  "Builds the description of a hRESTS allowed operation on a single resource"
+  ([method path resource environment]
+     (log :info (str "*** PATH (ind):" path))
+     (let [resource-type (type-uri resource)
+           resource-schema (str path "/schema")]
+       (condp = method
+         :get {:identifier (name method)
+               :label (str "HTTP " (name method) " method")
+               :method (name method)
+               :address path
+               :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (filter #(not (= -1 (.indexOf path (keyword-to-string %1)))) (aliases resource)))
+               :output-messages {:name "theResource" :description "The returned resource" :model resource-schema :model-type resource-type}}
+         :put {:identifier (name method)
+               :label (str "HTTP " (name method) " method")
+               :method (name method)
+               :address path
+               :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
+               :output-messages {:name "theResource" :description "The newly created resource" :model resource-schema :model-type resource-type}}
+         :delete {:identifier (name method)
+                  :label (str "HTTP " (name method) " method")
+                  :method (name method)
+                  :address path
+                  :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (filter #(not (= -1 (.indexOf path (keyword-to-string %1)))) (aliases resource)))
+                  :output-messages {:name "deletedResource" :description "The deleted resource" :model resource-schema :model-type resource-type}}))))
+
+
 (defn hRESTS-collection-service-description
   "Builds a triple set describing the service offered by the current request"
-  ([path resource]
-     {:uri path}))
+  ([path resource environment]
+     {:uri path
+      :operations (map #(make-hRESTS-collection-operation %1 path resource environment) (if (nil? (:allowed-methods environment))
+                                                                                          [:get :post :delete]
+                                                                                          (:allowed-methods environment)))}))
 
+(defn hRESTS-single-service-description
+  "Builds a triple set describing the service offered by the current request"
+  ([path resource environment]
+     {:uri path
+      :operations (map #(make-hRESTS-single-operation %1 path resource environment) (if (nil? (:allowed-methods environment))
+                                                                                      [:get :put :delete]
+                                                                                      (:allowed-methods environment)))}))
+
+(defn hRESTS-message-to-triples-map
+  "Transforms a hRESTS message description into a set of triples, returns a blank URI for the message and the triples"
+  ([message]
+     (let [uri (b)]
+       [uri [[uri rdf:type wsl:Message]
+             [uri "http://www.w3.org/ns/sawsdl#modelReference" (:model message)]
+             [uri "http://schemas.xmlsoap.org/wsdl/http/urlReplacement" (d (name (:name message)))]]])))
+
+(defn hRESTS-output-message-to-triples-map
+  "Transforms a hRESTS message description into a set of triples, returns a blank URI for the message and the triples"
+  ([message path-prefix]
+     (let [uri (b)]
+       [uri [[uri rdf:type wsl:Message]
+             [uri "http://www.w3.org/ns/sawsdl#modelReference" (d (str path-prefix (:model message)))]]])))
+
+(defn hRESTS-op-to-triples-map
+  "Transforms a hRESTS operation description into a set of triples, returns a blank URI for the description and the triples"
+  ([operation path-prefix]
+     (let [uri (b)
+           output-uri (b)
+           pre-ts (concat [[uri rdf:type wsl:Operation]
+                           [uri hr:hasAddress (d (str path-prefix (:address operation)) hr:URITemplate)]
+                           [uri hr:hasMethod (d (:method operation))]]
+                          (let [[uri-out ts] (hRESTS-output-message-to-triples-map (:output-messages operation) path-prefix)]
+                            (concat [[uri wsl:hasOutputMessage uri-out]] ts)))
+           msgs (map hRESTS-message-to-triples-map (:input-messages operation))]
+       [uri (concat pre-ts (reduce (fn [acum [uri-msg ts]] (concat (conj acum [uri wsl:hasInputMessage uri-msg]) ts)) pre-ts msgs))])))
+
+(defn hRESTS-description-to-triples
+  "Transforms a hRESTS service description to a set of triples"
+  ([hRESTS-description path-prefix]
+     (let [ops (map #(hRESTS-op-to-triples-map %1 path-prefix) (:operations hRESTS-description))
+           pre-ts (concat [[(:uri hRESTS-description) rdf:type wsl:Service]]
+                          (map (fn [[uri ts]] [(:uri hRESTS-description) wsl:hasOperation uri]) ops))]
+       (make-triples (concat pre-ts (reduce (fn [acum [uri ts]] (concat acum ts)) [] ops))))))
+
+(defn hRESTS-message-to-json-map
+  "Transforms a hRESTS message description into a hash"
+  ([message]
+     {:modelReference (str (:model message)) :urlReplacement (str (d (name (:name message))))}))
+
+(defn hRESTS-output-message-to-json-map
+  "Transforms a hRESTS message description into a hash"
+  ([message path-prefix]
+     {:modelReference (str path-prefix (:model message))}))
+
+(defn hRESTS-op-to-json-map
+  "Transforms a hRESTS operation description into a hash"
+  ([operation path-prefix]
+     {:addressTemplate (str path-prefix (:address operation)) :method (:method operation)
+      :outputMessage (hRESTS-output-message-to-json-map (:output-messages operation) path-prefix)
+      :inputMessages (map hRESTS-message-to-json-map (:input-messages operation))}))
+
+(defn hRESTS-description-to-json
+  "Transforms a hRESTS service description to a JSON hash"
+  ([hRESTS-description path-prefix]
+     (let [ops (map #(hRESTS-op-to-json-map %1 path-prefix) (:operations hRESTS-description))
+           result {:uri (str (:uri hRESTS-description))
+                   :operations ops}]
+       (log :error (str "JSON struct " result)) result)))
+
+(defn default-uri-template-for-service
+  "Transforms a URI into a URI template replacing symbols :param by {param}"
+  ([uri]
+     (let [matcher (re-matcher #":[\w]+" uri)
+           matches (loop [m matcher
+                          a []]
+                     (let [match (re-find matcher)]
+                       (if (nil? match) a (recur m (conj a match)))))
+           substs (reduce (fn [a i] (assoc a i (str (clojure.contrib.str-utils2/replace i ":" "{") "}"))) {} matches)
+           pre (reduce (fn [a [k v]] (clojure.contrib.str-utils2/replace a k v)) uri substs)
+           found-port (re-find #"\{[0-9]+\}" pre)]
+       (if (nil? found-port) pre (clojure.contrib.str-utils2/replace pre found-port (str ":" (re-find #"[0-9]+" found-port)))))))
 
 (defn make-environment-map [resource-or-symbol path ts opts]
   (let [resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
         resource-type (type-uri resource)
         resource-map (model-to-argument-map resource)
         id-gen (if (nil? (:id-gen-fn opts)) default-uuid-gen (:id-gen-fn opts))
-        service-matcher-fn (if (nil? (:service-metadata-matcher-fn opts)) default-schema-metadata-matcher-fn (:service-metadata-matcher-fn))
+        service-matcher-fn (if (nil? (:service-metadata-matcher-fn opts)) default-service-metadata-matcher-fn (:service-metadata-matcher-fn))
         schema-matcher-fn (if (nil? (:schema-metadata-matcher-fn opts)) default-schema-metadata-matcher-fn (:schema-metadata-matcher-fn))
         handle-service-metadata (if (nil? (:handle-service-metadata opts)) true (:handle-service-metadata opts))
         handle-schema-metadata (if (nil? (:handle-schema-metadata opts)) true (:handle-schema-metadata opts))
@@ -493,18 +665,20 @@
         get-handle-fn (:get-handle-fn opts)
         post-handle-fn (:post-handle-fn opts)
         put-handle-fn (:put-handle-fn opts)
-        delete-handle-fn (:delete-handle-fn opts)]
+        delete-handle-fn (:delete-handle-fn opts)
+        service-uri-gen-fn (if (nil? (:service-uri-gen-fn opts)) default-uri-template-for-service (:service-uri-gen-fn opts)) ]
     {:resource-map resource-map :resource-type resource-type :resource-qname-prefix resource-qname-prefix
      :resource-qname-local resource-qname-local :id-gen-function id-gen :resource-ts resource-ts :resource resource
      :path (str path "*") :path-re (re-pattern (str "(\\..*)?$")) :service-matcher-fn service-matcher-fn
      :schema-matcher-fn schema-matcher-fn :handle-schema-metadata handle-schema-metadata
      :handle-service-metadata handle-service-metadata :allowed-methods allowed-methods :get-handle-fn get-handle-fn
-     :post-handle-fn post-handle-fn :put-handle-fn put-handle-fn :delete-handle-fn delete-handle-fn}))
+     :post-handle-fn post-handle-fn :put-handle-fn put-handle-fn :delete-handle-fn delete-handle-fn :base-path path
+     :service-uri-gen-fn service-uri-gen-fn :kind :collection-resource }))
 
 (defn make-single-resource-environment-map [resource-or-symbol path ts opts]
   (let [pre-map (make-environment-map resource-or-symbol path ts opts) resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
         id-match (if (nil? (:id-match-fn opts)) default-id-match (:id-match-fn opts))]
-    (assoc pre-map :id-match-function id-match)))
+    (-> pre-map (assoc :id-match-function id-match) (assoc :kind :individual))))
 
 (defn build-default-qname-prefix
   "Returns the domain of a RING request"
@@ -556,6 +730,14 @@
                               limit-request))]
        offset-request)))
 
+(defn render-format-service [service-description format request environment]
+  "Formats a service description using the right format"
+  (let [request-domain (make-request-domain request environment)]
+    (condp = format
+      :json (json/json-str (hRESTS-description-to-json service-description request-domain))
+      :json-jsonp (json/json-str (hRESTS-description-to-json service-description request-domain))
+      (render-triples (hRESTS-description-to-triples service-description request-domain) format plaza.rdf.schemas/rdfs:Class-schema request))))
+
 (defn check-tbox-request
   "Checks if the request is asking for TBox metadata instead of the actual service data"
   ([request environment]
@@ -564,7 +746,23 @@
          {:body (render-triples (to-rdf-triples (:resource environment)) (mime-to-format request) plaza.rdf.schemas/rdfs:Class-schema request)
           :headers {"Content-Type" (format-to-mime request)}
           :status 200}
-         false)
+         (if-let [kind-serv ((:service-matcher-fn environment) request environment)]
+           (let [service (tbox-find-service (:path environment))]
+             (if (nil? service)
+               false
+               (let [env-kind-serv (:kind environment)
+                     full-request-uri (make-full-request-uri request environment)
+                     ]
+                 (if (= env-kind-serv kind-serv)
+                   {:body (render-format-service (assoc service :uri full-request-uri) (mime-to-format request) request environment)
+                    :headers {"Content-Type" (format-to-mime request)}
+                    :status 200}
+                   (if-let [parent-service (tbox-find-parent-service (:path environment))]
+                     {:body (render-format-service (assoc parent-service :uri full-request-uri) (mime-to-format request) request environment)
+                      :headers {"Content-Type" (format-to-mime request)}
+                      :status 200}
+                     false)))))
+           false))
        false)))
 
 (defn should-handle-method
@@ -593,8 +791,6 @@
         triples-to-update (conj triples-pre [id rdf:type (:resource-type environment)])
         results (swap (ts (:resource-ts environment)) query triples-to-update)
         triples (distinct (flatten-1 results))]
-    (doseq [t query] (log :info t))
-    (doseq [t triples-to-update] (log :info t))
     {:body (render-triples triples (mime-to-format request) (:resource environment) request)
      :headers {"Content-Type" (format-to-mime request)}
      :status 200}))
@@ -623,9 +819,9 @@
 
 (defn handle-post-collection [request environment]
   (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
-        resource-id ((:id-gen-function environment) request environment)
-        triples-pre  (build-triples-from-resource-map resource-id mapping)
-        triples (conj triples-pre [resource-id rdf:type (:resource-type environment)])]
+        {id :id resource-id :uri} ((:id-gen-function environment) request environment)
+        triples-pre  (conj  (build-triples-from-resource-map id resource-id mapping) [resource-id rdf:type (:resource-type environment)])
+        triples (if (nil? id) triples-pre (conj triples-pre [resource-id plz:restResourceId (d id)]))]
     (out (ts (:resource-ts environment)) triples)
     {:body (render-triples triples :xml (:resource environment) request)
      :headers {"Content-Type" "application/xml"}
@@ -661,6 +857,7 @@
 (defmacro spawn-rest-collection-resource! [resource path ts & opts]
   (let [opts (apply hash-map opts)]
     `(let [env-pre# (make-environment-map ~resource ~path ~ts ~opts)]
+       (tbox-register-service (:path env-pre#) (hRESTS-collection-service-description ((:service-uri-gen-fn env-pre#) (:base-path env-pre#)) (:resource env-pre#) env-pre#))
        (ANY  (:path env-pre#) request-pre# (wrap-request (str (.toUpperCase (keyword-to-string (:request-method request-pre#))) " collection")
                                                          (:resource-qname-prefix env-pre#)
                                                          (:resource-qname-local env-pre#)
@@ -685,6 +882,7 @@
 (defmacro spawn-rest-resource! [resource path ts & opts]
   (let [opts (apply hash-map opts)]
     `(let [env-pre# (make-single-resource-environment-map ~resource ~path ~ts ~opts)]
+       (tbox-register-service (:path env-pre#) (hRESTS-single-service-description ((:service-uri-gen-fn env-pre#) (:base-path env-pre#)) (:resource env-pre#) env-pre#))
        (ANY  (:path env-pre#) request-pre# (wrap-request (str (.toUpperCase (keyword-to-string (:request-method request-pre#))) " resource")
                                                          (:resource-qname-prefix env-pre#)
                                                          (:resource-qname-local env-pre#)

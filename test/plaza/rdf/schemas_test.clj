@@ -14,6 +14,12 @@
 (deftest test-props
   (is (= "http://something/Good" (str (type-uri *test-model*)))))
 
+(deftest test-add-prop
+  (do (add-property *test-model* :wadus "http://test.com/wadus" :float)
+      (add-property *test-model* :foo   "http://test.com/foo" "http://test.com/ranges/foo")
+      (= :foo (property-alias *test-model* "http://test.com/foo"))
+      (= :wadus (property-alias *test-model* "http://test.com/wadus"))))
+
 (deftest test-to-map
   (let [m (to-map *test-model* [[:test ["http://test.com/" :name] "name"] [:test ["http://test.com/" :price] (d 120)] [:test :number (d 10)]])]
     (is (= m {:name (rdf-resource "name") :price (d 120) :number (d 10)}))))

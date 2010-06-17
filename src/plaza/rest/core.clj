@@ -144,6 +144,175 @@
          border-top-width: 2px
       }")
 
+(defn default-service-css-text []
+  "   * {
+         margin: 0;
+         padding: 0;
+         border: 0;
+         outline: 0;
+         font-weight: normal;
+         font-style: normal;
+         font-size: 100%;
+         font-family: Tahoma, Geneva, arial, sans-serif;
+         vertical-align: baseline;
+      }
+
+      body {
+         line-height: 1.5
+      }
+
+      :focus {
+         outline: 0
+      }
+
+      ol, ul {
+         list-style: none
+      }
+
+      table {
+         border-collapse: collapse;
+         border-spacing: 0
+      }
+
+      blockquote:before, blockquote:after, q:before, q:after {
+         content: \"\"
+      }
+
+      blockquote, q {
+         quotes: \"\" \"\"
+      }
+
+      input, textarea {
+         margin: 0;
+         padding: 0
+      }
+
+      hr {
+         margin: 0;
+         padding: 0;
+         border: 0;
+         color: #000;
+         background-color: #000;
+         height: 1px
+      }
+      .resource-request
+      {
+         background-color: black;
+         font-size: 150%;
+         color: white;
+         padding-left: 20px;
+         padding-top: 20px;
+         padding-bottom: 20px
+      }
+
+      .resource
+      {
+         color: #45465b;
+         background-color:#eeeeee;
+         border-top:2px solid #aaaaaa;
+         margin:20px;
+         padding:20px;
+      }
+
+      .resource-title
+      {
+         font-size: 110%;
+         font-weight: bold
+      }
+
+      .properties-table
+      {
+         margin-top: 20px
+      }
+
+      table
+      {
+         border-color: #dddddd;
+         border-style: solid;
+         border-width: 2px
+      }
+
+      thead
+      {
+         background-color: e7eef6
+      }
+
+      #plaza-logo
+      {
+         color: e7eef6;
+         float: right;
+         font-family: arial;
+         font-size: 70%;
+         font-weight: bold;
+         margin-right: 40px;
+         margin-top: 4px;
+      }
+
+      td
+      {
+         background-color: white
+      }
+
+      td, th
+      {
+         padding: 10px
+      }
+
+      th
+      {
+         font-weight: bold
+      }
+
+      code
+      {
+         background-color:#EEEEFF;
+         border:1px solid #DDDDDD;
+         font-size:95%;
+         padding:0 0.5em
+      }
+
+      td
+      {
+         border-top-color: #dddddd;
+         border-top-style: solid;
+         border-top-width: 2px
+      }
+
+      .operation
+      {
+         color: #45465b;
+         background-color:#eeeeee;
+         border-top:2px solid #aaaaaa;
+         margin:20px;
+         padding:20px;
+      }
+
+      .operation-title span
+      {
+         font-size: 140%;
+         font-weight: bold;
+         margin-bottom: 10px
+      }
+
+      .operation-body
+      {
+         padding: 10px
+      }
+
+      .fragment
+      {
+         margin-top: 20px;
+         margin-bottom: 15px;
+      }
+
+      .fragment-subtitle
+      {
+         margin-top: 10px;
+         margin-bottom: 10px;
+         font-size: 105%;
+         font-weight: bold;
+      }")
+
 (defn resource-argument-map [& mapping]
   (let [args (partition 3 mapping)]
     (reduce (fn [acum [k uri f]] (assoc acum k {:uri (if (seq? uri) (apply rdf-resource uri) (rdf-resource uri)) :mapper f})) {} args)))
@@ -636,6 +805,61 @@
                    :operations ops}]
        (log :error (str "JSON struct " result)) result)))
 
+(defn hRESTS-message-to-rdfa-map
+  "Transforms a hRESTS message description into a hash"
+  ([message]
+     [:tr {:class "message input-message" :rel "wsl:hasInputMessage"}
+      [:td {:class "rdf-msg-alias" :property "http:urlReplacement" :content (name (:name message))}
+       (name (:name message))]
+      [:td {:class "rdf-msg-property"}
+       [:a {:href (str (:model message)) :rel "wasdl:modelReference"} (str (:model message))]]]))
+
+(defn hRESTS-output-message-to-rdfa-map
+  "Transforms a hRESTS message description into a hash"
+  ([message path-prefix]
+     [:div {:class "message output-message"}
+      [:div {:class "rdf-msg-property"} [:span {:class "message-subtitle"} "Type of the output resource "]
+       [:a {:href (str path-prefix (str (:model message))) :rel "wasdl:modelReference"} (str (:model message))]]]))
+
+(defn hRESTS-op-to-rdfa-map
+  "Transforms a hRESTS operation description into a hash"
+  ([operation path-prefix]
+     [:div {:class "operation" :typeof "wsl:Operation"}
+      [:div {:class "operation-title"} [:span {:property "hr:hasMethod"} (str (:method operation))] " " [:span {:property "hr:hasAddress" :datatype "hr:URITemplate"} (:address operation)]]
+      [:div {:class "operation-body"}
+       [:div {:class "fragment"}
+        "The address of the operation is described by this URI template: " [:code (str path-prefix (:address operation))]
+        " To consume this operation, issue a request using the " [:code (str (:method operation))]
+        " HTTP method replacing the parameters in the URI template by values according to the following input messages information"]
+       [:div {:class "input-messages"}
+        [:div {:class "fragment-subtitle"} "Input messages"]
+        [:table
+         [:thead [:th "name"] [:th "RDF property"]]
+         (map hRESTS-message-to-rdfa-map (:input-messages operation))]]
+       [:div {:class "output-messages"}
+        [:div {:class "fragment-subtitle"} "Output message"]
+        (hRESTS-output-message-to-rdfa-map (:output-messages operation) path-prefix)]]]))
+
+(defn hRESTS-description-to-rdfa
+  "Transforms a hRESTS service description to a JSON hash"
+  ([hRESTS-description path-prefix request]
+     (let [nsmap (collect-ns (hRESTS-description-to-triples hRESTS-description path-prefix))
+           nslistp {:xmlns "http://www.w3.org/1999/xhtml" :xmlns:wsl "http://www.wsmo.org/ns/wsmo-lite#"
+                    :xmlns:hr "http://www.wsmo.org/ns/hrests#" :xmlns:http "http://schemas.xmlsoap.org/wsdl/http/"
+                    :xmlns:wasdl "http://www.w3.org/ns/sawsdl#"}
+           nslistpp (assoc nslistp :version "XHTML+RDFa 1.0")
+           ops (map #(hRESTS-op-to-rdfa-map %1 path-prefix) (:operations hRESTS-description))]
+       (html [:html nslistpp
+              [:head [:title (str "service description " (:uri request))]]
+              [:body
+               [:style {:type "text/css" :media "screen"} (default-service-css-text)]
+               [:div {:class "resource-body" :typeof "wsl:Service"}
+                [:div {:class "resource-request"}
+                 (str "Service: " (str (:uri hRESTS-description)))
+                 [:pan {:id "plaza-logo"} "( plaza )"]]
+                [:span {:class "operations-list" :rel "wsl:hasOperation"}
+                 ops]]]]))))
+
 (defn default-uri-template-for-service
   "Transforms a URI into a URI template replacing symbols :param by {param}"
   ([uri]
@@ -736,6 +960,7 @@
     (condp = format
       :json (json/json-str (hRESTS-description-to-json service-description request-domain))
       :json-jsonp (json/json-str (hRESTS-description-to-json service-description request-domain))
+      :rdfa (hRESTS-description-to-rdfa service-description request-domain request)
       (render-triples (hRESTS-description-to-triples service-description request-domain) format plaza.rdf.schemas/rdfs:Class-schema request))))
 
 (defn check-tbox-request

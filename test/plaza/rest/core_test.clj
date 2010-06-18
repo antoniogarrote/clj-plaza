@@ -91,11 +91,11 @@
                                             (str2/replace pattern ":name" (get (:params req) "name")))))
 
      (spawn-rest-collection-resource! :foaf-agent "/CustomIds" :resource
-                                      :allowed-methods [:post]
-                                      :id-gen-fn (fn [req env]
-                                                   (let [prefix (:resource-qname-prefix env)
-                                                         local (:resource-qname-local env)]
-                                                     (str prefix local "/" (get (:params req) "name"))))))
+                                   :allowed-methods [:post]
+                                   :id-gen-fn (fn [req env]
+                                                (let [prefix (:resource-qname-prefix env)
+                                                      local (:resource-qname-local env)]
+                                                  {:id (get (:params req) "name") :uri (str prefix local "/" (get (:params req) "name"))}))))
 
    ;; Runnin the application
    (future (run-jetty (var example) {:port 8082}))

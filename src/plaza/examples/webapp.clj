@@ -12,7 +12,8 @@
         [plaza.triple-spaces.core]
         [plaza.triple-spaces.distributed-server]
         [plaza.rest core])
-  (:require [compojure.route :as route]))
+  (:require [compojure.route :as route]
+            [clojure.contrib.str-utils2 :as str2]))
 
 
 ;; We will use jena
@@ -33,6 +34,7 @@
                        :wikipedia_entry {:uri foaf:holdsAccount   :range rdfs:Resource}))
 
 (tbox-register-schema :celebrity ComputationCelebrity-schema)
+(tbox-register-schema :foaf-agent foaf:Agent-schema)
 
 ;; We create a Triple Space for the resources
 
@@ -53,6 +55,19 @@
   (GET "/" [] "<h1>Testing plaza...</h1>")
   (spawn-rest-resource! :celebrity "/Celebrity/:id" :celebrities)
   (spawn-rest-collection-resource! :celebrity "/Celebrity" :celebrities)
+  (spawn-rest-resource! :foaf-agent "/CustomIds/:name" :resource
+                        :id-property-alias :name
+                        :id-property-uri foaf:name
+                        :allowed-methods [:get]
+                        :id-match-fn (fn [req env]
+                                       (let [pattern (str (:resource-qname-prefix env) (:resource-qname-local env))]
+                                         (str2/replace pattern ":name" (get (:params req) "name")))))
+  (spawn-rest-collection-resource! :foaf-agent "/CustomIds" :resource
+                                   :allowed-methods [:post]
+                                   :id-gen-fn (fn [req env]
+                                                (let [prefix (:resource-qname-prefix env)
+                                                      local (:resource-qname-local env)]
+                                                  {:id (get (:params req) "name") :uri (str prefix local "/" (get (:params req) "name"))})))
   (route/not-found "Page not found"))
 
 ;; Running the application

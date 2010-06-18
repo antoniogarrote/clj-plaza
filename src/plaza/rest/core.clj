@@ -339,13 +339,14 @@
 (defn random-resource-id [ns]
   (random-uuid))
 
-(defn build-triples-from-resource-map [uri mapping]
-  (let [resource-uri (if (seq? uri) (apply rdf-resource uri) (rdf-resource uri))]
-    (reduce (fn [acum [p o]]
-              (if (keyword? o)
-                acum
-                (conj acum [resource-uri p o])))
-            [] mapping)))
+(defn build-triples-from-resource-map
+  ([uri mapping]
+      (let [resource-uri (if (seq? uri) (apply rdf-resource uri) (rdf-resource uri))]
+        (reduce (fn [acum [p o]]
+                  (if (keyword? o)
+                    acum
+                    (conj acum [resource-uri p o])))
+                [] mapping))))
 
 (defn build-query-from-resource-map [mapping resource-type]
   (concat [[?s rdf:type resource-type]]
@@ -593,7 +594,7 @@
   (let [prefix (:resource-qname-prefix environment)
         local (:resource-qname-local environment)
         port (if (= (:server-port request) 80) "" (str ":" (:server-port request)))
-        id (random-resource-id)]
+        id (random-uuid)]
     {:id id :uri (str (str prefix port local) "/" id)}))
 
 (defmacro wrap-request [kind prefix local request & body]
@@ -1062,9 +1063,9 @@
 (defn handle-post-collection [request environment]
   (let [params (dissoc (:params request) (name (:id-property-alias environment)))
         mapping (apply-resource-argument-map params (:resource-map environment))
-        {id :id resource-id :uri} ((:id-gen-function environment) request environment)
-        triples-pre  (conj  (build-triples-from-resource-map id resource-id mapping) [resource-id rdf:type (:resource-type environment)])
-        triples (if (nil? id) triples-pre (conj triples-pre [resource-id (:id-property-alias environment) (d id)]))]
+        {id :id resource-uri :uri} ((:id-gen-function environment) request environment)
+        triples-pre  (conj  (build-triples-from-resource-map resource-uri mapping) [resource-uri rdf:type (:resource-type environment)])
+        triples (if (nil? id) triples-pre (conj triples-pre [resource-uri (:id-property-alias environment) (d id)]))]
     (out (ts (:resource-ts environment)) triples)
     {:body (render-triples triples :xml (:resource environment) request)
      :headers {"Content-Type" "application/xml"}

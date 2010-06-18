@@ -56,4 +56,4 @@
   (route/not-found "Page not found"))
 
 ;; Running the application
-;(run-jetty (var example) {:port 8081})
+(run-jetty (var example) {:port 8081})

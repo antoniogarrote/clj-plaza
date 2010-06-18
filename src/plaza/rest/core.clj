@@ -594,7 +594,7 @@
         local (:resource-qname-local environment)
         port (if (= (:server-port request) 80) "" (str ":" (:server-port request)))
         id (random-resource-id)]
-    {:id id :uri (str (str prefix port local) "/" id) :property-alias :id}))
+    {:id id :uri (str (str prefix port local) "/" id)}))
 
 (defmacro wrap-request [kind prefix local request & body]
   `(let [pre# (System/currentTimeMillis)]
@@ -678,9 +678,9 @@
 (defn make-hRESTS-collection-operation
   "Builds the description of a hRESTS allowed operation on a collection resource"
   ([method path resource environment]
-     (log :info (str "*** PATH (col):" path))
      (let [resource-type (type-uri resource)
-           resource-schema (str path "/schema")]
+           resource-schema (str path "/schema")
+           aliases-post (filter #(not (= %1 (:id-property-alias environment))) (aliases resource))]
        (condp = method
          :get {:identifier (name method)
                :label (str "HTTP " (name method) " method")
@@ -692,7 +692,7 @@
                 :label (str "HTTP " (name method) " method")
                 :method (name method)
                 :address path
-                :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
+                :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) aliases-post)
                 :output-messages {:name "theResource" :description "The newly created resource" :model resource-schema :model-type resource-type}}
          :delete {:identifier (name method)
                   :label (str "HTTP " (name method) " method")
@@ -873,15 +873,28 @@
            found-port (re-find #"\{[0-9]+\}" pre)]
        (if (nil? found-port) pre (clojure.contrib.str-utils2/replace pre found-port (str ":" (re-find #"[0-9]+" found-port)))))))
 
+(defn augmentate-resource
+  "Add Plaza Id property from property ontology if it is not present in the resource"
+  ([resource]
+     (add-property resource :id plz:restResourceId :string) resource))
+
+(defn deaugmentate-resource
+  "Remove the Plaza Id property from property ontology if it is present in the resource"
+  ([resource]
+     (remove-property-by-uri resource plz:restResourceId) resource))
+
+
 (defn make-environment-map [resource-or-symbol path ts opts]
   (let [resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
         resource-type (type-uri resource)
         resource-map (model-to-argument-map resource)
         id-gen (if (nil? (:id-gen-fn opts)) default-uuid-gen (:id-gen-fn opts))
+        id-property-alias (if (nil? (:id-property-alias opts)) :id (:id-property-alias opts))
+        id-property-uri (if (nil? (:id-property-uri opts)) plz:restResourceId (:id-property-uri opts))
         service-matcher-fn (if (nil? (:service-metadata-matcher-fn opts)) default-service-metadata-matcher-fn (:service-metadata-matcher-fn))
         schema-matcher-fn (if (nil? (:schema-metadata-matcher-fn opts)) default-schema-metadata-matcher-fn (:schema-metadata-matcher-fn))
-        handle-service-metadata (if (nil? (:handle-service-metadata opts)) true (:handle-service-metadata opts))
-        handle-schema-metadata (if (nil? (:handle-schema-metadata opts)) true (:handle-schema-metadata opts))
+        handle-service-metadata (if (nil? (:handle-service-metadata? opts)) true (:handle-service-metadata? opts))
+        handle-schema-metadata (if (nil? (:handle-schema-metadata? opts)) true (:handle-schema-metadata? opts))
         resource-qname-prefix (:resouce-qname-prefix opts)
         resource-qname-local path
         resource-ts ts
@@ -894,15 +907,17 @@
     {:resource-map resource-map :resource-type resource-type :resource-qname-prefix resource-qname-prefix
      :resource-qname-local resource-qname-local :id-gen-function id-gen :resource-ts resource-ts :resource resource
      :path (str path "*") :path-re (re-pattern (str "(\\..*)?$")) :service-matcher-fn service-matcher-fn
-     :schema-matcher-fn schema-matcher-fn :handle-schema-metadata handle-schema-metadata
-     :handle-service-metadata handle-service-metadata :allowed-methods allowed-methods :get-handle-fn get-handle-fn
+     :schema-matcher-fn schema-matcher-fn :handle-schema-metadata? handle-schema-metadata
+     :handle-service-metadata? handle-service-metadata :allowed-methods allowed-methods :get-handle-fn get-handle-fn
      :post-handle-fn post-handle-fn :put-handle-fn put-handle-fn :delete-handle-fn delete-handle-fn :base-path path
-     :service-uri-gen-fn service-uri-gen-fn :kind :collection-resource }))
+     :service-uri-gen-fn service-uri-gen-fn :kind :collection-resource :id-property-alias id-property-alias
+     :id-property-uri id-property-uri }))
 
 (defn make-single-resource-environment-map [resource-or-symbol path ts opts]
   (let [pre-map (make-environment-map resource-or-symbol path ts opts) resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
-        id-match (if (nil? (:id-match-fn opts)) default-id-match (:id-match-fn opts))]
-    (-> pre-map (assoc :id-match-function id-match) (assoc :kind :individual))))
+        id-match (if (nil? (:id-match-fn opts)) default-id-match (:id-match-fn opts))
+        augmentated-resource (if (= (str (:id-property-uri pre-map)) plz:restResourceId) (augmentate-resource (:resource pre-map)) (:resource pre-map))]
+    (-> pre-map (assoc :id-match-function id-match) (assoc :kind :individual) (assoc :resource augmentated-resource))))
 
 (defn build-default-qname-prefix
   "Returns the domain of a RING request"
@@ -966,7 +981,7 @@
 (defn check-tbox-request
   "Checks if the request is asking for TBox metadata instead of the actual service data"
   ([request environment]
-     (if (:handle-schema-metadata environment)
+     (if (:handle-schema-metadata? environment)
        (if ((:schema-matcher-fn environment) request environment)
          {:body (render-triples (to-rdf-triples (:resource environment)) (mime-to-format request) plaza.rdf.schemas/rdfs:Class-schema request)
           :headers {"Content-Type" (format-to-mime request)}
@@ -983,9 +998,11 @@
                     :headers {"Content-Type" (format-to-mime request)}
                     :status 200}
                    (if-let [parent-service (tbox-find-parent-service (:path environment))]
-                     {:body (render-format-service (assoc parent-service :uri full-request-uri) (mime-to-format request) request environment)
-                      :headers {"Content-Type" (format-to-mime request)}
-                      :status 200}
+                     (let [schema (-> (:resource environment) (deaugmentate-resource))
+                           environmentp (assoc environment :resource schema)]
+                       {:body (render-format-service (assoc parent-service :uri full-request-uri) (mime-to-format request) request environmentp)
+                        :headers {"Content-Type" (format-to-mime request)}
+                        :status 200})
                      false)))))
            false))
        false)))
@@ -1043,10 +1060,11 @@
      :status 200}))
 
 (defn handle-post-collection [request environment]
-  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+  (let [params (dissoc (:params request) (name (:id-property-alias environment)))
+        mapping (apply-resource-argument-map params (:resource-map environment))
         {id :id resource-id :uri} ((:id-gen-function environment) request environment)
         triples-pre  (conj  (build-triples-from-resource-map id resource-id mapping) [resource-id rdf:type (:resource-type environment)])
-        triples (if (nil? id) triples-pre (conj triples-pre [resource-id plz:restResourceId (d id)]))]
+        triples (if (nil? id) triples-pre (conj triples-pre [resource-id (:id-property-alias environment) (d id)]))]
     (out (ts (:resource-ts environment)) triples)
     {:body (render-triples triples :xml (:resource environment) request)
      :headers {"Content-Type" "application/xml"}

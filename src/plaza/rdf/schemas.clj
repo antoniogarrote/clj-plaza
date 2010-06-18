@@ -16,6 +16,8 @@
   "Functions that can be applied to a RDF ontology schema"
   (type-uri [this] "Returns the URI of this model")
   (add-property [this alias uri range] "Adds a new property to the model")
+  (remove-property-by-uri [this uri] "Removes a property provided its URI")
+  (remove-property-by-alias [this alias] "Removes a property provided its alias")
   (to-pattern [this props] [this subject props] "Builds a pattern suitable to look for instances of this type. A list of properties can be passed optionally")
   (to-map [this triples] "Transforms a RDF triple set into a map of properties using the provided keys")
   (property-uri [this alias] "Returns the URI for the alias of a property")
@@ -50,6 +52,12 @@
                                                          {:kind :resource :range (if (coll? range) (apply rdf-resource range) range)})]
                                          (dosync (alter properties (fn [old-props] (assoc old-props alias prop-val)))
                                                  (alter ranges (fn [old-ranges] (assoc old-ranges alias range-val))))))
+  (remove-property-by-uri [this uri] (let [alias (property-alias this uri)]
+                                       (when-not (nil? alias)
+                                         (dosync (alter properties (fn [old-props] (dissoc old-props alias)))
+                                                 (alter ranges (fn [old-ranges] (dissoc old-ranges alias)))))))
+  (remove-property-by-alias [this alias] (dosync (alter properties (fn [old-props] (dissoc old-props alias)))
+                                                     (alter ranges (fn [old-ranges] (dissoc old-ranges alias)))))
   (toString [this] (str this-uri " " @properties))
   (to-pattern [this subject props] (let [subj (if (instance? plaza.rdf.core.RDFResource subject) subject (if (coll? subject) (apply rdf-resource subject) (rdf-resource subject) ))]
                                      (build-pattern-for-model this-uri subj props @properties)))

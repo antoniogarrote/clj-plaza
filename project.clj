@@ -14,6 +14,7 @@
                  [org.jboss.netty/netty       "3.2.0.BETA1"]
                  [com.rabbitmq/amqp-client "1.7.2"]
                  [log4j/log4j "1.2.14"]]
+  :repositories { "jboss" "http://repository.jboss.org/nexus/content/groups/public/" }
   :dev-dependencies [[leiningen/lein-swank "1.2.0-SNAPSHOT"]
                      [clojure-http-client "1.1.0-SNAPSHOT"]
                      [autodoc "0.7.1"]

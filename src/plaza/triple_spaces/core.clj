@@ -1,4 +1,4 @@
-;; @author Antonio Garote
+;; @author Antonio Garrote
 ;; @email antoniogarrote@gmail.com
 ;; @date 07.05.2010
 

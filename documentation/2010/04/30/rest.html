@@ -45,6 +45,7 @@ pageTracker._trackPageview();
         <li><a href="#definition_rest">What is a RESTful semantic resource?</a></li>
         <li><a href="#defining_resources">Defining RESTful resources</a></li>
         <li><a href="#consuming_resources">RESTful semantic resources default features</a></li>
+        <li><a href="#services">Service descriptions</a></li>
         <li><a href="#customizing_resources">Customizing RESTful semantic resources</a></li>
 </ul>
 </p>
@@ -368,7 +369,132 @@ can be issued. The <span class="caps">RDF</span> graph describing the resource w
 <div id="img_wrapper">
 <p><img src="/clj-plaza/images/plaza_rest2.png"></img></p>
 </div>
-<h2>Customizing RESTful semantic resources</h2>
+<h2 id="#services">Service descriptions</h2>
+<p>Plaza can generate automatic descriptions of the services exposed using the<br />
+library.</p>
+<p>These descriptions consist of set of triples describing the resources, URIs<br />
+where these resources are bound, allowed <span class="caps">HTTP</span> methods, input and output<br />
+parameters.</p>
+<p>Plaza service descriptions is based on <a
+href="http://cms-wg.sti2.org/TR/d12/v0.1/">hRESTS </a> and <a
+href="http://www.wsmo.org/TR/d38/v0.1/">MicroWSMO</a> a vocabulary that can be<br />
+used to describe semantic web services RESTfully using a subset of the <a
+href="http://www.w3.org/Submission/WSMO/">Web Services Modeling Ontology</a>.</p>
+<p>This description for any resource can be accessed using the<br />
+<code>/single_resource_service</code> and<br />
+<code>/collection_resource_service</code> prefixes:</p>
+<pre>
+nb-agarrote~$ curl -X GET "http://localhost:8081/Celebrity/single_resource_service.n3"
+&lt;http://localhost:8081/Celebrity/single_resource_service.n3&gt;
+      a       &lt;http://www.wsmo.org/ns/wsmo-lite#Service&gt; ;
+      &lt;http://www.wsmo.org/ns/wsmo-lite#hasOperation&gt;
+              [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Operation&gt; ;
+                &lt;http://www.wsmo.org/ns/hrests#hasAddress&gt;
+                        "http://localhost:8081/Celebrity/{id}"^^&lt;http://www.wsmo.org/ns/hrests#URITemplate&gt; ;
+                &lt;http://www.wsmo.org/ns/hrests#hasMethod&gt;
+                        "get"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasInputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://schemas.xmlsoap.org/wsdl/http/urlReplacement&gt;
+                                  "id"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  &lt;http://plaza.org/vocabularies/restResourceId&gt;
+                        ] ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasOutputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  "http://localhost:8081/Celebrity/{id}/schema"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt;
+                        ]
+              ] ;
+      &lt;http://www.wsmo.org/ns/wsmo-lite#hasOperation&gt;
+              [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Operation&gt; ;
+                &lt;http://www.wsmo.org/ns/hrests#hasAddress&gt;
+                        "http://localhost:8081/Celebrity/{id}"^^&lt;http://www.wsmo.org/ns/hrests#URITemplate&gt; ;
+                &lt;http://www.wsmo.org/ns/hrests#hasMethod&gt;
+                        "put"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasInputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://schemas.xmlsoap.org/wsdl/http/urlReplacement&gt;
+                                  "birthday"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  &lt;http://xmlns.com/foaf/0.1/birthday&gt;
+                        ] ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasInputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://schemas.xmlsoap.org/wsdl/http/urlReplacement&gt;
+                                  "wikipedia_entry"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  &lt;http://xmlns.com/foaf/0.1/holdsAccount&gt;
+                        ] ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasInputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://schemas.xmlsoap.org/wsdl/http/urlReplacement&gt;
+                                  "name"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  &lt;http://xmlns.com/foaf/0.1/name&gt;
+                        ] ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasInputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://schemas.xmlsoap.org/wsdl/http/urlReplacement&gt;
+                                  "interest"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  &lt;http://xmlns.com/foaf/0.1/topic_interest&gt;
+                        ] ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasInputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://schemas.xmlsoap.org/wsdl/http/urlReplacement&gt;
+                                  "nick"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  &lt;http://xmlns.com/foaf/0.1/nick&gt;
+                        ] ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasInputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://schemas.xmlsoap.org/wsdl/http/urlReplacement&gt;
+                                  "surname"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  &lt;http://xmlns.com/foaf/0.1/surname&gt;
+                        ] ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasInputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://schemas.xmlsoap.org/wsdl/http/urlReplacement&gt;
+                                  "id"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  &lt;http://plaza.org/vocabularies/restResourceId&gt;
+                        ] ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasOutputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  "http://localhost:8081/Celebrity/{id}/schema"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt;
+                        ]
+              ] ;
+      &lt;http://www.wsmo.org/ns/wsmo-lite#hasOperation&gt;
+              [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Operation&gt; ;
+                &lt;http://www.wsmo.org/ns/hrests#hasAddress&gt;
+                        "http://localhost:8081/Celebrity/{id}"^^&lt;http://www.wsmo.org/ns/hrests#URITemplate&gt; ;
+                &lt;http://www.wsmo.org/ns/hrests#hasMethod&gt;
+                        "delete"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasInputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://schemas.xmlsoap.org/wsdl/http/urlReplacement&gt;
+                                  "id"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  &lt;http://plaza.org/vocabularies/restResourceId&gt;
+                        ] ;
+                &lt;http://www.wsmo.org/ns/wsmo-lite#hasOutputMessage&gt;
+                        [ a       &lt;http://www.wsmo.org/ns/wsmo-lite#Message&gt; ;
+                          &lt;http://www.w3.org/ns/sawsdl#modelReference&gt;
+                                  "http://localhost:8081/Celebrity/{id}/schema"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt;
+                        ]
+              ] .
+</pre>
+<p>The service description, as any other resource, can be requested in different<br />
+formats. <span class="caps">HTML</span> description of the services returns a RDFa encoded graph that can<br />
+be used for software application to consume the service and by human readers as<br />
+documentation for the <span class="caps">API</span> the service is providing:</p>
+<div id="img_wrapper">
+<p><img src="/clj-plaza/images/plaza_service1.png"></img></p>
+</div>
+<h2 id="#customizing_resources">Customizing RESTful semantic resources</h2>
 <p>In the previous sections we have explored the default features of Plaza RESTful semantic resources. This standard behavior can be nevertheless customized to suit a specific use case for a resource. This customization can be achieved using a number of options that can be passed as additional arguments in the description of the resource.</p>
 <h3>The request environment</h3>
 <p>All the customization handlers receive a couple of arguments, the Ring request hash, with all the information about the request, and a environment argument with the current state in the processing of the semantic request: the resource being requested, the triple space for the resource, or the functions handling <span class="caps">GET</span>, <span class="caps">PUT</span>, <span class="caps">POST</span> and <span class="caps">DELETE</span> requests. This information can be used to generate the right behavior for the request.</p>
@@ -379,7 +505,14 @@ can be issued. The <span class="caps">RDF</span> graph describing the resource w
                                                       <span class="nv">:allowed-methods</span> <span class="p">[</span><span class="nv">:post</span> <span class="nv">:delete</span><span class="p">])</span>
 </code></pre>
 </div><h3>Custom URIs</h3>
-<p>The  <span class="caps">URI</span> generated for the new resource can be customized passing a pair of function identified by the keys <code>:id-gen-fn</code> and the <code>:id-match-fn</code>. The <code>id-gen-fn</code> can be passed to a collection resource, it will be invoked in all the <strong><span class="caps">POST</span></strong> requests passing the request and the environment for that request and must generate the <span class="caps">URI</span> for the new resource.<br />
+<p>When a new resource is created, Plaza generates a new identifier for the<br />
+resource and associate it to the <span class="caps">RDF</span> graph for the resource using the <span class="caps">RDF</span><br />
+property <code>http://plaza.org/vocabularies/restResourceId</code>. This<br />
+property is also inserted in the description of the resource  schema.</p>
+<p>Any different property with a different alias can be used as the identifier of<br />
+the resource. The right property to be used can be specified using two special<br />
+keys: <code>:id-property-uri</code> and <code>:id-property-alias</code>.</p>
+<p>The  <span class="caps">URI</span> generated for the new resource can also be customized passing a pair of function identified by the keys <code>:id-gen-fn</code> and the <code>:id-match-fn</code>. The <code>id-gen-fn</code> can be passed to a collection resource, it will be invoked in all the <strong><span class="caps">POST</span></strong> requests passing the request and the environment for that request and must generate the <span class="caps">URI</span> for the new resource.<br />
 The complementary <code>id-match-fn</code> can be passed to a single resource definition, receiving a request and environment. It must generate the <span class="caps">URI</span> for the resource that is being requested.</p>
 <p>In the following example, two resources are created for a <span class="caps">FOAF</span> Agent resource, that will generate URIs for the resources based on the <code>foaf:name</code> property of the resource:</p>
 <div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">require</span> <span class="p">[</span><span class="nv">clojure</span><span class="o">.</span><span class="nv">contrib</span><span class="o">.</span><span class="nv">str-utils2</span> <span class="nv">:as</span> <span class="nv">str2</span><span class="p">])</span>

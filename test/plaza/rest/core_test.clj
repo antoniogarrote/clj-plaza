@@ -28,7 +28,7 @@
 (defn- build-mulgara
   ([] (build-model :mulgara :rmi "rmi://localhost/server1")))
 
-(defonce *should-test* false)
+(defonce *should-test* true)
 
 
 (when *should-test*
@@ -78,6 +78,9 @@
                                                                                 :headers {"Content-Type" "text-plain"}
                                                                                 :status 200}))
 
+     (spawn-rest-resource! :foaf-agent "/AgentForbiddenDescription/:id" :Resource
+                           :handle-service-metadata? false)
+
      (spawn-rest-resource! :foaf-agent "/CustomGet/:id" :resource
                            :allowed-methods [:get]
                            :get-handle-fn (fn [id request environment] {:body "custom get handler"
@@ -91,11 +94,11 @@
                                             (str2/replace pattern ":name" (get (:params req) "name")))))
 
      (spawn-rest-collection-resource! :foaf-agent "/CustomIds" :resource
-                                   :allowed-methods [:post]
-                                   :id-gen-fn (fn [req env]
-                                                (let [prefix (:resource-qname-prefix env)
-                                                      local (:resource-qname-local env)]
-                                                  {:id (get (:params req) "name") :uri (str prefix local "/" (get (:params req) "name"))}))))
+                                      :allowed-methods [:post]
+                                      :id-gen-fn (fn [req env]
+                                                   (let [prefix (:resource-qname-prefix env)
+                                                         local (:resource-qname-local env)]
+                                                     {:id (get (:params req) "name") :uri (str prefix local "/" (get (:params req) "name"))}))))
 
    ;; Runnin the application
    (future (run-jetty (var example) {:port 8082}))
@@ -108,7 +111,7 @@
      (let [res (clojure-http.resourcefully/post "http://localhost:8082/Agent?age=20&gender=male")
            m (build-model :jena)]
        (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
-       (is (= 3 (count (model-to-triples m))))))
+       (is (= 4 (count (model-to-triples m))))))
 
    (deftest test-del-post-get-n3
      (println "***************************************************\n DELETE - POST - GET N3 \n******************************************************")
@@ -116,12 +119,13 @@
      (let [res (clojure-http.resourcefully/post "http://localhost:8082/Agent?age=20&gender=male")
            m (build-model :jena)]
        (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
-       (is (= 3 (count (model-to-triples m))))
+       (is (= 4 (count (model-to-triples m))))
        (let [subj (str (first (first (model-to-triples m))))
              res2 (clojure-http.resourcefully/get (str subj ".n3"))
              m2 (build-model :jena)]
          (with-model m2 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res2)))) :n3))
-         (is (= 3 (count (model-to-triples m2))))
+         (doseq [t (model-to-triples m2)] (log :error (str "*** " t)))
+         (is (= 4 (count (model-to-triples m2))))
          (is (= (str (first (first (model-to-triples m2))))
                 (str (first (first (model-to-triples m)))))))))
 
@@ -131,11 +135,11 @@
      (let [res (clojure-http.resourcefully/post "http://localhost:8082/Agent?age=20&gender=male")
            m (build-model :jena)]
        (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
-       (is (= 3 (count (model-to-triples m))))
+       (is (= 4 (count (model-to-triples m))))
        (let [subj (str (first (first (model-to-triples m))))
              m2 (build-model :jena)]
          (load-stream m2 (str subj ".html") :html)
-         (is (= 3 (count (model-to-triples m2))))
+         (is (= 4 (count (model-to-triples m2))))
          (is (= (str (first (first (model-to-triples m2))))
                 (str (first (first (model-to-triples m)))))))))
 
@@ -145,11 +149,11 @@
      (let [res (clojure-http.resourcefully/post "http://localhost:8082/Agent?age=20&gender=male")
            m (build-model :jena)]
        (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
-       (is (= 3 (count (model-to-triples m))))
+       (is (= 4 (count (model-to-triples m))))
        (let [subj (str (first (first (model-to-triples m))))
              res2 (clojure-http.resourcefully/get (str subj ".js3"))
              ts (clojure.contrib.json/read-json (apply str (:body-seq res2)))]
-         (is (= 3 (count ts))))))
+         (is (= 4 (count ts))))))
 
    (deftest test-del-post-get-json
      (println "***************************************************\n DELETE - POST - GET JS3 \n******************************************************")
@@ -157,7 +161,7 @@
      (let [res (clojure-http.resourcefully/post "http://localhost:8082/Agent?age=20&gender=male")
            m (build-model :jena)]
        (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
-       (is (= 3 (count (model-to-triples m))))
+       (is (= 4 (count (model-to-triples m))))
        (let [subj (str (first (first (model-to-triples m))))
              res2 (clojure-http.resourcefully/get (str subj ".json"))
              ts (clojure.contrib.json/read-json (apply str (:body-seq res2)))]
@@ -165,7 +169,7 @@
          (is (= 20 (:age ts)))
          (is (= "male" (:gender ts)))
          (is (= "http://xmlns.com/foaf/0.1/Agent" (:type ts)))
-         (is (= 4 (count (keys ts)))))))
+         (is (= 5 (count (keys ts)))))))
 
    (deftest test-del-post-get-form
      (println "***************************************************\n DELETE - POST FORM \n******************************************************")
@@ -173,7 +177,7 @@
      (let [res (clojure-http.resourcefully/post "http://localhost:8082/Agent" {} {"age" 20 "gender" "male"})
            m (build-model :jena)]
        (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
-       (is (= 3 (count (model-to-triples m))))
+       (is (= 4 (count (model-to-triples m))))
        (let [subj (str (first (first (model-to-triples m))))
              res2 (clojure-http.resourcefully/get (str subj ".json"))
              ts (clojure.contrib.json/read-json (apply str (:body-seq res2)))]
@@ -181,7 +185,7 @@
          (is (= 20 (:age ts)))
          (is (= "male" (:gender ts)))
          (is (= "http://xmlns.com/foaf/0.1/Agent" (:type ts)))
-         (is (= 4 (count (keys ts)))))))
+         (is (= 5 (count (keys ts)))))))
 
    (deftest test-get-forbiden
      (println "***************************************************\n DELETE - GET FORBIDEN \n******************************************************")
@@ -204,11 +208,11 @@
      (let [res (clojure-http.resourcefully/post "http://localhost:8082/CustomIds?age=20&gender=male&name=wadus")
            m (build-model :jena)]
        (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
-       (is (= 3 (count (model-to-triples m))))
+       (is (= 4 (count (model-to-triples m))))
        (let [res2 (clojure-http.resourcefully/get "http://localhost:8082/CustomIds/wadus.n3")
              m2 (build-model :jena)]
          (with-model m2 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res2)))) :n3))
-         (is (= 3 (count (model-to-triples m2))))
+         (is (= 4 (count (model-to-triples m2))))
          (is (= (str (first (first (model-to-triples m2))))
                 (str (first (first (model-to-triples m)))))))))
 
@@ -228,8 +232,16 @@
        (log :error (str "*** RES 2\r\n" some2))
        (with-model m1 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq some1)))) :n3))
        (with-model m2 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq some2)))) :n3))
-       (is (= 6 (count (model-to-triples m1))))
-       (is (= 3 (count (model-to-triples m2))))))
+       (is (= 8 (count (model-to-triples m1))))
+       (is (= 4 (count (model-to-triples m2))))))
+
+   (deftest test-service_descriptions
+     (println "***********************************************\n SERVICE DESCRIPTIONS \n************************************************")
+     (clojure-http.resourcefully/delete "http://localhost:8082/Agent")
+     (let [res1 (clojure-http.resourcefully/get "http://localhost:8082/Agent/collection_resource_service.n3")
+           m1 (build-model :jena)]
+       (with-model m1 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res1)))) :n3))
+       (is (= 238 (count (model-to-triples m1))))))
 
 
    (catch Exception ex (throw ex))

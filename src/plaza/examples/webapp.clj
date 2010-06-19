@@ -58,12 +58,14 @@
   (spawn-rest-resource! :foaf-agent "/CustomIds/:name" :resource
                         :id-property-alias :name
                         :id-property-uri foaf:name
-                        :allowed-methods [:get]
+ ;                       :allowed-methods [:get]
+                        :handle-service-metadata? false
                         :id-match-fn (fn [req env]
                                        (let [pattern (str (:resource-qname-prefix env) (:resource-qname-local env))]
-                                         (str2/replace pattern ":name" (get (:params req) "name")))))
+                                         (str2/replace pattern ":id" (get (:params req) "name")))))
   (spawn-rest-collection-resource! :foaf-agent "/CustomIds" :resource
-                                   :allowed-methods [:post]
+;                                  :allowed-methods [:post]
+                                   :handle-service-metadata? false
                                    :id-gen-fn (fn [req env]
                                                 (let [prefix (:resource-qname-prefix env)
                                                       local (:resource-qname-local env)]

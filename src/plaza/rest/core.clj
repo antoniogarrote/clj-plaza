@@ -676,6 +676,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Resource functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn default-service-operation-description
+  "Default text description for a service operations"
+  ([address method]
+     [:span
+       "The address of the operation is described by this URI template: " [:code address]
+       " To consume this operation, issue a request using the " [:code method]
+      " HTTP method replacing the parameters in the URI template by values according to the following input messages information"]))
+
 (defn make-hRESTS-collection-operation
   "Builds the description of a hRESTS allowed operation on a collection resource"
   ([method path resource environment]
@@ -687,18 +695,21 @@
                :label (str "HTTP " (name method) " method")
                :method (name method)
                :address path
+               :description (default-service-operation-description path (name method))
                :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
                :output-messages {:name "theResources" :description "The returned resources" :model resource-schema :model-type resource-type}}
          :post {:identifier (name method)
                 :label (str "HTTP " (name method) " method")
                 :method (name method)
                 :address path
+                :description (default-service-operation-description path (name method))
                 :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) aliases-post)
                 :output-messages {:name "theResource" :description "The newly created resource" :model resource-schema :model-type resource-type}}
          :delete {:identifier (name method)
                   :label (str "HTTP " (name method) " method")
                   :method (name method)
                   :address path
+                  :description (default-service-operation-description path (name method))
                   :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
                   :output-messages {:name "deletedResources" :description "The deleted resources" :model resource-schema :model-type resource-type}}))))
 
@@ -713,21 +724,23 @@
                :label (str "HTTP " (name method) " method")
                :method (name method)
                :address path
+               :description (default-service-operation-description path (name method))
                :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (filter #(not (= -1 (.indexOf path (keyword-to-string %1)))) (aliases resource)))
                :output-messages {:name "theResource" :description "The returned resource" :model resource-schema :model-type resource-type}}
          :put {:identifier (name method)
                :label (str "HTTP " (name method) " method")
                :method (name method)
                :address path
+               :description (default-service-operation-description path (name method))
                :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
                :output-messages {:name "theResource" :description "The newly created resource" :model resource-schema :model-type resource-type}}
          :delete {:identifier (name method)
                   :label (str "HTTP " (name method) " method")
                   :method (name method)
                   :address path
+                  :description (default-service-operation-description path (name method))
                   :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (filter #(not (= -1 (.indexOf path (keyword-to-string %1)))) (aliases resource)))
                   :output-messages {:name "deletedResource" :description "The deleted resource" :model resource-schema :model-type resource-type}}))))
-
 
 (defn hRESTS-collection-service-description
   "Builds a triple set describing the service offered by the current request"
@@ -829,9 +842,7 @@
       [:div {:class "operation-title"} [:span {:property "hr:hasMethod"} (str (:method operation))] " " [:span {:property "hr:hasAddress" :datatype "hr:URITemplate"} (:address operation)]]
       [:div {:class "operation-body"}
        [:div {:class "fragment"}
-        "The address of the operation is described by this URI template: " [:code (str path-prefix (:address operation))]
-        " To consume this operation, issue a request using the " [:code (str (:method operation))]
-        " HTTP method replacing the parameters in the URI template by values according to the following input messages information"]
+        (:description operation)]
        [:div {:class "input-messages"}
         [:div {:class "fragment-subtitle"} "Input messages"]
         [:table
@@ -915,10 +926,13 @@
      :id-property-uri id-property-uri }))
 
 (defn make-single-resource-environment-map [resource-or-symbol path ts opts]
-  (let [pre-map (make-environment-map resource-or-symbol path ts opts) resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
+  (let [coll-env (make-environment-map resource-or-symbol path ts opts) resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
         id-match (if (nil? (:id-match-fn opts)) default-id-match (:id-match-fn opts))
-        augmentated-resource (if (= (str (:id-property-uri pre-map)) plz:restResourceId) (augmentate-resource (:resource pre-map)) (:resource pre-map))]
-    (-> pre-map (assoc :id-match-function id-match) (assoc :kind :individual) (assoc :resource augmentated-resource))))
+        augmentated-resource (if (= (str (:id-property-uri coll-env)) plz:restResourceId) (augmentate-resource (:resource coll-env)) (:resource coll-env))
+        augmentated-resource-map (if (= (str (:id-property-uri coll-env)) plz:restResourceId)
+                                   (model-to-argument-map (augmentate-resource (:resource coll-env)))
+                                   (:resource-map coll-env))]
+    (-> coll-env (assoc :id-match-function id-match) (assoc :kind :individual) (assoc :resource augmentated-resource) (assoc :resource-map augmentated-resource-map))))
 
 (defn build-default-qname-prefix
   "Returns the domain of a RING request"
@@ -987,24 +1001,26 @@
          {:body (render-triples (to-rdf-triples (:resource environment)) (mime-to-format request) plaza.rdf.schemas/rdfs:Class-schema request)
           :headers {"Content-Type" (format-to-mime request)}
           :status 200}
-         (if-let [kind-serv ((:service-matcher-fn environment) request environment)]
-           (let [service (tbox-find-service (:path environment))]
-             (if (nil? service)
-               false
-               (let [env-kind-serv (:kind environment)
-                     full-request-uri (make-full-request-uri request environment)
-                     ]
-                 (if (= env-kind-serv kind-serv)
-                   {:body (render-format-service (assoc service :uri full-request-uri) (mime-to-format request) request environment)
-                    :headers {"Content-Type" (format-to-mime request)}
-                    :status 200}
-                   (if-let [parent-service (tbox-find-parent-service (:path environment))]
-                     (let [schema (-> (:resource environment) (deaugmentate-resource))
-                           environmentp (assoc environment :resource schema)]
-                       {:body (render-format-service (assoc parent-service :uri full-request-uri) (mime-to-format request) request environmentp)
-                        :headers {"Content-Type" (format-to-mime request)}
-                        :status 200})
-                     false)))))
+         (if (:handle-service-metadata? environment)
+           (if-let [kind-serv ((:service-matcher-fn environment) request environment)]
+             (let [service (tbox-find-service (:path environment))]
+               (if (nil? service)
+                 false
+                 (let [env-kind-serv (:kind environment)
+                       full-request-uri (make-full-request-uri request environment)
+                       ]
+                   (if (= env-kind-serv kind-serv)
+                     {:body (render-format-service (assoc service :uri full-request-uri) (mime-to-format request) request environment)
+                      :headers {"Content-Type" (format-to-mime request)}
+                      :status 200}
+                     (if-let [parent-service (tbox-find-parent-service (:path environment))]
+                       (let [schema (-> (:resource environment) (deaugmentate-resource))
+                             environmentp (assoc environment :resource schema)]
+                         {:body (render-format-service (assoc parent-service :uri full-request-uri) (mime-to-format request) request environmentp)
+                          :headers {"Content-Type" (format-to-mime request)}
+                          :status 200})
+                       false)))))
+             false)
            false))
        false)))
 
@@ -1065,7 +1081,7 @@
         mapping (apply-resource-argument-map params (:resource-map environment))
         {id :id resource-uri :uri} ((:id-gen-function environment) request environment)
         triples-pre  (conj  (build-triples-from-resource-map resource-uri mapping) [resource-uri rdf:type (:resource-type environment)])
-        triples (if (nil? id) triples-pre (conj triples-pre [resource-uri (:id-property-alias environment) (d id)]))]
+        triples (if (nil? id) triples-pre (conj triples-pre [resource-uri (:id-property-uri environment) (d id)]))]
     (out (ts (:resource-ts environment)) triples)
     {:body (render-triples triples :xml (:resource environment) request)
      :headers {"Content-Type" "application/xml"}

@@ -22,7 +22,7 @@
   "Builds a datatype for a custom XSD datatype URI based on the String basic type"
   ([uri]
      (proxy [com.hp.hpl.jena.datatypes.BaseDatatype] [uri]
-       (unparse [v] v)
+       (unparse [v] (.lexicalValue v))
        (parse [lf] lf)
        (isEqual [v1 v2] (= v1 v2)))))
 

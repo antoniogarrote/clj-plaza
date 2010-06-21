@@ -55,6 +55,7 @@ pageTracker._trackPageview();
         <li><a href="#defquery">Defining queries</a></li>
         <li><a href="#filters">Adding filters</a></li>
         <li><a href="#making_queries">Using queries</a></li>
+        <li><a href="#backend_support">Backend support</a></li>
 </ul>
 </p>
 <p>The foundation of the semantic web technologies stack as conceived by the W3C is the <a
@@ -465,6 +466,132 @@ the variables in the query matching the query:</p>
 </code></pre>
 </div><p>Alternatively, the function <code>model-query-triples</code> can be used to retrieve the triple sets<br />
 where the binding maps have been applied.</p>
+<h2 id="backend_support">Backend support</h2>
+<p>One of the main problems when working with <span class="caps">RDF</span> and other semantic technologies<br />
+in the <span class="caps">JVM</span> is the lack of shared standard for W3C semantic recommendations.<br />
+Plaza protocol, types and other abstractions are defined in terms of two of the<br />
+most used implementations for these standards: Jena and OpenRDF Sesame.</p>
+<p>Plaza also supports different triple stores where <span class="caps">RDF</span> graphs can be stored and<br />
+retrieved.</p>
+<p>.h3 Jena</p>
+<p><a href="http://jena.sourceforge.net/">Jena</a> is a widely used Java library to<br />
+work with <span class="caps">RDF</span> graphs, <span class="caps">SPARQL</span> and triple stores. It was developed by HP and is<br />
+licensed under an open source license.</p>
+<p>Jena implementation can be found at <code>plaza.rdf.implementations.jena</code>.</p>
+<p>.h3 Sesame</p>
+<p><a href="http://www.openrdf.org/doc/sesame/users/index.html">Sesame</a> is a<br />
+well known <span class="caps">RDF</span> framework and triple store distributed by Aduna under an open<br />
+source license.</p>
+<p>Jena implementation can be found at <code>plaza.rdf.implementations.sesame</code>.</p>
+<p>Jena and Sesame jar libraries are included as Plaza dependencies, so they should<br />
+be alredy available in your classpath if you are using Leiningen or Maven to<br />
+manage your project.<br />
+Before Plaza can be used, the library must be initialized using either <strong>jena</strong> or<br />
+<strong>sesame</strong> as the backend library for Plaza. This can be achieved using the<br />
+<code>init-jena-framework</code> or <code>init-sesame-framework</code>. Changes<br />
+from one backend does not affect to the rest of the code written using Plaza.</p>
+<p>.h3 Triple stores</p>
+<p>By default, <strong>jena</strong> and <strong>sesame</strong> models are stored in memory so they cannot be<br />
+persisted but using serialization to a file using some <span class="caps">RDF</span> format.</p>
+<p>Nevertheless, Plaza supports different kind of triple stores that can be used to<br />
+create models that are backed by different persistent triple stores.</p>
+<p>Currently there is support for the following triple stores are supported by<br />
+plaza:</p>
+<ul>
+  <li>4Store</li>
+  <li>Big Data</li>
+  <li>Mulgara</li>
+  <li>Allegro Graph 4</li>
+</ul>
+<p>.h3 4Store</p>
+<p><a href="http://4store.org/">4Store</a> is a triple store designed by<br />
+Garlik. The setup instruction for this store can be found at <a
+href="http://4store.org/trac/wiki/Install">4Store site</a> for the cluster and<br />
+single node configurations.</p>
+<p>Plaza support for 4Store can be found at<br />
+<code>plaza.rdf.implementations.stores.4store</code>.</p>
+<p>In order to use 4Store models, the <a
+href="http://github.com/clarkparsia/4Store-API">Clark &amp; Parsia&#8217;s 4Store<br />
+library</a> must be installed and should be available in the classpath.</p>
+<p>These are the required jars:</p>
+<ul>
+  <li>cp-common-fourstore-0.3.1.jar</li>
+  <li>cp-common-openrdf-0.2.1.jar</li>
+  <li>cp-common-utils-1.0.1.jar</li>
+  <li>openrdf-sesame-2.3.0-onejar.jar</li>
+</ul>
+<p>All these jars are generated when compiling the Clark &amp; Parsia library.</p>
+<p>To use the model from Clojure code, the <code>build-model</code> function should<br />
+be used passing an additional parameter specifying the <span class="caps">URL</span> location of the<br />
+4Store triple store</p>
+<div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">core</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">implementations</span><span class="o">.</span><span class="nv">sesame</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">implementations</span><span class="o">.</span><span class="nv">stores</span><span class="o">.</span><span class="mi">4</span><span class="nv">store</span><span class="p">)</span>
+
+<span class="p">(</span><span class="nf">init-sesame-framework</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">def </span><span class="nv">*m*</span> <span class="p">(</span><span class="nf">build-model</span> <span class="nv">:4store</span> <span class="nv">:url</span> <span class="s">&quot;http://localhost:8000/&quot;</span><span class="p">))</span>
+</code></pre>
+</div><h3>Bigdata</h3>
+<p><a href="http://www.systap.com/bigdata.htm">Bigdata</a> is an implementation of<br />
+a triple store developed by <span class="caps">SYSTAP</span> and distributed as open source under the GPL2<br />
+license.</p>
+<p>Detailed documentation about the setup and configuration of the store can be<br />
+found at <a href="http://sourceforge.net/apps/mediawiki/bigdata/index.php?title=GettingStarted">Bigdata wiki</a></p>
+<p>To use Clojure with Plaza, compile the latest version of Bigdata, plaza Bigdata<br />
+jar and dependencies in the classpath, and then use<br />
+the code in <code>plaza.rdf.implementations.stores.bigdata</code> to create a<br />
+new model. A properties file located in the classpath with right configuration<br />
+for Bigdata and a file where the repository is going to be created must be<br />
+provided.</p>
+<div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">core</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">implementations</span><span class="o">.</span><span class="nv">sesame</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">implementations</span><span class="o">.</span><span class="nv">stores</span><span class="o">.</span><span class="nv">bigdata</span><span class="p">)</span>
+
+<span class="p">(</span><span class="nf">init-sesame-framework</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">def </span><span class="nv">*m*</span> <span class="p">(</span><span class="nf">build-model</span> <span class="nv">:bigdata</span> <span class="nv">:properties</span> <span class="s">&quot;rdfonly.properties&quot;</span> <span class="nv">:file</span> <span class="s">&quot;testbigdata.jnl&quot;</span><span class="p">))</span>
+</code></pre>
+</div><h3>Mulgara</h3>
+<p><a href="http://www.mulgara.org/">Mulgara</a> (previously Kowari) triple store<br />
+is an open source project for building a triple store available under open<br />
+source license. Download and installation information can be found at <a
+href="http://www.mulgara.org/trac/wiki">Mulgara&#8217;s wiki</a>.</p>
+<p>To use Mulgara the code in the namespace<br />
+<code>plaza.rdf.implementations.stores.mulgara</code> should be imported and the<br />
+<code>:rmi</code> property with the <span class="caps">URI</span> for the Mulgara server must be passed as<br />
+an argument to the <code>build-model</code> function.</p>
+<p>Mulgara&#8217;s jar library must be located in the classpath of the application.</p>
+<div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">core</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">implementations</span><span class="o">.</span><span class="nv">jena</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">implementations</span><span class="o">.</span><span class="nv">stores</span><span class="o">.</span><span class="nv">mulgara</span><span class="p">)</span>
+
+<span class="p">(</span><span class="nf">init-jena-framework</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">def </span><span class="nv">*m*</span> <span class="p">(</span><span class="nf">build-model</span> <span class="nv">:mulgara</span> <span class="nv">:rmi</span> <span class="s">&quot;rmi://localhost/server1&quot;</span><span class="p">))</span>
+</code></pre>
+</div><h3>AllegroGraph 4</h3>
+<p><a href="http://www.franz.com/agraph/allegrograph/">AllegroGraph 4</a> is a<br />
+commercial <span class="caps">RDF</span> triple store available from Franz Inc.</p>
+<p>AllegroGraph stores can be used with Plaza using the code at<br />
+<code>plaza.rdf.implementations.stores.agraph</code>.</p>
+<p>The jar library provided from Franz Inc. must be included in the classpath and<br />
+also the <span class="caps">JSON</span> library provided by <a
+href="http://www.json.org/java/">json.org</a>.</p>
+<p>To build a new model, <code>:server-url</code>, <code>:agraph-user</code>,<br />
+<code>:agraph-password</code>, <code>:catalog</code> and<br />
+<code>:repository</code> must be provided.</p>
+<div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">core</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">implementations</span><span class="o">.</span><span class="nv">jena</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">use</span> <span class="ss">&#39;plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">implementations</span><span class="o">.</span><span class="nv">stores</span><span class="o">.</span><span class="nv">agraph</span><span class="p">)</span>
+
+<span class="p">(</span><span class="nf">init-jena-framework</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">def </span><span class="nv">*m*</span> <span class="p">(</span><span class="nf">build-model</span> <span class="nv">:agraph</span> <span class="nv">:server-url</span> <span class="s">&quot;http://192.168.1.37:10035&quot;</span>
+                      <span class="nv">:agraph-user</span> <span class="s">&quot;test&quot;</span> <span class="nv">:agraph-password</span> <span class="s">&quot;test&quot;</span>
+                      <span class="nv">:catalog</span> <span class="s">&quot;java-catalog&quot;</span> <span class="nv">:repository</span> <span class="s">&quot;test2&quot;</span><span class="p">))</span>
+</code></pre>
+</div>
 </div>
 
 

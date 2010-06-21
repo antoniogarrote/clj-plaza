@@ -2,7 +2,7 @@
 ;; @email antoniogarrote@gmail.com
 ;; @date 19.06.2010
 
-(ns plaza.triple-spaces.server.agraph
+(ns plaza.rdf.implementations.stores.agraph
   (:use (plaza.rdf core)
         (plaza.rdf.implementations jena))
   (:import [com.franz.agraph.repository AGServer]

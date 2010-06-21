@@ -8,6 +8,7 @@
   (:use [plaza.rdf.schemas] :reload-all)
   (:use [plaza.rdf.sparql] :reload-all)
   (:use [plaza.triple-spaces.core] :reload-all)
+  (:use [plaza.rdf.implementations.stores.mulgara])
   (:use [plaza.rest.core] :reload-all)
   (:use [clojure.test])
   (:use [clojure.contrib.logging :only [log]])
@@ -28,7 +29,7 @@
 (defn- build-mulgara
   ([] (build-model :mulgara :rmi "rmi://localhost/server1")))
 
-(defonce *should-test* true)
+(defonce *should-test* false)
 
 
 (when *should-test*

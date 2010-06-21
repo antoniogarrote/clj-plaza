@@ -2,13 +2,8 @@
 ;; @email antoniogarrote@gmail.com
 ;; @date 31.05.2010
 
-(ns plaza.triple-spaces.server.mulgara
-  (:use [saturnine]
-	[saturnine.handler]
-        [plaza.triple-spaces.server.rabbit :as rabbit]
-        [clojure.contrib.logging :only [log]]
-        (plaza.triple-spaces core)
-        (plaza.rdf core sparql)
+(ns plaza.rdf.implementations.stores.mulgara
+  (:use (plaza.rdf core)
         (plaza.rdf.implementations jena))
   (:import [java.util UUID]
            [java.net URL]))

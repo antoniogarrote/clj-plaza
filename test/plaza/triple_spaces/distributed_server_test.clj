@@ -5,6 +5,7 @@
    [plaza.triple-spaces server]
    [plaza.triple-spaces core]
    [plaza.rdf core sparql predicates]
+   [plaza.rdf.implementations.stores.mulgara]
    [plaza.rdf.implementations jena] :reload-all)
   (:use [clojure.test]))
 

@@ -2,6 +2,12 @@
   (:use [plaza.triple-spaces.server rabbit] :reload-all)
   (:use [clojure.test]))
 
+  (println "*********************** RabbitMQ tests *********************")
+  (println " Testing RabbitMQ client, a RabbitMQ server must be running")
+  (println " in the default port and with the default user and password")
+  (println "**********************************************************")
+
+
 (deftest test-default-rabbit-parameters
   (is (= "guest" (:username *default-rabbit-parameters*))))
 

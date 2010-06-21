@@ -8,7 +8,7 @@
         [ring.adapter jetty]
         [plaza.rdf core schemas]
         [plaza.rdf.implementations jena]
-        [plaza.triple-spaces.server.mulgara]
+        [plaza.rdf.implementations.stores.mulgara]
         [plaza.triple-spaces.core]
         [plaza.triple-spaces.distributed-server]
         [plaza.rest core])

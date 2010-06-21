@@ -473,12 +473,12 @@ Plaza protocol, types and other abstractions are defined in terms of two of the<
 most used implementations for these standards: Jena and OpenRDF Sesame.</p>
 <p>Plaza also supports different triple stores where <span class="caps">RDF</span> graphs can be stored and<br />
 retrieved.</p>
-<p>.h3 Jena</p>
+<h3>Jena</h3>
 <p><a href="http://jena.sourceforge.net/">Jena</a> is a widely used Java library to<br />
 work with <span class="caps">RDF</span> graphs, <span class="caps">SPARQL</span> and triple stores. It was developed by HP and is<br />
 licensed under an open source license.</p>
 <p>Jena implementation can be found at <code>plaza.rdf.implementations.jena</code>.</p>
-<p>.h3 Sesame</p>
+<h3>Sesame</h3>
 <p><a href="http://www.openrdf.org/doc/sesame/users/index.html">Sesame</a> is a<br />
 well known <span class="caps">RDF</span> framework and triple store distributed by Aduna under an open<br />
 source license.</p>
@@ -490,7 +490,7 @@ Before Plaza can be used, the library must be initialized using either <strong>j
 <strong>sesame</strong> as the backend library for Plaza. This can be achieved using the<br />
 <code>init-jena-framework</code> or <code>init-sesame-framework</code>. Changes<br />
 from one backend does not affect to the rest of the code written using Plaza.</p>
-<p>.h3 Triple stores</p>
+<h3>Triple stores</h3>
 <p>By default, <strong>jena</strong> and <strong>sesame</strong> models are stored in memory so they cannot be<br />
 persisted but using serialization to a file using some <span class="caps">RDF</span> format.</p>
 <p>Nevertheless, Plaza supports different kind of triple stores that can be used to<br />
@@ -503,7 +503,7 @@ plaza:</p>
   <li>Mulgara</li>
   <li>Allegro Graph 4</li>
 </ul>
-<p>.h3 4Store</p>
+<h3>4Store</h3>
 <p><a href="http://4store.org/">4Store</a> is a triple store designed by<br />
 Garlik. The setup instruction for this store can be found at <a
 href="http://4store.org/trac/wiki/Install">4Store site</a> for the cluster and<br />
@@ -588,8 +588,8 @@ href="http://www.json.org/java/">json.org</a>.</p>
 <span class="p">(</span><span class="nf">init-jena-framework</span><span class="p">)</span>
 
 <span class="p">(</span><span class="k">def </span><span class="nv">*m*</span> <span class="p">(</span><span class="nf">build-model</span> <span class="nv">:agraph</span> <span class="nv">:server-url</span> <span class="s">&quot;http://192.168.1.37:10035&quot;</span>
-                      <span class="nv">:agraph-user</span> <span class="s">&quot;test&quot;</span> <span class="nv">:agraph-password</span> <span class="s">&quot;test&quot;</span>
-                      <span class="nv">:catalog</span> <span class="s">&quot;java-catalog&quot;</span> <span class="nv">:repository</span> <span class="s">&quot;test2&quot;</span><span class="p">))</span>
+                        <span class="nv">:agraph-user</span> <span class="s">&quot;test&quot;</span> <span class="nv">:agraph-password</span> <span class="s">&quot;test&quot;</span>
+                        <span class="nv">:catalog</span> <span class="s">&quot;java-catalog&quot;</span> <span class="nv">:repository</span> <span class="s">&quot;test2&quot;</span><span class="p">))</span>
 </code></pre>
 </div>
 </div>

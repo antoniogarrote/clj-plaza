@@ -409,8 +409,11 @@
                                                           (if (nil? pred) acum
                                                               (assoc acum pred value)))
                                                         (let [pred (property-alias schema (str p))]
-                                                          (if (nil? pred) acum
-                                                              (assoc acum pred (str o))))))
+                                                          (if (nil? pred)
+                                                            (if (= (str p) rdf:type)
+                                                              (assoc acum :type (str o))
+                                                              (assoc acum (str p) (str o)))
+                                                            (assoc acum pred (str o))))))
                                                     {} tss)]
                                    (assoc jsts :uri (str s))))
                                gts)))))))

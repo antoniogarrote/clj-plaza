@@ -81,70 +81,71 @@
 (register-rdf-ns :foaf foaf)
 
 
-(defonce foaf:Agent-schema
-  (make-rdfs-schema foaf:Agent
-                    :weblog           {:uri foaf:weblog       :range foaf:Document }
-                    :gender           {:uri foaf:gender       :range :string }
-                    :holdsAccount     {:uri foaf:holdsAccount :range foaf:OnlineAccount }
-                    :birthday         {:uri foaf:birthday     :range :date }
-                    :age              {:uri foaf:age          :range :integer }
-                    :made             {:uri foaf:made         :range "http://www.w3.org/2002/07/owl#Thing"}
-                    :skypeID          {:uri foaf:skypeID      :range :string}
-                    :msnChatID        {:uri foaf:msnChatID    :range :string}
-                    :icqChatID        {:uri foaf:icqChatID    :range :string}
-                    :mbox             {:uri foaf:mbox         :range "http://www.w3.org/2002/07/owl#Thing"}
-                    :status           {:uri foaf:status       :range :string}
-                    :mbox_sha1sum     {:uri foaf:mbox_sha1sum :range :string}
-                    :account          {:uri foaf:account      :range foaf:OnlineAccount}
-                    :yahooChatID      {:uri foaf:yahooChatID  :range :string}
-                    :aimChatID        {:uri foaf:aimChatID    :range :string}
-                    :jabberID         {:uri foaf:jabberID     :range :string}
-                    :openid           {:uri foaf:openid       :range :string }
-                    :tipjar           {:uri foaf:tipjar       :range :string}))
+(declare-schemas-to-load
+ (defonce foaf:Agent-schema
+   (make-rdfs-schema foaf:Agent
+                     :weblog           {:uri foaf:weblog       :range foaf:Document }
+                     :gender           {:uri foaf:gender       :range :string }
+                     :holdsAccount     {:uri foaf:holdsAccount :range foaf:OnlineAccount }
+                     :birthday         {:uri foaf:birthday     :range :date }
+                     :age              {:uri foaf:age          :range :integer }
+                     :made             {:uri foaf:made         :range "http://www.w3.org/2002/07/owl#Thing"}
+                     :skypeID          {:uri foaf:skypeID      :range :string}
+                     :msnChatID        {:uri foaf:msnChatID    :range :string}
+                     :icqChatID        {:uri foaf:icqChatID    :range :string}
+                     :mbox             {:uri foaf:mbox         :range "http://www.w3.org/2002/07/owl#Thing"}
+                     :status           {:uri foaf:status       :range :string}
+                     :mbox_sha1sum     {:uri foaf:mbox_sha1sum :range :string}
+                     :account          {:uri foaf:account      :range foaf:OnlineAccount}
+                     :yahooChatID      {:uri foaf:yahooChatID  :range :string}
+                     :aimChatID        {:uri foaf:aimChatID    :range :string}
+                     :jabberID         {:uri foaf:jabberID     :range :string}
+                     :openid           {:uri foaf:openid       :range :string }
+                     :tipjar           {:uri foaf:tipjar       :range :string}))
 
 
-(defonce foaf:Person-schema
-  (make-rdfs-schema foaf:Person
-                    :knows            {:uri foaf:knows            :range foaf:knows}
-                    :schoolHomepage   {:uri foaf:schoolHomepage   :range foaf:Document}
-                    :firstName        {:uri foaf:firstName        :range :string}
-                    :familyName       {:uri foaf:familyName       :range :string}
-                    :topic_interest   {:uri foaf:topic_interest   :range "http://www.w3.org/2002/07/owl#Thing"}
-                    :currentProject   {:uri foaf:currentProject   :range "http://www.w3.org/2002/07/owl#Thing"}
-                    :geekcode         {:uri foaf:geekcode         :range :string}
-                    :img              {:uri foaf:img              :range rdfs:Resource}
-                    :workInfoHomepage {:uri foaf:workInfoHomepage :range foaf:Document}
-                    :pastProject      {:uri foaf:pastProject      :range "http://www.w3.org/2002/07/owl#Thing"}
-                    :surname          {:uri foaf:surname          :range :string}
-                    ;; subclass of Agent
-                    :weblog           {:uri foaf:weblog           :range foaf:Document }
-                    :gender           {:uri foaf:gender           :range :string }
-                    :holdsAccount     {:uri foaf:holdsAccount     :range foaf:OnlineAccount }
-                    :birthday         {:uri foaf:birthday         :range :date }
-                    :age              {:uri foaf:age              :range :integer }
-                    :made             {:uri foaf:made             :range "http://www.w3.org/2002/07/owl#Thing"}
-                    :skypeID          {:uri foaf:skypeID          :range :string}
-                    :msnChatID        {:uri foaf:msnChatID        :range :string}
-                    :icqChatID        {:uri foaf:icqChatID        :range :string}
-                    :mbox             {:uri foaf:mbox             :range "http://www.w3.org/2002/07/owl#Thing"}
-                    :status           {:uri foaf:status           :range :string}
-                    :mbox_sha1sum     {:uri foaf:mbox_sha1sum     :range :string}
-                    :account          {:uri foaf:account          :range foaf:OnlineAccount}
-                    :yahooChatID      {:uri foaf:yahooChatID      :range :string}
-                    :aimChatID        {:uri foaf:aimChatID        :range :string}
-                    :jabberID         {:uri foaf:jabberID         :range :string}
-                    :openid           {:uri foaf:openid           :range :string }
-                    :tipjar           {:uri foaf:tipjar           :range :string}))
+ (defonce foaf:Person-schema
+   (make-rdfs-schema foaf:Person
+                     :knows            {:uri foaf:knows            :range foaf:knows}
+                     :schoolHomepage   {:uri foaf:schoolHomepage   :range foaf:Document}
+                     :firstName        {:uri foaf:firstName        :range :string}
+                     :familyName       {:uri foaf:familyName       :range :string}
+                     :topic_interest   {:uri foaf:topic_interest   :range "http://www.w3.org/2002/07/owl#Thing"}
+                     :currentProject   {:uri foaf:currentProject   :range "http://www.w3.org/2002/07/owl#Thing"}
+                     :geekcode         {:uri foaf:geekcode         :range :string}
+                     :img              {:uri foaf:img              :range rdfs:Resource}
+                     :workInfoHomepage {:uri foaf:workInfoHomepage :range foaf:Document}
+                     :pastProject      {:uri foaf:pastProject      :range "http://www.w3.org/2002/07/owl#Thing"}
+                     :surname          {:uri foaf:surname          :range :string}
+                     ;; subclass of Agent
+                     :weblog           {:uri foaf:weblog           :range foaf:Document }
+                     :gender           {:uri foaf:gender           :range :string }
+                     :holdsAccount     {:uri foaf:holdsAccount     :range foaf:OnlineAccount }
+                     :birthday         {:uri foaf:birthday         :range :date }
+                     :age              {:uri foaf:age              :range :integer }
+                     :made             {:uri foaf:made             :range "http://www.w3.org/2002/07/owl#Thing"}
+                     :skypeID          {:uri foaf:skypeID          :range :string}
+                     :msnChatID        {:uri foaf:msnChatID        :range :string}
+                     :icqChatID        {:uri foaf:icqChatID        :range :string}
+                     :mbox             {:uri foaf:mbox             :range "http://www.w3.org/2002/07/owl#Thing"}
+                     :status           {:uri foaf:status           :range :string}
+                     :mbox_sha1sum     {:uri foaf:mbox_sha1sum     :range :string}
+                     :account          {:uri foaf:account          :range foaf:OnlineAccount}
+                     :yahooChatID      {:uri foaf:yahooChatID      :range :string}
+                     :aimChatID        {:uri foaf:aimChatID        :range :string}
+                     :jabberID         {:uri foaf:jabberID         :range :string}
+                     :openid           {:uri foaf:openid           :range :string }
+                     :tipjar           {:uri foaf:tipjar           :range :string}))
 
 
-(defonce foaf:OnlineAccount-schema
-  (make-rdfs-schema foaf:OnlineAccount
-                    :accountName {:uri foaf:accountName :range :string }
-                    :accountServiceHomepage {:uri foaf:accountServiceHomepage :range foaf:Document }))
+ (defonce foaf:OnlineAccount-schema
+   (make-rdfs-schema foaf:OnlineAccount
+                     :accountName {:uri foaf:accountName :range :string }
+                     :accountServiceHomepage {:uri foaf:accountServiceHomepage :range foaf:Document }))
 
 
-(defonce foaf:Document-schema
-  (make-rdfs-schema foaf:Document
-                    :sha1         {:uri foaf:sha1          :range "http://www.w3.org/2002/07/owl#Thing"}
-                    :topic        {:uri foaf:topic         :range "http://www.w3.org/2002/07/owl#Thing"}
-                    :primaryTopic {:uri foaf:primaryTopic  :range "http://www.w3.org/2002/07/owl#Thing"}))
+ (defonce foaf:Document-schema
+   (make-rdfs-schema foaf:Document
+                     :sha1         {:uri foaf:sha1          :range "http://www.w3.org/2002/07/owl#Thing"}
+                     :topic        {:uri foaf:topic         :range "http://www.w3.org/2002/07/owl#Thing"}
+                     :primaryTopic {:uri foaf:primaryTopic  :range "http://www.w3.org/2002/07/owl#Thing"})))

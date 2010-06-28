@@ -692,28 +692,28 @@
   ([method path resource environment]
      (let [resource-type (type-uri resource)
            resource-schema (str path "/schema")
-           aliases-post (filter #(not (= %1 (:id-property-alias environment))) (aliases resource))]
+           aliases-collection (filter #(not (= %1 :id)) (aliases resource))]
        (condp = method
          :get {:identifier (name method)
                :label (str "HTTP " (name method) " method")
                :method (name method)
                :address path
                :description (default-service-operation-description path (name method))
-               :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
+               :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) aliases-collection)
                :output-messages {:name "theResources" :description "The returned resources" :model resource-schema :model-type resource-type}}
          :post {:identifier (name method)
                 :label (str "HTTP " (name method) " method")
                 :method (name method)
                 :address path
                 :description (default-service-operation-description path (name method))
-                :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) aliases-post)
+                :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) aliases-collection)
                 :output-messages {:name "theResource" :description "The newly created resource" :model resource-schema :model-type resource-type}}
          :delete {:identifier (name method)
                   :label (str "HTTP " (name method) " method")
                   :method (name method)
                   :address path
                   :description (default-service-operation-description path (name method))
-                  :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
+                  :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) aliases-collection)
                   :output-messages {:name "deletedResources" :description "The deleted resources" :model resource-schema :model-type resource-type}}))))
 
 (defn make-hRESTS-single-operation
@@ -728,7 +728,7 @@
                :method (name method)
                :address path
                :description (default-service-operation-description path (name method))
-               :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (filter #(not (= -1 (.indexOf path (keyword-to-string %1)))) (aliases resource)))
+               :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (aliases resource))
                :output-messages {:name "theResource" :description "The returned resource" :model resource-schema :model-type resource-type}}
          :put {:identifier (name method)
                :label (str "HTTP " (name method) " method")
@@ -742,7 +742,8 @@
                   :method (name method)
                   :address path
                   :description (default-service-operation-description path (name method))
-                  :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)}) (filter #(not (= -1 (.indexOf path (keyword-to-string %1)))) (aliases resource)))
+                  :input-messages (map (fn [alias] {:name alias :model (property-uri resource alias)})
+                                       (filter #(not (= -1 (.indexOf path (keyword-to-string %1)))) (aliases resource))) ;; we just want properties in the URI
                   :output-messages {:name "deletedResource" :description "The deleted resource" :model resource-schema :model-type resource-type}}))))
 
 (defn hRESTS-collection-service-description
@@ -819,8 +820,7 @@
   ([hRESTS-description path-prefix]
      (let [ops (map #(hRESTS-op-to-json-map %1 path-prefix) (:operations hRESTS-description))
            result {:uri (str (:uri hRESTS-description))
-                   :operations ops}]
-       (log :error (str "JSON struct " result)) result)))
+                   :operations ops}] result)))
 
 (defn hRESTS-message-to-rdfa-map
   "Transforms a hRESTS message description into a hash"
@@ -891,12 +891,12 @@
 (defn augmentate-resource
   "Add Plaza Id property from property ontology if it is not present in the resource"
   ([resource]
-     (add-property resource :id plz:restResourceId :string) resource))
+     (add-property resource :id plz:restResourceId :string)))
 
 (defn deaugmentate-resource
   "Remove the Plaza Id property from property ontology if it is present in the resource"
   ([resource]
-     (remove-property-by-uri resource plz:restResourceId) resource))
+     (remove-property-by-uri resource plz:restResourceId)))
 
 
 (defn make-environment-map [resource-or-symbol path ts opts]
@@ -918,9 +918,13 @@
         post-handle-fn (:post-handle-fn opts)
         put-handle-fn (:put-handle-fn opts)
         delete-handle-fn (:delete-handle-fn opts)
-        service-uri-gen-fn (if (nil? (:service-uri-gen-fn opts)) default-uri-template-for-service (:service-uri-gen-fn opts)) ]
-    {:resource-map resource-map :resource-type resource-type :resource-qname-prefix resource-qname-prefix
-     :resource-qname-local resource-qname-local :id-gen-function id-gen :resource-ts resource-ts :resource resource
+        service-uri-gen-fn (if (nil? (:service-uri-gen-fn opts)) default-uri-template-for-service (:service-uri-gen-fn opts))
+        augmentated-resource (if (= (str id-property-uri) plz:restResourceId) (augmentate-resource resource) resource)
+        augmentated-resource-map (if (= (str id-property-uri) plz:restResourceId)
+                                   (model-to-argument-map augmentated-resource)
+                                   resource-map)]
+    {:resource-map augmentated-resource-map :resource-type resource-type :resource-qname-prefix resource-qname-prefix
+     :resource-qname-local resource-qname-local :id-gen-function id-gen :resource-ts resource-ts :resource augmentated-resource
      :path (str path "*") :path-re (re-pattern (str "(\\..*)?$")) :service-matcher-fn service-matcher-fn
      :schema-matcher-fn schema-matcher-fn :handle-schema-metadata? handle-schema-metadata
      :handle-service-metadata? handle-service-metadata :allowed-methods allowed-methods :get-handle-fn get-handle-fn
@@ -929,13 +933,9 @@
      :id-property-uri id-property-uri }))
 
 (defn make-single-resource-environment-map [resource-or-symbol path ts opts]
-  (let [coll-env (make-environment-map resource-or-symbol path ts opts) resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
-        id-match (if (nil? (:id-match-fn opts)) default-id-match (:id-match-fn opts))
-        augmentated-resource (if (= (str (:id-property-uri coll-env)) plz:restResourceId) (augmentate-resource (:resource coll-env)) (:resource coll-env))
-        augmentated-resource-map (if (= (str (:id-property-uri coll-env)) plz:restResourceId)
-                                   (model-to-argument-map (augmentate-resource (:resource coll-env)))
-                                   (:resource-map coll-env))]
-    (-> coll-env (assoc :id-match-function id-match) (assoc :kind :individual) (assoc :resource augmentated-resource) (assoc :resource-map augmentated-resource-map))))
+  (let [coll-env (make-environment-map resource-or-symbol path ts opts)
+        id-match (if (nil? (:id-match-fn opts)) default-id-match (:id-match-fn opts))]
+    (-> coll-env (assoc :id-match-function id-match) (assoc :kind :individual))))
 
 (defn build-default-qname-prefix
   "Returns the domain of a RING request"
@@ -1010,8 +1010,7 @@
                (if (nil? service)
                  false
                  (let [env-kind-serv (:kind environment)
-                       full-request-uri (make-full-request-uri request environment)
-                       ]
+                       full-request-uri (make-full-request-uri request environment)]
                    (if (= env-kind-serv kind-serv)
                      {:body (render-format-service (assoc service :uri full-request-uri) (mime-to-format request) request environment)
                       :headers {"Content-Type" (format-to-mime request)}
@@ -1038,7 +1037,8 @@
 ;;; Handlers
 
 (defn handle-get [id request environment]
-  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
+  (let [_t1 (log :error (str "map: " (:resource-map environment) " resource: " (:resource environment)))
+        mapping (apply-resource-argument-map (:params request) (:resource-map environment))
         query (build-single-resource-query-from-resource-map mapping id)
         results (rd (ts (:resource-ts environment)) query)
         triples (distinct (flatten-1 results))]
@@ -1058,8 +1058,7 @@
      :status 200}))
 
 (defn handle-delete [id request environment]
-  (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
-        query (build-single-resource-query-from-resource-map mapping id)
+  (let [query (build-single-resource-all-triples-query id)
         results (in (ts (:resource-ts environment)) query)
         triples (distinct (flatten-1 results))]
     {:body (render-triples triples (mime-to-format request) (:resource environment) request)
@@ -1086,7 +1085,7 @@
         triples-pre  (conj  (build-triples-from-resource-map resource-uri mapping) [resource-uri rdf:type (:resource-type environment)])
         triples (if (nil? id) triples-pre (conj triples-pre [resource-uri (:id-property-uri environment) (d id)]))]
     (out (ts (:resource-ts environment)) triples)
-    {:body (render-triples triples :xml (:resource environment) request)
+    {:body (render-triples triples (mime-to-format request) (:resource environment) request)
      :headers {"Content-Type" "application/xml"}
      :status 201}))
 

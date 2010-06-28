@@ -315,5 +315,5 @@
   "Setup all the root bindings to use Plaza with the Jena framework. This function must be called
    before start using Plaza"
   ([] (alter-root-model (build-model :jena))
-     (alter-root-sparql-framework (plaza.rdf.implementations.jena.JenaSparqlFramework.))
-     (alter-root-model-builder-fn :jena)))
+      (alter-root-sparql-framework (plaza.rdf.implementations.jena.JenaSparqlFramework.))
+      (alter-root-model-builder-fn :jena)))

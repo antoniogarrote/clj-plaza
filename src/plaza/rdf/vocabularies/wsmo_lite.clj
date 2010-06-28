@@ -21,19 +21,18 @@
 (register-rdf-ns :wsl wsl)
 
 
-(defonce wsl:Message-schema
-  (make-rdfs-schema wsl:Message))
+(declare-schemas-to-load
+ (defonce wsl:Message-schema
+   (make-rdfs-schema wsl:Message))
 
-(defonce wsl:Operation-schema
-  (make-rdfs-schema wsl:Operation
-                    :hasInputMessage  { :uri wsl:hasInputMessage  :range wsl:Message }
-                    :hasOutputMessage { :uri wsl:hasOutputMessage :range wsl:Message }))
+ (defonce wsl:Operation-schema
+   (make-rdfs-schema wsl:Operation
+                     :hasInputMessage  { :uri wsl:hasInputMessage  :range wsl:Message }
+                     :hasOutputMessage { :uri wsl:hasOutputMessage :range wsl:Message }))
 
-(defonce wsl:Service-schema
-  (make-rdfs-schema wsl:Service
-                    :hasOperation { :uri wsl:hasOperation :range wsl:Operation }))
-
-
+ (defonce wsl:Service-schema
+   (make-rdfs-schema wsl:Service
+                     :hasOperation { :uri wsl:hasOperation :range wsl:Operation })))
 
 
 

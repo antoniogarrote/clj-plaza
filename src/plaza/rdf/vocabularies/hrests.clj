@@ -19,11 +19,12 @@
 (register-rdf-ns :hr hr)
 
 
-(defonce hr:Operation-schema
-  (make-rdfs-schema wsl:Operation
-                    :hasInputMessage  { :uri wsl:hasInputMessage  :range wsl:Message }
-                    :hasOutputMessage { :uri wsl:hasOutputMessage :range wsl:Message }
-                    :hasAddress       { :uri hr:hasAddress        :range :string } ; @todo this is really a hr:URITemplate
-                    :hasMethod        { :uri hr:hasMethod         :range :string }))
-(defonce hr:URITemplate
-  (make-rdfs-schema hr:URITemplate))
+(declare-schemas-to-load
+ (defonce hr:Operation-schema
+   (make-rdfs-schema wsl:Operation
+                     :hasInputMessage  { :uri wsl:hasInputMessage  :range wsl:Message }
+                     :hasOutputMessage { :uri wsl:hasOutputMessage :range wsl:Message }
+                     :hasAddress       { :uri hr:hasAddress        :range :string } ; @todo this is really a hr:URITemplate
+                     :hasMethod        { :uri hr:hasMethod         :range :string }))
+ (defonce hr:URITemplate
+   (make-rdfs-schema hr:URITemplate)))

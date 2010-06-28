@@ -7,6 +7,7 @@
         [compojure response]
         [ring.adapter jetty]
         [plaza.rdf core schemas]
+        [plaza.rdf.vocabularies foaf]
         [plaza.rdf.implementations jena]
         [plaza.rdf.implementations.stores.mulgara]
         [plaza.triple-spaces.core]
@@ -19,11 +20,8 @@
 ;; We will use jena
 (init-jena-framework)
 
-;; We load the Friend Of A Friend vocabulary
-;; and register the Agent schema in the TBox
-(load-rdfs-schemas)
-(use 'plaza.rdf.vocabularies.foaf)
-
+;; We init and define vocabularies
+(init-vocabularies)
 (def ComputationCelebrity-schema
      (make-rdfs-schema foaf:Person
                        :name            {:uri foaf:name           :range :string}

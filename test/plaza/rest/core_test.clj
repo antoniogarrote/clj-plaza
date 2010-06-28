@@ -7,6 +7,7 @@
   (:use [plaza.triple-spaces distributed-server] :reload-all)
   (:use [plaza.rdf.schemas] :reload-all)
   (:use [plaza.rdf.sparql] :reload-all)
+  (:use [plaza.rdf.vocabularies.foaf] :reload-all)
   (:use [plaza.triple-spaces.core] :reload-all)
   (:use [plaza.rdf.implementations.stores.mulgara])
   (:use [plaza.rest.core] :reload-all)
@@ -16,8 +17,7 @@
             [clojure.contrib.str-utils2 :as str2]))
 
 (init-jena-framework)
-(load-rdfs-schemas)
-(use 'plaza.rdf.vocabularies.foaf)
+(init-vocabularies)
 
 
 (defn- clean-ts
@@ -29,14 +29,14 @@
 (defn- build-mulgara
   ([] (build-model :mulgara :rmi "rmi://localhost/server1")))
 
-(defonce *should-test* false)
+(defonce *should-test* true)
 
 
 (when *should-test*
 
   (println "********* RESTful Semantic Resources tests ENABLED *********")
   (println " A redis localhost instance must be running at port 6379 \n and a default Mulgara triple repository,")
-  (println " change the value of the *should-test* symbol in the test file to disable")
+  (println " Change the value of the *should-test* symbol in the test file to disable")
   (println " A new Jetty instance will be created so port 8082 must also be free.")
   (println "**********************************************************")
 
@@ -114,6 +114,16 @@
        (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
        (is (= 4 (count (model-to-triples m))))))
 
+
+   (deftest test-del-post-format
+     (println "***************************************************\n DELETE - POST (JSON) \n******************************************************")
+     (clojure-http.resourcefully/delete "http://localhost:8082/Agent")
+     (let [res (clojure-http.resourcefully/post "http://localhost:8082/Agent.json?age=20&gender=male")
+           ts (clojure.contrib.json/read-json (apply str (:body-seq res)))]
+       (is (= 20 (:age ts)))
+       (is (= "male" (:gender ts)))))
+
+
    (deftest test-del-post-get-n3
      (println "***************************************************\n DELETE - POST - GET N3 \n******************************************************")
      (clojure-http.resourcefully/delete "http://localhost:8082/Agent")
@@ -129,6 +139,28 @@
          (is (= 4 (count (model-to-triples m2))))
          (is (= (str (first (first (model-to-triples m2))))
                 (str (first (first (model-to-triples m)))))))))
+
+
+   (deftest test-del-post-get-delete-n3
+     (println "***************************************************\n DELETE - POST - GET - DELETE N3 \n******************************************************")
+     (clojure-http.resourcefully/delete "http://localhost:8082/Agent")
+     (let [res (clojure-http.resourcefully/post "http://localhost:8082/Agent?age=20&gender=male")
+           m (build-model :jena)]
+       (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
+       (is (= 4 (count (model-to-triples m))))
+       (let [subj (str (first (first (model-to-triples m))))
+             res2 (clojure-http.resourcefully/get (str subj ".n3"))
+             m2 (build-model :jena)]
+         (with-model m2 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res2)))) :n3))
+         (doseq [t (model-to-triples m2)] (log :error (str "*** " t)))
+         (is (= 4 (count (model-to-triples m2))))
+         (let [uri-to-delete (str (first (first (model-to-triples m2))) ".n3")
+               result-delete (clojure-http.resourcefully/delete uri-to-delete)
+               m3 (build-model :jena)]
+           (with-model m3 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq result-delete)))) :n3))
+           (is (= (str (first (first (model-to-triples m3))))
+                (str (first (first (model-to-triples m2))))))))))
+
 
    (deftest test-del-post-get-html
      (println "***************************************************\n DELETE - POST - GET HTML \n******************************************************")

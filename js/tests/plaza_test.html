@@ -1,0 +1,625 @@
+    <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+    "http://www.w3.org/TR/html4/loose.dtd">
+    <html>
+    <head>
+    <link rel="stylesheet" href="qunit.css" type="text/css"/>
+    <script type="text/javascript" src="../js/plaza.js"> </script>
+    <script src="../js/jquery.js"> </script>
+    <script src="../js/hola.js"> </script>
+    <script type="text/javascript" src="qunit.js"></script>
+    <script type="text/javascript">
+
+    $(document).ready(function(){
+        // Test Data
+
+        var testSchema = [{"uri":"http:\/\/workingwithclojure.com\/vocabularies\/common\/Person","type":"http:\/\/www.w3.org\/2000\/01\/rdf-schema#Class"},
+            {"uri":"http:\/\/plaza.org\/vocabularies\/restResourceId","domain":"http:\/\/workingwithclojure.com\/vocabularies\/common\/Person",
+            "range":"http:\/\/www.w3.org\/2001\/XMLSchema#string"},
+            {"uri":"http:\/\/workingwithclojure.com\/vocabularies\/common\/usingClojureSince","domain":"http:\/\/workingwithclojure.com\/vocabularies\/common\/Person",
+            "range":"http:\/\/www.w3.org\/2001\/XMLSchema#date"},
+            {"uri":"http:\/\/xmlns.com\/foaf\/0.1\/surname","domain":"http:\/\/workingwithclojure.com\/vocabularies\/common\/Person",
+            "range":"http:\/\/www.w3.org\/2001\/XMLSchema#string"},
+            {"uri":"http:\/\/xmlns.com\/foaf\/0.1\/firstName","domain":"http:\/\/workingwithclojure.com\/vocabularies\/common\/Person",
+            "range":"http:\/\/www.w3.org\/2001\/XMLSchema#string"},
+            {"uri":"http:\/\/xmlns.com\/foaf\/0.1\/status","domain":"http:\/\/workingwithclojure.com\/vocabularies\/common\/Person",
+            "range":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}];
+
+        var testObj = eval('[["http:\/\/localhost:8081\/people\/a9a139eada924bb8b4c0bf34e04c15cf","http:\/\/plaza.org\/vocabularies\/restResourceId",{"value":"a9a139eada924bb8b4c0bf34e04c15cf","datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}],["http:\/\/localhost:8081\/people\/a9a139eada924bb8b4c0bf34e04c15cf","http:\/\/www.w3.org\/1999\/02\/22-rdf-syntax-ns#type","http:\/\/workingwithclojure.com\/vocabularies\/common\/Person"],["http:\/\/localhost:8081\/people\/a9a139eada924bb8b4c0bf34e04c15cf","http:\/\/xmlns.com\/foaf\/0.1\/firstName",{"value":"Antonio","datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}],["http:\/\/localhost:8081\/people\/a9a139eada924bb8b4c0bf34e04c15cf","http:\/\/xmlns.com\/foaf\/0.1\/surname",{"value":"Garrote","datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}],["http:\/\/localhost:8081\/people\/a9a139eada924bb8b4c0bf34e04c15cf","http:\/\/workingwithclojure.com\/vocabularies\/common\/usingClojureSince",{"value":"2009-05-10","datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#date"}]]');
+
+        var testSrv = {"uri":"http://localhost:8081/people/single_resource_service.json","operations":[{"addressTemplate":"http://localhost:8081/people/{id}","method":"get","outputMessage":{"modelReference":"http://localhost:8081/people/{id}/schema"},"inputMessages":[{"modelReference":"http://plaza.org/vocabularies/restResourceId","urlReplacement":"\"id\"^^<http://www.w3.org/2001/XMLSchema#string>"}]},{"addressTemplate":"http://localhost:8081/people/{id}","method":"put","outputMessage":{"modelReference":"http://localhost:8081/people/{id}/schema"},"inputMessages":[{"modelReference":"http://plaza.org/vocabularies/restResourceId","urlReplacement":"\"id\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://workingwithclojure.com/vocabularies/common/usingClojureSince","urlReplacement":"\"usingClojureSince\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/surname","urlReplacement":"\"surname\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/firstName","urlReplacement":"\"firstName\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/status","urlReplacement":"\"status\"^^<http://www.w3.org/2001/XMLSchema#string>"}]},{"addressTemplate":"http://localhost:8081/people/{id}","method":"delete","outputMessage":{"modelReference":"http://localhost:8081/people/{id}/schema"},"inputMessages":[{"modelReference":"http://plaza.org/vocabularies/restResourceId","urlReplacement":"\"id\"^^<http://www.w3.org/2001/XMLSchema#string>"}]}]};
+
+        var testColSrv = {"uri":"http://localhost:8081/people/collection_resource_service.json","operations":[{"addressTemplate":"http://localhost:8081/people","method":"get","outputMessage":{"modelReference":"http://localhost:8081/people/schema"},"inputMessages":[{"modelReference":"http://workingwithclojure.com/vocabularies/common/usingClojureSince","urlReplacement":"\"usingClojureSince\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/surname","urlReplacement":"\"surname\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/firstName","urlReplacement":"\"firstName\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/status","urlReplacement":"\"status\"^^<http://www.w3.org/2001/XMLSchema#string>"}]},{"addressTemplate":"http://localhost:8081/people","method":"post","outputMessage":{"modelReference":"http://localhost:8081/people/schema"},"inputMessages":[{"modelReference":"http://workingwithclojure.com/vocabularies/common/usingClojureSince","urlReplacement":"\"usingClojureSince\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/surname","urlReplacement":"\"surname\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/firstName","urlReplacement":"\"firstName\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/status","urlReplacement":"\"status\"^^<http://www.w3.org/2001/XMLSchema#string>"}]},{"addressTemplate":"http://localhost:8081/people","method":"delete","outputMessage":{"modelReference":"http://localhost:8081/people/schema"},"inputMessages":[{"modelReference":"http://workingwithclojure.com/vocabularies/common/usingClojureSince","urlReplacement":"\"usingClojureSince\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/surname","urlReplacement":"\"surname\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/firstName","urlReplacement":"\"firstName\"^^<http://www.w3.org/2001/XMLSchema#string>"},{"modelReference":"http://xmlns.com/foaf/0.1/status","urlReplacement":"\"status\"^^<http://www.w3.org/2001/XMLSchema#string>"}]}]};
+
+        // Tests
+
+        module("Plaza#setup");
+        test("It should be able to seq a list of currified functions", function(){
+            expect(2);
+            var acum = [];
+            Plaza.setup(
+                function(c) {
+                    acum.push(1);
+                    c(1);
+                },
+                function(c) {
+                    acum.push(2);
+                    c(2);
+                },
+                function() {
+                    equal(acum.shift(), 1,"it should call the first currified function");
+                    equal(acum.shift(), 2,"it should call the second currified function");
+                });
+        });
+
+        module("Plaza.XSD#parseType");
+        test("It should be able to correctly parse the type of different JSON encoded properties", function(){
+            expect(4);
+            var obj1 = {value: "5", datatype: "http://www.w3.org/2001/XMLSchema#string"};
+            var obj2 = {value: "5", datatype: "http://www.w3.org/2001/XMLSchema#int"};
+            var obj3 = {value: "2010-02-02", datatype: "http://www.w3.org/2001/XMLSchema#date"};
+            var obj4 = "5^^http://www.w3.org/2001/XMLSchema#int";
+
+            equal(Plaza.XSD.parseType(obj1),"5","It should parse a XSD string");
+            equal(Plaza.XSD.parseType(obj2),5,"It should parse a XSD int");
+            equal(""+Plaza.XSD.parseType(obj3),""+new Date("2010-02-02"),"It should parse a XSD date");
+            equal(Plaza.XSD.parseType(obj4),5,"It should parse a XSD int from the URI");
+        });
+
+        module("Plaza.Utils#extractQLocal");
+        test("It should retrieve the QLocal part correctly", function(){
+            expect(4);
+            equal(Plaza.Utils.extractQLocal("http://test.com/something"),"something", "");
+            equal(Plaza.Utils.extractQLocal("http://test.com/something/else"),"else", "");
+            equal(Plaza.Utils.extractQLocal("http://test.com/something/else/"),"else", "");
+            equal(Plaza.Utils.extractQLocal("http://test.com/something#more"),"more", "");
+        });
+
+        module("Plaza.Utils#registerNamespace");
+        test("It should register a global namespace", function(){
+            expect(3);
+            Plaza.Utils.registerNamespace("PlazaTest", "Something", "Else");
+            equal(typeof(PlazaTest),"object", "The namespace should be registered");
+            equal(typeof(PlazaTest.Something),"object", "The inner namespace should be registered");
+            equal(typeof(PlazaTest.Something.Else),"object", "The inner namespace should be registered");
+        });
+
+        module("Plaza.TBox#_processSchema");
+        test("It should add correctly the URIs with the right alias extracted\
+        from the URI string", function(){
+            expect(5);
+
+            Plaza.TBox._processSchema({uri: "http://test.com/Person"});
+            Plaza.TBox._processSchema({uri: "http://otherTest.com/Person"});
+
+            equal(Plaza.TBox.classesRegistry["Person"].length,2,"It should have stored both classes URIs");
+            equal(Plaza.TBox.classesRegistry["Person"][0],"http://test.com/Person","The first URI should be correct");
+            equal(Plaza.TBox.classesRegistry["Person"][1],"http://otherTest.com/Person","The second URI should be correct");
+
+            equal(Plaza.TBox.classesMap["http://test.com/Person"],"Person","It should do the reverse mapping");
+            equal(Plaza.TBox.classesMap["http://otherTest.com/Person"],"Person","It should do the reverse mapping");
+        });
+
+        module("Plaza.TBox#_processProperty");
+        test("It should add correctly the property URIs with the right alias extracted from the URI string", function(){
+            expect(5);
+
+            Plaza.TBox._processProperty({uri: "http://test.com/metPerson"});
+            Plaza.TBox._processProperty({uri: "http://otherTest.com/metPerson"});
+
+            equal(Plaza.TBox.propertiesRegistry["metPerson"].length,2,"It should have stored both properties URIs");
+            equal(Plaza.TBox.propertiesRegistry["metPerson"][0],"http://test.com/metPerson","The first URI should be correct");
+            equal(Plaza.TBox.propertiesRegistry["metPerson"][1],"http://otherTest.com/metPerson","The second URI should be correct");
+
+            equal(Plaza.TBox.propertiesMap["http://test.com/metPerson"].uri,"http://test.com/metPerson","It should do the reverse mapping");
+            equal(Plaza.TBox.propertiesMap["http://otherTest.com/metPerson"].uri,"http://otherTest.com/metPerson","It should do the reverse mapping");
+
+        });
+
+        module("Plaza.TBox#registerSchema");
+        test("It should correctly retrieve and register schema and properties for a provided schema URI", function(){
+            expect(2);
+
+            var oldRetrieveSchema = Plaza.TBox._retrieveSchema;
+            Plaza.TBox._retrieveSchema = function(uri,callback) {
+                callback(testSchema);
+            }
+
+            Plaza.TBox.propertiesInvRegistry = {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "rdf_type"}
+            Plaza.TBox.propertiesRegistry = {"rdf_type": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"},
+            Plaza.TBox.classesRegistry = {};
+            Plaza.TBox.classesMap = {};
+
+
+            Plaza.TBox.registerSchema("fooSchema", function(uri) {
+                var counterClasses = 0;
+                var counterProperties = 0;
+                for(var i in Plaza.TBox.propertiesRegistry) {
+                    counterProperties++;
+                }
+                for(var i in Plaza.TBox.classesRegistry) {
+                    counterClasses++;
+                }
+
+
+                equal(counterProperties, 6, "It should have stored all property URIs");
+                equal(counterClasses, 1, "It should have stored all property URIs");
+
+                Plaza.TBox._retrieveSchema = oldRetrieveSchema;
+            });
+        });
+
+        module("Plaza.JSON#fromTriples");
+        test("It should be able to transform a collection of triples into a JSON object", function(){
+            expect(6);
+
+            var oldRetrieveSchema = Plaza.TBox._retrieveSchema;
+            Plaza.TBox._retrieveSchema = function(uri,callback) {
+                callback(testSchema);
+            }
+
+            Plaza.TBox.propertiesInvRegistry = {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "rdf_type"}
+            Plaza.TBox.propertiesRegistry = {"rdf_type": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"},
+            Plaza.TBox.classesRegistry = {};
+            Plaza.TBox.classesMap = {};
+
+            Plaza.TBox.registerSchema("fooSchema", function(uri) {
+                Plaza.TBox._retrieveSchema = oldRetrieveSchema;
+
+                var result = Plaza.JSON.fromTriples(testObj)[0];
+
+                equal(typeof(result),"object","It should return a JSON object");
+                equal(result.firstName,"Antonio","It should parse correctly the properties");
+                equal(result.surname,"Garrote","It should parse correctly the properties");
+                equal(result.restResourceId,"a9a139eada924bb8b4c0bf34e04c15cf","It should parse correctly the properties");
+                equal(result.rdf_type,"http://workingwithclojure.com/vocabularies/common/Person","It should parse correctly the properties");
+                equal(result._uri,"http://localhost:8081/people/a9a139eada924bb8b4c0bf34e04c15cf","It should parse correctly the properties");
+            });
+        });
+
+        // Auxiliary function for reseting the ABox
+        var cleanABox = function() {
+            Plaza.ABox.entitiesRegistry = {};
+            Plaza.ABox.spacesRegistry = {};
+        };
+
+        module("Plaza.ABox: registration of data");
+        test("It should be able to register a Triple Space", function(){
+            expect(1);
+
+            cleanABox();
+            var spaceHandler = {
+                "id": "test-space",
+                "callback": function(event, space, data) {
+
+                }};
+
+            Plaza.ABox.registerSpace(spaceHandler.id, spaceHandler.callback);
+
+            var spaces = 0;
+            for(var i in Plaza.ABox.spacesRegistry) {
+                spaces++;
+            }
+
+            equal(1,spaces, "The space should have been registered");
+        });
+
+        test("It should be able to register triple associating the Triple Space", function(){
+            expect(8);
+
+            cleanABox();
+            var spaceHandler = {
+                "id": "test-space",
+                "callback": function(event, space, data) {
+
+                }};
+
+            var data = "the triples";
+
+            Plaza.ABox.registerSpace(spaceHandler.id, spaceHandler.callback);
+
+            Plaza.ABox.registerEntity("theUri", data, spaceHandler.id);
+            var entity = Plaza.ABox.entitiesRegistry["theUri"];
+
+            equal(entity.uri, "theUri", "the entity should have been inserted");
+            equal(entity.space.id, spaceHandler.id, "the registered entity should have the space associated");
+            equal(entity.dirty, false, "the registered entity should be registered clean");
+            equal(entity.value, data, "the registered entity should contain the registered data");
+            var properties = 0;
+            for(var i in entity.observers) {
+                properties++;
+            }
+            equal(typeof(entity.observers), "object", "the registered entity should contain no observers at the beginning");
+            equal(properties, 0, "the registered entity should contain no observers at the beginning");
+
+            var space = Plaza.ABox.spacesRegistry[spaceHandler.id];
+            equal(space.entities.length,1, "The entity must be inserted into the space");
+            equal(space.entities[0].uri, entity.uri, "The entity must be inserted into the space");
+        });
+
+        module("Plaza.ABox: callbacks");
+
+        test("It should be able to send notifications correctly", function(){
+            expect(24);
+
+            cleanABox();
+            var entityEvents = [];
+
+            var spaceHandler = {
+                "id": "test-space",
+                "callback": function(event, space, data) {
+                    entityEvents.push([event,space,data]);
+                }};
+
+            var spaceHandler2 = {
+                "id": "test-space2",
+                "callback": function(event, space, data) {
+                }};
+
+            var data = "the triples";
+
+            Plaza.ABox.registerSpace(spaceHandler.id, spaceHandler.callback);
+            Plaza.ABox.registerSpace(spaceHandler2.id, spaceHandler2.callback);
+
+            Plaza.ABox.startObservingSpace(spaceHandler.id, Plaza.ABox.EVENTS.CREATED, this, function(spaceId, event, data){
+                equal(spaceId,spaceHandler.id,"the handler should be correctly notified");
+                equal(event, Plaza.ABox.EVENTS.CREATED, "the kind of event should be correctly notified");
+                equal(data, "the triples", "the entity should be correctly passed as data");
+            } );
+
+            Plaza.ABox.startObservingSpace(spaceHandler2.id, Plaza.ABox.EVENTS.CREATED, this, function(spaceId, event, data){
+                equal(true, true, "this should never be called");
+            } );
+
+            Plaza.ABox.registerEntity("theUri", data, spaceHandler.id);
+
+            Plaza.ABox.startObservingEntity("theUri",Plaza.ABox.EVENTS.UPDATED,this,function(uri,event,data) {
+                equal(uri, "theUri", "the uri of the entity must be correctly passed");
+                equal(event, Plaza.ABox.EVENTS.UPDATED,"the Event must be correctly passed");
+                equal(data, "the new triples", "the data must be correctly passed");
+            });
+
+            Plaza.ABox.startObservingSpace(spaceHandler.id, Plaza.ABox.EVENTS.UPDATED, this, function(spaceId, event, data) {
+                equal(spaceId, spaceHandler.id, "the id of the space must be correctly passed");
+                equal(event, Plaza.ABox.EVENTS.UPDATED,"the Event must be correctly passed");
+                equal(data, "the new triples", "the data must be correctly passed");
+            });
+
+            Plaza.ABox.updateEntity("theUri", "the new triples");
+
+            // After everything
+            equal(entityEvents[0][0], Plaza.ABox.EVENTS.UPDATED, "the source must receive notifications correctly");
+            equal(entityEvents[0][1], "theUri", "the source must receive notifications correctly");
+            equal(entityEvents[0][2].uri, "theUri", "the source must receive notifications correctly");
+            equal(entityEvents[0][2].dirty, true, "the source must receive notifications correctly");
+
+            Plaza.ABox.stopObservingEntity("theUri", Plaza.ABox.EVENTS.UPDATED, this);
+            Plaza.ABox.stopObservingSpace(spaceHandler.id, Plaza.ABox.EVENTS.UPDATED, this);
+
+            Plaza.ABox.updateEntity("theUri", "the new triples2");
+
+            equal(entityEvents[1][0], Plaza.ABox.EVENTS.UPDATED, "the source must receive notifications correctly");
+            equal(entityEvents[1][1], "theUri", "the source must receive notifications correctly");
+            equal(entityEvents[1][2].uri, "theUri", "the source must receive notifications correctly");
+            equal(entityEvents[1][2].dirty, true, "the source must receive notifications correctly");
+
+            equal(Plaza.ABox.entitiesRegistry["theUri"].observers.length,0, "The observers should have been deregistered");
+            equal(Plaza.ABox.spacesRegistry[spaceHandler.id].observers.length,0, "The observers should have been deregistered");
+
+            Plaza.ABox.startObservingSpace(spaceHandler.id, Plaza.ABox.EVENTS.DESTROYED, this, function(spaceId, event, data) {
+                equal(spaceId, spaceHandler.id, "the id of the space must be correctly passed");
+                equal(event, Plaza.ABox.EVENTS.DESTROYED,"the Event must be correctly passed");
+                equal(data, "the new triples2", "the data must be correctly passed");
+            });
+
+            Plaza.ABox.destroyEntity("theUri");
+            equal(Plaza.ABox.entitiesRegistry["theUri"], null, "the entity must have been removed from the entities registry");
+            equal(Plaza.ABox.spacesRegistry[spaceHandler.id].entities.length, 0, "the entity must have been removed from the space");
+
+            module("Plaza.Services: consumption GET");
+
+            test("It should be able to send notifications correctly", function(){
+                expect(6);
+
+                var oldRetrieveSchema = Plaza.TBox._retrieveSchema;
+                Plaza.TBox._retrieveSchema = function(uri,callback) {
+                    callback(testSchema);
+                }
+
+                Plaza.TBox.propertiesInvRegistry = {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "rdf_type"}
+                Plaza.TBox.propertiesRegistry = {"rdf_type": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"},
+                Plaza.TBox.classesRegistry = {};
+                Plaza.TBox.classesMap = {};
+
+
+                Plaza.TBox.registerSchema("fooSchema", function(uri) {
+
+                    Plaza.Services.servicesMap = {};
+                    Plaza.Services.servicesRegistry = {};
+
+                    Plaza.Services.servicesMap["theUri"] = testSrv;
+                    Plaza.Services.servicesRegistry["serv"] = "theUri";
+
+                    var oldAjaxFn = jQuery.ajax;
+                    jQuery.ajax = function(args) {
+                        equal(args.url, "http://localhost:8081/people/12.js3", "it should complete the URL template");
+                        equal(args.dataType, "json", "it should set the return type for the retrieved data");
+                        var countParams = 0
+                        for(var i in args.data) {
+                            countParams++;
+                        }
+                        equal(countParams, 0, "it should set the correct params");
+
+                        args.success("returned");
+                    };
+
+                    Plaza.Services.consume("serv", "get", {"restResourceId": 12}, function(alias, method, triples) {
+                        equal(alias, "serv", "the alias is returned");
+                        equal(method, "get", "the method is returned");
+                        equal(triples, "returned", "it should return the retrieved triples");
+                    });
+
+                    Plaza.TBox._retrieveSchema = oldRetrieveSchema;
+                    jQuery.ajax = oldAjaxFn;
+                });
+            });
+
+            module("Plaza.Services: consumption POST");
+
+            test("It should be able to send notifications correctly", function(){
+                expect(7);
+
+                var oldRetrieveSchema = Plaza.TBox._retrieveSchema;
+                Plaza.TBox._retrieveSchema = function(uri,callback) {
+                    callback(testSchema);
+                }
+
+                Plaza.TBox.propertiesInvRegistry = {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "rdf_type"}
+                Plaza.TBox.propertiesRegistry = {"rdf_type": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"},
+                Plaza.TBox.classesRegistry = {};
+                Plaza.TBox.classesMap = {};
+
+                Plaza.TBox.registerSchema("fooSchema", function(uri) {
+
+                    Plaza.Services.servicesMap = {};
+                    Plaza.Services.servicesRegistry = {};
+
+                    Plaza.Services.servicesMap["theUri"] = testColSrv;
+                    Plaza.Services.servicesRegistry["serv"] = "theUri";
+
+                    var oldAjaxFn = jQuery.ajax;
+                    jQuery.ajax = function(args) {
+                        equal(args.url, "http://localhost:8081/people.js3", "it should complete the URL template");
+                        equal(args.dataType, "json", "it should set the return type for the retrieved data");
+                        equal(args.data.firstName, "John");
+                        equal(args.data.surname, "Locke");
+                        args.success("returned");
+                    };
+
+                    Plaza.Services.consume("serv", "post", {"firstName": "John", "surname": "Locke"}, function(alias, method, triples) {
+                        equal(alias, "serv", "the alias is returned");
+                        equal(method, "post", "the method is returned");
+                        equal(triples, "returned", "it should return the retrieved triples");
+                    });
+
+                    Plaza.TBox._retrieveSchema = oldRetrieveSchema;
+                    jQuery.ajax = oldAjaxFn;
+                });
+            });
+
+            module("Plaza.Services: consumption PUT");
+
+            test("It should be able to send notifications correctly", function(){
+                expect(10);
+
+                var oldRetrieveSchema = Plaza.TBox._retrieveSchema;
+                Plaza.TBox._retrieveSchema = function(uri,callback) {
+                    callback(testSchema);
+                }
+
+                Plaza.TBox.propertiesInvRegistry = {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "rdf_type"}
+                Plaza.TBox.propertiesRegistry = {"rdf_type": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"},
+                Plaza.TBox.classesRegistry = {};
+                Plaza.TBox.classesMap = {};
+
+
+                Plaza.TBox.registerSchema("fooSchema",function(uri){
+                    Plaza.Services.servicesMap = {};
+                    Plaza.Services.servicesRegistry = {};
+
+                    Plaza.Services.servicesMap["theUri"] = testSrv;
+                    Plaza.Services.servicesRegistry["serv"] = "theUri";
+
+                    var oldAjaxFn = jQuery.ajax;
+                    jQuery.ajax = function(args) {
+                        equal(args.url, "http://localhost:8081/people/12.js3", "it should complete the URL template");
+                        equal(args.dataType, "json", "it should set the return type for the retrieved data");
+                        equal(args.type, "POST", "it should set the HTTP method correctly");
+                        equal(args.data["firstName"], "John2", "it should set the parameters correctly");
+                        equal(args.data["surname"], "Locke2", "it should set the parameters correctly");
+                        equal(args.data["bar"], undefined, "it should ignore non relevant data");
+                        equal(args.data["_method"], "put", "it should set method parameter correctly");
+
+                        args.success("returned");
+                    };
+
+                    Plaza.Services.consume("serv", "put", {"restResourceId": 12, "firstName": "John2", "surname": "Locke2", "bar": "foo"}, function(alias, method, triples) {
+                        equal(alias, "serv", "the alias is returned");
+                        equal(method, "put", "the method is returned");
+                        equal(triples, "returned", "it should return the retrieved triples");
+                    });
+
+                    Plaza.TBox._retrieveSchema = oldRetrieveSchema;
+                    jQuery.ajax = oldAjaxFn;
+                });
+            });
+
+
+            module("Plaza.Services: consumption DELETE");
+
+            test("It should be able to send notifications correctly", function(){
+                expect(8);
+
+                var oldRetrieveSchema = Plaza.TBox._retrieveSchema;
+                Plaza.TBox._retrieveSchema = function(uri,callback) {
+                    callback(testSchema);
+                }
+
+                Plaza.TBox.propertiesInvRegistry = {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "rdf_type"}
+                Plaza.TBox.propertiesRegistry = {"rdf_type": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"},
+                Plaza.TBox.classesRegistry = {};
+                Plaza.TBox.classesMap = {};
+
+
+                Plaza.TBox.registerSchema("fooSchema",function(uri) {
+                    Plaza.Services.servicesMap = {};
+                    Plaza.Services.servicesRegistry = {};
+
+                    Plaza.Services.servicesMap["theUri"] = testSrv;
+                    Plaza.Services.servicesRegistry["serv"] = "theUri";
+
+                    var oldAjaxFn = jQuery.ajax;
+                    jQuery.ajax = function(args) {
+                        equal(args.url, "http://localhost:8081/people/12.js3", "it should complete the URL template");
+                        equal(args.dataType, "json", "it should set the return type for the retrieved data");
+                        equal(args.type, "GET", "it should set the HTTP method correctly");
+
+                        var countParams = 0
+                        for(var i in args.data) {
+                            countParams++;
+                        }
+                        equal(countParams, 1, "it should set the correct params");
+
+                        equal(args.data["_method"], "delete", "it should set method parameter correctly");
+
+                        args.success("returned");
+                    };
+
+
+                    Plaza.Services.consume("serv", "delete", {"restResourceId": 12, "firstName": "John2", "surname": "Locke2", "bar": "foo"}, function(alias, method, triples) {
+                        equal(alias, "serv", "the alias is returned");
+                        equal(method, "delete", "the method is returned");
+                        equal(triples, "returned", "it should return the retrieved triples");
+                    });
+
+                    Plaza.TBox._retrieveSchema = oldRetrieveSchema;
+                    jQuery.ajax = oldAjaxFn;
+                });
+            });
+
+            module("Plaza.ABox: Triple spaces");
+
+            test("It should be able to connect a namespace to a remote service", function(){
+                expect(3);
+
+                var oldRetrieveSchema = Plaza.TBox._retrieveSchema;
+                Plaza.TBox._retrieveSchema = function(uri,callback) {
+                    callback(testSchema);
+                }
+
+                Plaza.TBox.propertiesInvRegistry = {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "rdf_type"}
+                Plaza.TBox.propertiesRegistry = {"rdf_type": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"},
+                Plaza.TBox.classesRegistry = {};
+                Plaza.TBox.classesMap = {};
+                Plaza.ABox.spacesRegistry = {};
+
+
+                Plaza.TBox.registerSchema("fooSchema", function(uri){
+                    Plaza.Services.servicesMap = {};
+                    Plaza.Services.servicesRegistry = {};
+
+                    Plaza.Services.servicesMap["theUri"] = testSrv;
+                    Plaza.Services.servicesRegistry["serv-alias"] = "theUri";
+
+                    var oldRegisterFn = Plaza.Services.registerService;
+                    Plaza.Services.registerService = function(alias, uri, callback) {
+                        equal(alias, "serv-single", "the service alias should be passed correctly");
+                        equal(uri, "theUri", "the service URI should be passed correctly");
+                        callback(alias);
+                    };
+
+                    Plaza.ABox.TripleSpace.connect("serv", {"singleResource": "theUri"}, function(alias){
+                        equal(Plaza.ABox.spacesRegistry[alias].id, "serv", "Registered!");
+
+                        Plaza.TBox._retrieveSchema = oldRetrieveSchema;
+                        Plaza.Services.registerService = oldRegisterFn
+                    });
+                });
+            });
+
+            test("It should be able to load instances into a triple space", function(){
+                expect(8);
+
+                var oldRetrieveSchema = Plaza.TBox._retrieveSchema;
+                Plaza.TBox._retrieveSchema = function(uri,callback) {
+                    callback(testSchema);
+                }
+
+                Plaza.TBox.propertiesInvRegistry = {"http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "rdf_type"}
+                Plaza.TBox.propertiesRegistry = {"rdf_type": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"},
+                Plaza.TBox.classesRegistry = {};
+                Plaza.TBox.classesMap = {};
+                Plaza.ABox.spacesRegistry = {};
+
+
+                Plaza.TBox.registerSchema("fooSchema",function(uri){
+                    Plaza.Services.servicesMap = {};
+                    Plaza.Services.servicesRegistry = {};
+
+                    Plaza.Services.servicesMap["theUri"] = testColSrv;
+                    Plaza.Services.servicesRegistry["serv-collection"] = "theUri";
+
+                    var oldRegisterFn = Plaza.Services.registerService;
+                    Plaza.Services.registerService = function(alias, uri, callback) {
+                        equal(alias, "serv-collection", "the service alias should be passed correctly");
+                        equal(uri, "theUri", "the service URI should be passed correctly");
+                        callback(alias);
+                    };
+
+                    var oldAjaxFn = jQuery.ajax;
+                    jQuery.ajax = function(args) {
+                        equal(args.url, "http://localhost:8081/people.js3", "it should complete the URL template");
+                        equal(args.dataType, "json", "it should set the return type for the retrieved data");
+                        equal(args.type, "GET", "it should set the HTTP method correctly");
+
+                        var countParams = 0
+                        for(var i in args.data) {
+                            countParams++;
+                        }
+                        equal(countParams, 0, "it should set the correct params");
+
+                        args.success(testObj);
+                    };
+
+
+                    Plaza.ABox.TripleSpace.connect("serv", {"collectionResource": "theUri"}, function(alias){
+                        equal(Plaza.ABox.spacesRegistry[alias].id, "serv", "Registered!");
+
+                        Plaza.ABox.startObservingSpace("serv", Plaza.ABox.EVENTS.CREATED, this, function(space, event, entity){
+
+                            equal(event, Plaza.ABox.EVENTS.CREATED);
+
+                            Plaza.TBox._retrieveSchema = oldRetrieveSchema;
+                            Plaza.Services.registerService = oldRegisterFn;
+                            jQuery.ajax = oldAjaxFn;
+                        });
+
+                        Plaza.ABox.loadInstances("serv",{});
+                    });
+                });
+            });
+
+
+        });
+
+    });
+
+    </script>
+    <title>Unit Tests for Plaza.js</title>
+    </head>
+    <body>
+    <h1 id="qunit-header">Plaza JS Tests</h1>
+    <h2 id="qunit-banner"></h2>
+    <h2 id="qunit-userAgent"></h2>
+    <ol id="qunit-tests"></ol>
+    </body>
+    </html>

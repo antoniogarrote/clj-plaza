@@ -1,0 +1,129 @@
+.plaza-widget{
+   margin: 0;
+   padding: 0;
+   border: 0;
+   outline: 0;
+   font-weight: normal;
+   font-style: normal;
+   font-family: Tahoma, Geneva, arial, sans-serif;
+   vertical-align: baseline;
+   background-color:#eeeeee;
+   border:2px solid #aaaaaa;
+   margin: 5px
+}
+
+.widget-header{
+   background-color: black;
+   font-size: 120%;
+   color: white;
+   padding: 10px
+}
+
+
+/* entity debugger */
+.entity-debugger-widget{
+   padding: 0px;
+   font-size: 70%
+}
+
+.entity-debugger-widget-header{
+   font-size: 120%
+}
+
+.entity-debugger-widget-prop{
+   background: white;
+   border:1px solid #aaaaaa;
+   margin: 3px;
+}
+
+.entity-debugger-widget-prop-alias{
+   padding: 3px;
+   margin-bottom: 3px;
+   background-color: #aaaaaa;
+   font-style: bold
+}
+
+.entity-debugger-widget-prop-uri{
+   padding: 3px
+}
+
+.entity-debugger-widget-prop-val{
+   padding: 3px
+}
+
+/* TripleSpacesBrowser */
+.triple-spaces-browser-widget {
+   font-size: 70%
+}
+
+.triple-space-browser-panel {
+   background: white;
+   border:1px solid #aaaaaa;
+   margin: 3px
+}
+
+.triple-space-browser-panel-header {
+   background: #aaaaaa;
+   padding: 3px
+}
+
+.triple-space-browser-panel-body {
+   text-align: right
+}
+
+.triple-space-actions {
+   padding: 5px
+}
+
+.triple-space-browser-panel-body input {
+   width: 350px;
+   margin: 5px
+}
+
+.collection-triple-space-actions {
+   padding: 5px
+}
+
+.overline {
+   border-top:1px solid #aaaaaa;
+   font-size: 80%
+}
+
+/* Toolbox */
+.plaza-toolbox-widget {
+   font-size: 70%
+}
+
+.toolbox-legend-fld {
+   width: 350px;
+   margin-left: 20px
+}
+
+.entity-search-fld {
+   width: 450px;
+   margin-right: 20px
+}
+
+.schema-uri-fld {
+   width: 450px;
+   margin-right: 10px;
+}
+
+/* TriplesTable */
+.plaza-triples-table-widget {
+   font-size: 70%
+}
+
+.plaza-triples-table-widget table {
+   width: 100%
+}
+
+.plaza-triples-table-widget thead {
+   background-color: #E7EEF6;
+   font-weight: bold
+}
+
+.plaza-triples-table-widget td {
+   background-color: white;
+   padding: 3px
+}

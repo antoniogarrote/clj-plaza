@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+		<title>Scrummy</title>
+		<link type="text/css" href="css/jquery-ui.css" rel="stylesheet" />
+		<link type="text/css" href="css/plaza-ui.css" rel="stylesheet" />
+		<link type="text/css" href="css/scrummy.css" rel="stylesheet" />
+		<script type="text/javascript" src="js/jquery.js"></script>
+		<script type="text/javascript" src="js/jquery-ui.js"></script>
+		<script type="text/javascript" src="js/plaza.js"></script>
+		<script type="text/javascript" src="js/scrummy.js"></script>
+		<script type="text/javascript" src="js/plaza-ui.js"></script>
+		<script type="text/javascript">
+			$(function(){
+                            Plaza.setup(
+	                        // Schemas
+	                        Plaza.TBox.registerSchema("http://localhost:8081/projects/_schema.json"),
+	                        Plaza.TBox.registerSchema("http://localhost:8081/sprints/_schema.json"),
+	                        Plaza.TBox.registerSchema("http://localhost:8081/stories/_schema.json"),
+	                        Plaza.TBox.registerSchema("http://localhost:8081/tasks/_schema.json"),
+
+	                        // TripleSpaces
+	                        Plaza.ABox.TripleSpace.connect("projects", {"collectionResource": "http://localhost:8081/projects/collection_resource_service.json",
+                                                                            "singleResource": "http://localhost:8081/projects/single_resource_service.json"}),
+	                        Plaza.ABox.TripleSpace.connect("sprints", {"collectionResource": "http://localhost:8081/sprints/collection_resource_service.json",
+                                                                           "singleResource": "http://localhost:8081/sprints/single_resource_service.json"}),
+	                        Plaza.ABox.TripleSpace.connect("stories", {"collectionResource": "http://localhost:8081/stories/collection_resource_service.json",
+                                                                           "singleResource": "http://localhost:8081/stories/single_resource_service.json"}),
+	                        Plaza.ABox.TripleSpace.connect("tasks", {"collectionResource": "http://localhost:8081/tasks/collection_resource_service.json",
+                                                                         "singleResource": "http://localhost:8081/tasks/single_resource_service.json"}),
+
+	                        function(){
+                                    jQuery("#project-form").submit(function(event){
+                                        event.preventDefault()
+                                        var title = jQuery("#project-name").val();
+                                        if(title != null) {
+                                            Plaza.ABox.createEntity("projects",{"title": title}, function(evt){
+                                                if(evt.kind == "error") {
+                                                    PlazaUI.Utils.showDialog("Error", "The project could not be created:"+evt.error);
+                                                } else {
+                                                    var project = Plaza.ABox.findEntityByURI(evt.uris[0]);
+                                                    window.location = Scrummy.domain + project.restResourceId;
+                                                }
+                                            });
+                                        } else {
+                                            PlazaUI.Utils.showDialog("Error", "You must provide a name for the project");
+                                        }
+                                    });
+
+
+	                        })
+			});
+		</script>
+	</head>
+	<body>
+
+    <div id='login-box'>
+        <span>New scrum project:</span>
+        <form id='project-form'>
+          <input id='project-name'></input>
+          <input type='submit' value='create'></input>
+        </form>
+    </div>
+
+  </body>
+</html>
+
+

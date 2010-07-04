@@ -10,7 +10,7 @@
   (:use [plaza.rdf.vocabularies.foaf] :reload-all)
   (:use [plaza.triple-spaces.core] :reload-all)
   (:use [plaza.rdf.implementations.stores.mulgara])
-  (:use [plaza.rest.core] :reload-all)
+  (:use [plaza.rest core utils handlers] :reload-all)
   (:use [clojure.test])
   (:use [clojure.contrib.logging :only [log]])
   (:require [clojure-http.resourcefully]

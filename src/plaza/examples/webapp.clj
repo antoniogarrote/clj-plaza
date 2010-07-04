@@ -9,10 +9,11 @@
         [plaza.rdf core schemas]
         [plaza.rdf.vocabularies foaf]
         [plaza.rdf.implementations jena]
-        [plaza.rdf.implementations.stores.mulgara]
-        [plaza.triple-spaces.core]
-        [plaza.triple-spaces.distributed-server]
-        [plaza.rest core])
+        [plaza.rdf.implementations.stores mulgara]
+        [plaza.triple-spaces distributed-server]
+        [plaza.triple-spaces core]
+        [plaza.rest core utils handlers])
+  (:use [clojure.contrib.logging :only [log]])
   (:require [compojure.route :as route]
             [clojure.contrib.str-utils2 :as str2]))
 
@@ -26,7 +27,7 @@
      (make-rdfs-schema foaf:Person
                        :name            {:uri foaf:name           :range :string}
                        :surname         {:uri foaf:surname        :range :string}
-                       :nick            {:uri foaf:nick          :range :string}
+                       :nick            {:uri foaf:nick           :range :string}
                        :birthday        {:uri foaf:birthday       :range :date}
                        :interest        {:uri foaf:topic_interest :range :string}
                        :wikipedia_entry {:uri foaf:holdsAccount   :range rdfs:Resource}))
@@ -51,7 +52,11 @@
 ;; Application routes
 (defroutes example
   (GET "/" [] "<h1>Testing plaza...</h1>")
-  (spawn-rest-resource! :celebrity "/Celebrity/:id" :celebrities)
+  (spawn-rest-resource! :celebrity "/Celebrity/:id" :celebrities
+                        :filters {:post-build-graph-query
+                                  [(fn [request environment]
+                                     (log :error (str "Logging filter query: " (:query environment)))
+                                     (doseq [t (:query environment)] (log :error (str "q: " t))) environment)]})
   (spawn-rest-collection-resource! :celebrity "/Celebrity" :celebrities)
   (spawn-rest-resource! :foaf-agent "/CustomIds/:name" :resource
                         :id-property-alias :name
@@ -71,4 +76,4 @@
   (route/not-found "Page not found"))
 
 ;; Running the application
-(run-jetty (var example) {:port 8081})
+;(run-jetty (var example) {:port 8081})

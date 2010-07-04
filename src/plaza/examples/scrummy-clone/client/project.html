@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+		<title>Scrummy</title>
+		<link type="text/css" href="css/jquery-ui.css" rel="stylesheet" />
+		<link type="text/css" href="css/plaza-ui.css" rel="stylesheet" />
+		<link type="text/css" href="css/scrummy.css" rel="stylesheet" />
+		<script type="text/javascript" src="js/jquery.js"></script>
+		<script type="text/javascript" src="js/jquery-ui.js"></script>
+		<script type="text/javascript" src="js/plaza.js"></script>
+		<script type="text/javascript" src="js/scrummy.js"></script>
+		<script type="text/javascript" src="js/plaza-ui.js"></script>
+		<script type="text/javascript">
+			$(function(){
+                            Plaza.setup(
+	                        // Schemas
+	                        Plaza.TBox.registerSchema("http://localhost:8081/projects/_schema.json"),
+	                        Plaza.TBox.registerSchema("http://localhost:8081/sprints/_schema.json"),
+	                        Plaza.TBox.registerSchema("http://localhost:8081/stories/_schema.json"),
+	                        Plaza.TBox.registerSchema("http://localhost:8081/tasks/_schema.json"),
+
+	                        // TripleSpaces
+	                        Plaza.ABox.TripleSpace.connect("projects", {"collectionResource": "http://localhost:8081/projects/collection_resource_service.json",
+                                                                            "singleResource": "http://localhost:8081/projects/single_resource_service.json"}),
+	                        Plaza.ABox.TripleSpace.connect("stories", {"collectionResource": "http://localhost:8081/stories/collection_resource_service.json",
+                                                                           "singleResource": "http://localhost:8081/stories/single_resource_service.json"}),
+	                        Plaza.ABox.TripleSpace.connect("sprints", {"collectionResource": "http://localhost:8081/sprints/collection_resource_service.json",
+                                                                           "singleResource": "http://localhost:8081/sprints/single_resource_service.json"}),
+	                        Plaza.ABox.TripleSpace.connect("tasks", {"collectionResource": "http://localhost:8081/tasks/collection_resource_service.json",
+                                                                         "singleResource": "http://localhost:8081/tasks/single_resource_service.json"}),
+
+	                        function(){
+                                    // Retrieving the project id
+                                    Scrummy.parseId();
+
+                                    // Retrieving the project object
+                                    Plaza.ABox.loadInstance("projects", {"id": Scrummy.id}, function(evt){
+                                        if(evt.kind == "success") {
+                                            console.log("The project "+Scrummy.id+" has been loaded");
+
+                                            Scrummy.project = Plaza.ABox.findEntityByURI(evt.uris[0]);
+
+                                            Scrummy.loadSprints(function(currentSprint){
+                                              console.log("Loaded current sprint: "+currentSprint._uri);
+
+                                              // Loading stories
+                                              Plaza.ABox.loadInstances("stories",{"belongsToSprint": currentSprint._uri}, function(evt){
+                                                for(var i in evt.uris) {
+                                                  var story = Plaza.ABox.findEntityByURI(evt.uris[i]);
+                                                  Scrummy.insertStory(story);
+                                                }
+
+                                                jQuery('#project-toolbar-description').text("Project "+ Scrummy.project.title +": ")
+                                                //Registering observers
+                                                Scrummy.registerObservers();
+
+                                                // Bind actions;
+                                                Scrummy.bindButtons();
+
+                                              });
+
+                                            });
+
+                                        } else {
+                                            PlazaUI.Utils.showDialog("error", "The project "+Scrummy.id+" could not be loaded");
+                                        }
+                                    });
+	                        })
+			});
+		</script>
+	</head>
+        <body>
+
+          <div id='main-panel'>
+            <div id='current-sprint'>
+              <div id='actions'><span id='project-toolbar-description'></span><input class='ui-state-default ui-corner-all' id='new-story' type='button' value='new story' style='margin:15px'/></div>
+              <table id='wall'>
+                <thead><tr><th>story</th><th></th><th>to do</th><th>in progress</th><th>done</th></tr></thead>
+                <tbody id='wall-body'></tbody>
+              </table>
+
+              <div id='new-story-form'  style='display:none'>
+                <div class='form-title'>
+                  new story
+                </div>
+                <div class='body'>
+                  <textarea id='new-story-body'></textarea>
+                  <input id='cancel-new-story' class='task-form-button' type='button' value='cancel'/>
+                  <input id='send-new-story' class='task-form-button' type='button' value='create'/>
+                </div>
+              </div>
+
+              <div id='new-task-form' class='task-form' style='display:none'>
+                <div class='form-title'>
+                  new task
+                </div>
+                <div class='body'>
+                  <input type='hidden' id='new-task-story-id'/>
+                  <textarea id='new-task-body'></textarea>
+                  <input type='text' id='new-task-contributor'/>
+                  <input id='cancel-new-task' class='task-form-button' type='button' value='cancel'/>
+                  <input id='send-new-task' class='task-form-button' type='button' value='create'/>
+                </div>
+              </div>
+
+              <div id='edit-task-form' class='task-form' style='display:none'>
+                <div class='form-title'>
+                  edit task
+                </div>
+                <div class='body'>
+                  <input type='hidden' id='edit-task-id'/>
+                  <textarea id='edit-task-body'></textarea>
+                  <input type='text' id='edit-task-contributor'/>
+                  <input id='cancel-edit-task' class='task-form-button' type='button' value='cancel'/>
+                  <input id='send-edit-task' class='task-form-button' type='button' value='update'/>
+                </div>
+              </div>
+
+
+            </div>
+          </div>
+
+          <div id='plaza'>(built-with '( plaza )) </div>
+        </body>
+</html>
+
+

@@ -1,0 +1,5 @@
+# scrummy-clone
+
+A clone of the scrumy web app built using Plaza.
+
+You can build it with Leiningen and copy afterwards Plaza standalone jar to the lib directory.

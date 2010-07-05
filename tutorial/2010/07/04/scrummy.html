@@ -1,0 +1,542 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html lang="en-US" xml:lang="en-US" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+    <title>Building a scrum board application with Plaza</title>
+    <meta content="Antonio Garrrote Hern&aacute;ndez" name="author" />
+   <link href="/clj-plaza/css/screen.css" rel="stylesheet" type="text/css" />
+   <link href="/clj-plaza/css/syntax.css" rel="stylesheet" type="text/css" />
+ </head>
+<script type="text/javascript">
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+try {
+var pageTracker = _gat._getTracker("UA-15922180-1");
+pageTracker._trackPageview();
+} catch(err) {}</script>
+  <body>
+    <div id="site">
+      <div id="sidebar">
+        <div id="title">
+          <p><a href="/clj-plaza/"><img src="/clj-plaza/images/logo.png" alt="" /></a></p>
+          <p><a href="/clj-plaza/">clj-plaza</a></p>
+        </div>
+        <p>
+
+          A Clojure library to work with semantic meta-data.
+
+        <div id="github">
+          Fork me at <br/>
+          <a href="http://github.com/antoniogarrote/clj-plaza">
+          <img src="http://github.com/images/modules/header/logov3.png"></img>
+          </a>
+        </div>
+     </div>
+
+        <div id="post"
+  <h1> Building a scrum board application with Plaza </h1>
+  <p class="subtitle">
+ </p>
+<div id="content">
+  <p>
+<ul>
+        <li><a href="#ontology">Build an ontology describing your data model</a></li>
+        <li><a href="#compojure">Define Plaza triple spaces and RESTful<br />
+        services</a></li>
+        <li><a href="#api">Take a look at your <span class="caps">API</span></a></li>
+        <li><a href="#js_data">Connecting a JavaScript client to your services<br />
+        <span class="caps">API</span></a></li>
+        <li><a href="#js_logic">Building the client interface and logic</a></li>
+        <li><a href="#final_result">Final result</a></li>
+</ul>
+</p>
+<h2 id="ontology">Build an ontology describing your data model</h2>
+<p>The first step to build a Plaza web application is to formalize your data model<br />
+as an <a href='http://en.wikipedia.org/wiki/Ontology_(information_science)'>ontology</a>.</p>
+<p>In most web development frameworks the only formal description of data is<br />
+the relational model of the tables stored in the database or the definition of<br />
+some classes in an object oriented language, that will be later transformed<br />
+somehow into tables in the database.</p>
+<p>Building an ontology, on the other hand,  means that you must collect a vocabulary with well defined semantics that<br />
+will be used to describe your application data.</p>
+<p>Plaza supports the W3C <a href='http://www.w3.org/TR/rdf-schema/'><span class="caps">RDF</span> Schema</a><br />
+standard vocabulary to define ontologies.</p>
+<p>Ontologies built with <span class="caps">RDF</span> Schema are just collections of URIs where:</p>
+
+	<ul>
+		<li>Some URIs define <span class="caps">RDF</span> Schema classes</li>
+		<li>Some URIs define <span class="caps">RDF</span> properties</li>
+	</ul><p>Properties can be seem as defining relationships between instances of different classes<br />
+or between instances of classes and some value of a certain data type. These<br />
+constrains can be stated using <span class="caps">RDF</span> Schema <code>range</code> and<br />
+<code>domain</code> properties.</p>
+<p>Plaza offers some functions for easing the definition of ontologies.<br />
+The way these functions are used to describe the data layer of the scrum board<br />
+application can be found in the <code>scrummy-clone.resources.common</code><br />
+name space.</p>
+<div class="highlight"><pre><code class="clojure"><span class="p">(</span><span class="nf">ns</span> <span class="nv">scrummy-clone</span><span class="o">.</span><span class="nv">resources</span><span class="o">.</span><span class="nv">common</span>
+  <span class="p">(</span><span class="nf">use</span> <span class="p">[</span><span class="nv">plaza</span><span class="o">.</span><span class="nv">rdf</span> <span class="nv">core</span> <span class="nv">schemas</span><span class="p">]</span>
+       <span class="p">[</span><span class="nv">plaza</span><span class="o">.</span><span class="nv">rdf</span><span class="o">.</span><span class="nv">vocabularies</span> <span class="nv">foaf</span> <span class="nv">dublin-core</span><span class="p">]))</span>
+
+<span class="c1">; Namespace for all shared meta data in the application</span>
+<span class="p">(</span><span class="nf">defonce</span> <span class="nv">scc</span> <span class="s">&quot;http://scrummyclone.com/vocabularies/common/&quot;</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">register-rdf-ns</span> <span class="nv">:scc</span> <span class="nv">scc</span><span class="p">)</span>
+
+<span class="c1">; Classes</span>
+<span class="p">(</span><span class="nf">defonce</span> <span class="nv">scc:Sprint</span> <span class="s">&quot;http://scrummyclone.com/vocabularies/Sprint&quot;</span><span class="p">)</span>
+
+<span class="c1">; Properties</span>
+<span class="p">(</span><span class="nf">defonce</span> <span class="nv">scc:hasSprints</span> <span class="s">&quot;http://scrummyclone.com/vocabularies/hasSprints&quot;</span><span class="p">)</span>
+
+<span class="c1">; Schemas</span>
+<span class="p">(</span><span class="nf">declare-schemas-to-load</span>
+ <span class="p">(</span><span class="nf">defonce</span> <span class="nv">scc:Project-schema</span>
+   <span class="p">(</span><span class="nf">make-rdfs-schema</span> <span class="nv">foaf:Project</span>
+                     <span class="nv">:title</span>      <span class="p">{</span><span class="nv">:uri</span> <span class="nv">dct:title</span>      <span class="nv">:range</span> <span class="nv">:string</span><span class="p">}</span>
+                     <span class="nv">:hasSprints</span> <span class="p">{</span><span class="nv">:uri</span> <span class="nv">scc:hasSprints</span> <span class="nv">:range</span> <span class="nv">scc:Sprint</span><span class="p">})))</span>
+
+<span class="c1">;; other definitions ...</span>
+</code></pre>
+</div><p>In the previous example we introduced a new <span class="caps">URI</span> name space for our vocabulary<br />
+(scc). Then we added<br />
+some URis in the name space that will be used to define entities in our data domain: the <code>Sprint</code> class<br />
+and the <code>hasSprints</code> property.</p>
+<p>Finally we define a new <span class="caps">RDF</span> Schema class for the projects in the scrum board, of<br />
+type <a href='http://xmlns.com/foaf/spec/#term_Project'>Friend Of A Friend</a><br />
+<code>Project</code> with a couple of associated<br />
+properties.</p>
+<p>Building ontologies can seem easy at first, but is a really hard task. So<br />
+the first rule when building an ontology is always: <strong>don&#8217;t build an ontology,<br />
+re-use an existing one</strong>.</p>
+<p>Nowadays every web application offering an <span class="caps">API</span> returns ad-hoc <span class="caps">XML</span> documents with their<br />
+own make up vocabulary or <span class="caps">JSON</span> object properties collisioning with a myriad of<br />
+other <span class="caps">JSON</span> objects in a flat namespace.</p>
+<p>Working with ontologies allow us to re-use standard models for complex domains,<br />
+like <a href='http://sioc-project.org/'>Semantically-Interlinked Online<br />
+Communities (<span class="caps">SIOC</span>)</a> ontology,<br />
+so we don&#8217;t need to model once again the same problem. Besides, clients<br />
+consuming our application could safely mash up our data with data<br />
+retrieved from other data sources.</p>
+<p>Furthermore, development of ontologies can benefit from mature tools like <a
+href='http://protege.stanford.edu/'>Protege</a> to ease the modelling task.</p>
+<p>The following diagram, generated with Protege, shows the very simple ontology we<br />
+are building for the scrum board application.</p>
+<div id="img_wrapper">
+<p><img src="/clj-plaza/images/ontologydiagram.png"></img></p>
+</div>
+<p>The set of statements we have used in our ontology to describe the vocabulary of<br />
+the application domain is known in <a href='http://en.wikipedia.org/wiki/Description_logic'>description logic<a> and ontology modelling<br />
+parlance as the <a href='http://en.wikipedia.org/wiki/Tbox'>TBox</a> or terminological box.</p>
+<p>Conversely, statements about individuals of the classes in the TBox are a<br />
+collection of facts<br />
+known as the <a href='http://en.wikipedia.org/wiki/ABox'>ABox</a> or assertional<br />
+box.</p>
+<p>In a Plaza application we will manipulate both components of the <a href='http://en.wikipedia.org/wiki/Knowledge_base'>knowledge base</a>.</p>
+<h2 id="compojure">Define Plaza triple spaces and RESTful services</h2>
+<p>Plaza library works with <span class="caps">RDF</span> graphs using an abstraction called triple<br />
+space. Each triple space stores a <span class="caps">RDF</span> graph and can be modified concurrently by<br />
+different agent using operations for writing, removing, reading and updating the<br />
+graph.<br />
+These triple spaces can be used to store semantic information about the<br />
+application domain but also as a coordination mechanism for the agents<br />
+implementing the application logic.</p>
+<p>Besides regular agents, Plaza implements a special kind of agent that has an<br />
+associated <span class="caps">URI</span> and is able to translate <span class="caps">HTTP</span> messages into triple space<br />
+operations according to <span class="caps">REST</span> semantics.</p>
+<p>In our scrum board application we need to expose the main <span class="caps">RDFS</span> classes in our<br />
+ontology (<code>foaf:Project</code>, <code>scc:Sprint</code>, <code>scc:Story</code> and <code>scc:Task</code>) as <span class="caps">REST</span> resources.</p>
+<p>We can do that in a Clojure&#8217;s <a href='http://github.com/weavejester/compojure'>Compojure</a> application using the<br />
+<code>spawn-rest-resource!</code> function and some additional steps:</p>
+
+	<ul>
+		<li>Register the schemas we are going to use in the TBox of the application</li>
+		<li>Create some triple spaces to store the triples in the ABox of the application</li>
+		<li>Register RESTful agents with an associated <span class="caps">URI</span>, schema and triple space</li>
+	</ul><p>We can found the required code in the <code>scrummy-clone.core</code> name-space:</p>
+<div class="highlight"><pre><code class="clojure"><span class="c1">;; We register the resources in the TBox</span>
+<span class="p">(</span><span class="nf">tbox-register-schema</span> <span class="nv">:project</span> <span class="nv">scc:Project-schema</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">tbox-register-schema</span> <span class="nv">:sprint</span>  <span class="nv">scc:Sprint-schema</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">tbox-register-schema</span> <span class="nv">:story</span>   <span class="nv">scc:Story-schema</span><span class="p">)</span>
+<span class="p">(</span><span class="nf">tbox-register-schema</span> <span class="nv">:task</span>    <span class="nv">scc:Task-schema</span><span class="p">)</span>
+
+
+<span class="c1">;; Triple spaces definition</span>
+<span class="p">(</span><span class="nf">def-ts</span> <span class="nv">:projects</span> <span class="p">(</span><span class="nf">make-basic-triple-space</span><span class="p">))</span>
+
+
+<span class="p">(</span><span class="nf">defonce</span> <span class="nv">*server*</span> <span class="s">&quot;http://localhost:8081&quot;</span><span class="p">)</span>
+
+<span class="c1">;; Application routes</span>
+<span class="p">(</span><span class="nf">defroutes</span> <span class="nv">scrummy-clone</span>
+
+  <span class="c1">;; Resources</span>
+  <span class="p">(</span><span class="nf">spawn-rest-resource!</span> <span class="nv">:project</span><span class="s">&quot;/projects/:id&quot;</span> <span class="nv">:projects</span><span class="p">)</span>
+
+  <span class="p">(</span><span class="nf">spawn-rest-collection-resource!</span> <span class="nv">:project</span> <span class="s">&quot;/projects&quot;</span> <span class="nv">:projects</span>
+                                   <span class="nv">:id-gen-fn</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">req</span> <span class="nv">env</span><span class="p">]</span>
+                                                <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">prefix</span> <span class="p">(</span><span class="nf">:resource-qname-prefix</span> <span class="nv">env</span><span class="p">)</span>
+                                                      <span class="nv">local</span>  <span class="p">(</span><span class="nf">:resource-qname-local</span> <span class="nv">env</span><span class="p">)</span>
+                                                      <span class="nv">id</span> <span class="p">(</span><span class="nf">beautify</span> <span class="p">(</span><span class="nb">get </span><span class="p">(</span><span class="nf">:params</span> <span class="nv">req</span><span class="p">)</span> <span class="s">&quot;title&quot;</span><span class="p">))]</span>
+                                                  <span class="p">{</span><span class="nv">:id</span> <span class="nv">id</span> <span class="nv">:uri</span> <span class="p">(</span><span class="nb">str </span><span class="nv">*server*</span> <span class="s">&quot;/projects/&quot;</span> <span class="nv">id</span><span class="p">)})))</span>
+
+  <span class="p">(</span><span class="nf">spawn-rest-resource!</span> <span class="nv">:sprint</span> <span class="s">&quot;/sprints/:id&quot;</span> <span class="nv">:projects</span><span class="p">)</span>
+
+  <span class="p">(</span><span class="nf">spawn-rest-collection-resource!</span> <span class="nv">:sprint</span> <span class="s">&quot;/sprints&quot;</span> <span class="nv">:projects</span><span class="p">)</span>
+
+  <span class="p">(</span><span class="nf">spawn-rest-resource!</span> <span class="nv">:story</span> <span class="s">&quot;/stories/:id&quot;</span> <span class="nv">:projects</span><span class="p">)</span>
+
+  <span class="p">(</span><span class="nf">spawn-rest-collection-resource!</span> <span class="nv">:story</span> <span class="s">&quot;/stories&quot;</span> <span class="nv">:projects</span><span class="p">)</span>
+
+  <span class="p">(</span><span class="nf">spawn-rest-resource!</span> <span class="nv">:task</span> <span class="s">&quot;/tasks/:id&quot;</span> <span class="nv">:projects</span><span class="p">)</span>
+
+  <span class="p">(</span><span class="nf">spawn-rest-collection-resource!</span> <span class="nv">:task</span> <span class="s">&quot;/tasks&quot;</span> <span class="nv">:projects</span><span class="p">)</span>
+
+  <span class="c1">;; Static files</span>
+  <span class="p">(</span><span class="nf">route/files</span> <span class="s">&quot;/images/*&quot;</span> <span class="p">{</span><span class="nv">:root</span> <span class="s">&quot;/var/www/scrummy-clone/scrummy-clone/client&quot;</span><span class="p">})</span>
+  <span class="p">(</span><span class="nf">route/files</span> <span class="s">&quot;/css/*&quot;</span> <span class="p">{</span><span class="nv">:root</span> <span class="s">&quot;/var/www/scrummy-clone/scrummy-clone/client&quot;</span><span class="p">})</span>
+  <span class="p">(</span><span class="nf">route/files</span> <span class="s">&quot;/js/*&quot;</span> <span class="p">{</span><span class="nv">:root</span> <span class="s">&quot;/var/www/scrummy-clone/scrummy-clone/client&quot;</span><span class="p">})</span>
+
+  <span class="c1">; This should lead to the index</span>
+  <span class="p">(</span><span class="nf">route/files</span> <span class="s">&quot;/&quot;</span> <span class="p">{</span><span class="nv">:root</span> <span class="s">&quot;/var/www/scrummy-clone/client&quot;</span><span class="p">})</span>
+
+  <span class="c1">; Project canvas</span>
+  <span class="p">(</span><span class="nf">GET</span>  <span class="s">&quot;/:name&quot;</span> <span class="nv">request</span> <span class="p">(</span><span class="nf">file-response</span> <span class="s">&quot;/var/www/scrummy-clone/client/project.html&quot;</span><span class="p">)))</span>
+
+
+<span class="c1">;; Server start</span>
+<span class="p">(</span><span class="nf">run-jetty</span> <span class="p">(</span><span class="nf">var</span> <span class="nv">scrummy-clone</span><span class="p">)</span> <span class="p">{</span><span class="nv">:port</span> <span class="mi">8081</span><span class="p">})</span>
+</code></pre>
+</div><p>In the previous code, we first register the <span class="caps">RDF</span> Schema classes defined into the<br />
+TBox of the application using the function <code>tbox-register-schema</code>. We<br />
+use an alias for each registered class so we can refer to them easily.</p>
+<p>Then we create a new triple space named <code>:projects</code> to store the <span class="caps">RDF</span><br />
+graphs for the individuals of the application. In this example, we are using a<br />
+basic triple space residing in memory but we could use any other available triple<br />
+space supported by Plaza.<br />
+For instance, if we decide to use Allegro Graph to<br />
+persistently store the <span class="caps">RDF</span> data of our application we could accomplish that<br />
+changing the triple space definition, without changing the application code.</p>
+<p>Finally we create a new Compojure routes definition and add <span class="caps">REST</span> agents<br />
+using the functions <code>spawn-rest-resource!</code> and<br />
+<code>spawn-rest-collection-resource!</code> passing as parameters the TBox<br />
+registered resource that will be exposed, a Compojure<br />
+<span class="caps">URL</span> template where the agent will receive <span class="caps">HTTP</span> messages, and the triple space<br />
+where resources will be stored.</p>
+<p>For every exposed resource, plaza adds an ID property defined by the <span class="caps">RDF</span> property<br />
+<code>http://plaza.org/vocabularies/restResourceId</code>. This property is associated to the<br />
+<code>:id</code> part of the template for single resources. By default this ID<br />
+is generated for all created resources using a new <span class="caps">UUID</span>. In the<br />
+<code>Project</code> resource, we want to change this default behaviour<br />
+generating URIs for each new <code>Project</code> resource based on the<br />
+<code>dct:title</code> property of the resource. This is accomplished using the<br />
+<code>:id-gen-fn</code> key in the definition map of the resource.</p>
+<p>Finally we start the application at port 8081 using Jetty invoking the<br />
+Compojure/Ring <code>run-jetty</code> function.</p>
+<p>&lt;h2 id-&quot;api&quot;&gt;Take a look at your <span class="caps">API</span></h2></p>
+<p>The main goal Plaza tries to achieve as a web development library is to allow<br />
+developers to build beautiful RESTful APIs that can be easily consumed and<br />
+remixed by client applications, whether they are javascript clients being<br />
+executed in the browser, smartphone applications or other web application<br />
+back-ends.</p>
+<p>Once you have the code in the previous section running you should be able to<br />
+access the defined resources using familiar conventions for RESTful applications:</p>
+
+	<ul>
+		<li>use the <code>Accept</code> <span class="caps">HTTP</span> header or a <code>.format</code> extension<br />
+   for the resource <span class="caps">URI</span> to select the representation of the resource</li>
+		<li>Use a <code>_method</code> parameter to issue <code>PUT</code> and<br />
+   <code>DELETE</code> operations if they are not supported by your <span class="caps">HTTP</span> agent.</li>
+		<li><code>_offset</code> and <code>_limit</code> parameters can be send to<br />
+   paginate a collection resource.</li>
+		<li>A <code>_callback</code> parameter with the name of a javascript function can be passed in the request to trigger a<br />
+   <span class="caps">JSONP</span> invocation of the resource.</li>
+	</ul><p>You can ignore the semantic features of plaza and just consume the<br />
+resources using <span class="caps">JSON</span> as the selected representation.<br />
+The alias used in the<br />
+definition of the resource schema will be used to identify the parameters in the <span class="caps">HTTP</span><br />
+requests and they will also be returned as the properties in the response <span class="caps">JSON</span> objects:</p>
+<div class="highlight"><pre><code class="clojure"><span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">POST</span> <span class="s">&quot;http://localhost:8081/projects.json?title=testproject&quot;</span>
+<span class="p">{</span><span class="s">&quot;uri&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span><span class="s">&quot;id&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span><span class="s">&quot;type&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/xmlns.com\/foaf\/0.1\/Project&quot;</span><span class="o">,</span><span class="s">&quot;title&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="p">}</span>
+<span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects/testproject.json&quot;</span>
+<span class="p">{</span><span class="s">&quot;uri&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span><span class="s">&quot;title&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span><span class="s">&quot;type&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/xmlns.com\/foaf\/0.1\/Project&quot;</span><span class="o">,</span><span class="s">&quot;id&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="p">}</span>
+<span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">DELETE</span> <span class="s">&quot;http://localhost:8081/projects/testproject.json&quot;</span>
+<span class="p">{</span><span class="s">&quot;uri&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span><span class="s">&quot;title&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span><span class="s">&quot;type&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/xmlns.com\/foaf\/0.1\/Project&quot;</span><span class="o">,</span><span class="s">&quot;id&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="p">}</span>
+<span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects.json&quot;</span>
+<span class="p">[]</span>
+</code></pre>
+</div><p>In the previous example we can see how the returned <span class="caps">JSON</span> objects include a<br />
+couple of additional properties with the <span class="caps">RDFS</span> class <span class="caps">URI</span> of the object and the<br />
+whole <span class="caps">URI</span> of the resource.</p>
+<p>Plaza uses semantic standards to offer additional possibilities when consuming<br />
+the generated <span class="caps">API</span>.</p>
+<p>We could retrieve the <span class="caps">RDF</span> graph associated to the resource with different<br />
+encodings: N3, turtle or the standard <span class="caps">RDF</span>/<span class="caps">XML</span> serialization</p>
+<div class="highlight"><pre><code class="clojure"><span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">POST</span> <span class="s">&quot;http://localhost:8081/projects?title=testproject&quot;</span>
+<span class="nv">&lt;rdf:RDF</span>
+    <span class="nv">xmlns:rdf=</span><span class="s">&quot;http://www.w3.org/1999/02/22-rdf-syntax-ns#&quot;</span>
+    <span class="nv">xmlns:j</span><span class="o">.</span><span class="mi">0</span><span class="nv">=</span><span class="s">&quot;http://xmlns.com/foaf/0.1/&quot;</span>
+    <span class="nv">xmlns:j</span><span class="o">.</span><span class="mi">1</span><span class="nv">=</span><span class="s">&quot;http://purl.org/dc/terms/&quot;</span>
+    <span class="nv">xmlns:j</span><span class="o">.</span><span class="mi">2</span><span class="nv">=</span><span class="s">&quot;http://plaza.org/vocabularies/&quot;</span> <span class="nv">&gt;</span>
+  <span class="nv">&lt;rdf:Description</span> <span class="nv">rdf:about=</span><span class="s">&quot;http://localhost:8081/projects/testproject&quot;</span><span class="nv">&gt;</span>
+    <span class="nv">&lt;j</span><span class="o">.</span><span class="mi">2</span><span class="nv">:restResourceId</span> <span class="nv">rdf:datatype=</span><span class="s">&quot;http://www.w3.org/2001/XMLSchema#string&quot;</span><span class="nv">&gt;testproject&lt;/j</span><span class="o">.</span><span class="mi">2</span><span class="nv">:restResourceId&gt;</span>
+    <span class="nv">&lt;rdf:type</span> <span class="nv">rdf:resource=</span><span class="s">&quot;http://xmlns.com/foaf/0.1/Project&quot;</span><span class="nv">/&gt;</span>
+    <span class="nv">&lt;j</span><span class="o">.</span><span class="mi">1</span><span class="nv">:title</span> <span class="nv">rdf:datatype=</span><span class="s">&quot;http://www.w3.org/2001/XMLSchema#string&quot;</span><span class="nv">&gt;testproject&lt;/j</span><span class="o">.</span><span class="mi">1</span><span class="nv">:title&gt;</span>
+  <span class="nv">&lt;/rdf:Description&gt;</span>
+<span class="nv">&lt;/rdf:RDF&gt;</span>
+
+<span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects.n3&quot;</span>
+<span class="nv">&lt;http://localhost:8081/projects/testproject&gt;</span>
+      <span class="nv">a</span>       <span class="nv">&lt;http://xmlns</span><span class="o">.</span><span class="nv">com/foaf/0</span><span class="o">.</span><span class="mi">1</span><span class="nv">/Project&gt;</span> <span class="c1">;</span>
+      <span class="nv">&lt;http://plaza</span><span class="o">.</span><span class="nv">org/vocabularies/restResourceId&gt;</span>
+              <span class="s">&quot;testproject&quot;</span><span class="nv">^^&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2001/XMLSchema</span><span class="o">#</span><span class="nv">string&gt;</span> <span class="c1">;</span>
+      <span class="nv">&lt;http://purl</span><span class="o">.</span><span class="nv">org/dc/terms/title&gt;</span>
+              <span class="s">&quot;testproject&quot;</span><span class="nv">^^&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2001/XMLSchema</span><span class="o">#</span><span class="nv">string&gt;</span> <span class="o">.</span>
+</code></pre>
+</div><p>Plaza also offers an alternative <span class="caps">JSON</span> representation for the resources where<br />
+instead of a single <span class="caps">JSON</span> object, an array of arrays containing the set of<br />
+triples for the resource is returned. This serialization can be retrieved using<br />
+the <code>js3</code> format.</p>
+<div class="highlight"><pre><code class="clojure"><span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects.js3&quot;</span>
+<span class="p">[[</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span>
+  <span class="s">&quot;http:\/\/www.w3.org\/1999\/02\/22-rdf-syntax-ns#type&quot;</span><span class="o">,</span>
+  <span class="s">&quot;http:\/\/xmlns.com\/foaf\/0.1\/Project&quot;</span><span class="p">]</span><span class="o">,</span>
+ <span class="p">[</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span>
+  <span class="s">&quot;http:\/\/purl.org\/dc\/terms\/title&quot;</span><span class="o">,</span>
+  <span class="p">{</span><span class="s">&quot;value&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span>
+   <span class="s">&quot;datatype&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/www.w3.org\/2001\/XMLSchema#string&quot;</span><span class="p">}]</span><span class="o">,</span>
+ <span class="p">[</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span>
+  <span class="s">&quot;http:\/\/plaza.org\/vocabularies\/restResourceId&quot;</span><span class="o">,</span>
+  <span class="p">{</span><span class="s">&quot;value&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span>
+   <span class="s">&quot;datatype&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/www.w3.org\/2001\/XMLSchema#string&quot;</span><span class="p">}]]</span>
+</code></pre>
+</div><p>These resources are retrieved from triples stored in the ABox of the<br />
+application. Plaza also offers the possibility to retrieve the schema<br />
+information for each resource stored in the TBox. This meta information is<br />
+exposed as an additional resource (a meta-resource?) accessible in the <span class="caps">URI</span> of<br />
+the resource with an additional <code>_schema</code> suffix:</p>
+<div class="highlight"><pre><code class="clojure"><span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects/_schema.n3&quot;</span>
+<span class="nv">&lt;http://purl</span><span class="o">.</span><span class="nv">org/dc/terms/title&gt;</span>
+      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">domain&gt;</span>
+              <span class="nv">&lt;http://xmlns</span><span class="o">.</span><span class="nv">com/foaf/0</span><span class="o">.</span><span class="mi">1</span><span class="nv">/Project&gt;</span> <span class="c1">;</span>
+      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">range&gt;</span>
+              <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2001/XMLSchema</span><span class="o">#</span><span class="nv">string&gt;</span> <span class="o">.</span>
+
+<span class="nv">&lt;http://plaza</span><span class="o">.</span><span class="nv">org/vocabularies/restResourceId&gt;</span>
+      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">domain&gt;</span>
+              <span class="nv">&lt;http://xmlns</span><span class="o">.</span><span class="nv">com/foaf/0</span><span class="o">.</span><span class="mi">1</span><span class="nv">/Project&gt;</span> <span class="c1">;</span>
+      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">range&gt;</span>
+              <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2001/XMLSchema</span><span class="o">#</span><span class="nv">string&gt;</span> <span class="o">.</span>
+
+<span class="nv">&lt;http://xmlns</span><span class="o">.</span><span class="nv">com/foaf/0</span><span class="o">.</span><span class="mi">1</span><span class="nv">/Project&gt;</span>
+      <span class="nv">a</span>       <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">Class&gt;</span> <span class="o">.</span>
+
+<span class="nv">&lt;http://scrummyclone</span><span class="o">.</span><span class="nv">com/vocabularies/hasSprints&gt;</span>
+      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">domain&gt;</span>
+              <span class="nv">&lt;http://xmlns</span><span class="o">.</span><span class="nv">com/foaf/0</span><span class="o">.</span><span class="mi">1</span><span class="nv">/Project&gt;</span> <span class="c1">;</span>
+      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">range&gt;</span>
+              <span class="nv">&lt;http://scrummyclone</span><span class="o">.</span><span class="nv">com/vocabularies/Sprint&gt;</span> <span class="o">.</span>
+</code></pre>
+</div><p>Again, this information is also available in all the possible representations,<br />
+including <span class="caps">JSON</span> and JS3.</p>
+<p>Exposing meta-information about the resources open the door to<br />
+automatically processing the resources. Plaza tries to make automation easier<br />
+supporting (a slightly modified version) of the <a href='http://cms-wg.sti2.org/TR/d12/v0.1/'>hRESTS</a> proposed<br />
+standard for RESTful semantic web services.</p>
+<p>hRESTS uses the W3C submitted standard proposal <a
+href='http://www.w3.org/Submission/WSMO/'><span class="caps">WSMO</span></a> ontology to describe as a <span class="caps">RDF</span><br />
+graph important details of the resource:</p>
+
+	<ul>
+		<li>a list of operations that can be issued to the resource</li>
+		<li>the <span class="caps">URI</span> template where the resource is accessible</li>
+		<li>a set of input messages that can be passed in the request</li>
+		<li>a set of output messages returned by the service</li>
+	</ul><p>Since we are using the <span class="caps">RDF</span> data model in our resources some difficult tasks like the<br />
+service grounding are easily accomplished.</p>
+<p>hRESTS service descriptions for resources can be retrieved using the<br />
+<code>single_resource_service</code> and<br />
+<code>collection_resource_service</code> suffixes for the resource URIs.</p>
+<p>One interesting possibility of hRESTS is offering a <a
+href='http://www.w3.org/TR/xhtml-rdfa-primer/'>RDFa</a> encoded version of the<br />
+service description. HTML+RDFa version of the service description generated by<br />
+Plaza can be used at the same time as documentation for developers consuming the<br />
+<span class="caps">API</span> as well as a description that can be automatically processed by software<br />
+applications, once they have extracted the <span class="caps">RDF</span> graph embedded in the <span class="caps">HTML</span> document:</p>
+<div id="img_wrapper">
+<p><img src="/clj-plaza/images/project_rdfa.png"></img></p>
+</div>
+<p>Plaza generates HTML+RDFa representations for every resource, schema and service<br />
+description, so all the resources in the <span class="caps">API</span> can be rendered with a web browser.</p>
+<h2 href="js_data">Connecting a JavaScript client to your services</h2>
+<p>Once we have generated our <span class="caps">API</span>, the next step is to create a client that can be<br />
+used to do interesting things with the semantic data exposed by these services.</p>
+<p>As a part of Plaza, we are developing a javascript library and some tools that can<br />
+ease the development of javascript clients. The first step is to create a new<br />
+<span class="caps">HTML</span> document including jquery, jqueryUI and Plaza&#8217;s plaza.js and plaza-ui.js<br />
+libraries:</p>
+<div class="highlight"><pre><code class="html"><span class="cp">&lt;!DOCTYPE html&gt;</span>
+<span class="nt">&lt;html&gt;</span>
+	<span class="nt">&lt;head&gt;</span>
+		<span class="nt">&lt;meta</span> <span class="na">http-equiv=</span><span class="s">&quot;Content-Type&quot;</span> <span class="na">content=</span><span class="s">&quot;text/html; charset=iso-8859-1&quot;</span> <span class="nt">/&gt;</span>
+		<span class="nt">&lt;title&gt;</span>Scrummy<span class="nt">&lt;/title&gt;</span>
+		<span class="nt">&lt;link</span> <span class="na">type=</span><span class="s">&quot;text/css&quot;</span> <span class="na">href=</span><span class="s">&quot;css/jquery-ui.css&quot;</span> <span class="na">rel=</span><span class="s">&quot;stylesheet&quot;</span> <span class="nt">/&gt;</span>
+		<span class="nt">&lt;link</span> <span class="na">type=</span><span class="s">&quot;text/css&quot;</span> <span class="na">href=</span><span class="s">&quot;css/plaza-ui.css&quot;</span> <span class="na">rel=</span><span class="s">&quot;stylesheet&quot;</span> <span class="nt">/&gt;</span>
+		<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;js/jquery.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+		<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;js/jquery-ui.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+		<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;js/plaza.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+		<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;js/plaza-ui.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+		<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
+			<span class="nx">$</span><span class="p">(</span><span class="kd">function</span><span class="p">(){</span> <span class="p">});</span>
+		<span class="nt">&lt;/script&gt;</span>
+	<span class="nt">&lt;/head&gt;</span>
+	<span class="nt">&lt;body&gt;&lt;/body&gt;</span>
+<span class="nt">&lt;/html&gt;</span>
+</code></pre>
+</div><p>We can now retrieve this document from our running Jetty server and then we can open a<br />
+tool like Firebug to introduce the following code:</p>
+<div class="highlight"><pre><code class="javascript"><span class="nx">PlazaUI</span><span class="p">.</span><span class="nx">Widgets</span><span class="p">.</span><span class="nx">Toolbox</span><span class="p">.</span><span class="nx">extend</span><span class="p">().</span><span class="nx">attach</span><span class="p">();</span>
+</code></pre>
+</div><p>A Toolbox with some utilities to test the <span class="caps">API</span> should appear:</p>
+<div id="img_wrapper">
+<p><img src="/clj-plaza/images/toolbox1.png"></img></p>
+</div>
+<p>The toolbox can be used to load schemas, service descriptions and connect them<br />
+to local triple spaces.</p>
+<div id="img_wrapper">
+<p><img src="/clj-plaza/images/toolbox2.png"></img></p>
+</div>
+<p>The toolbox can also be used to create new instances of a resource, loading<br />
+resources or browsing the listing of triples stored in a triple space.</p>
+<p>Once we have tested that the <span class="caps">API</span> is working correctly and we have created<br />
+triple spaces connected to the required services, we can ask the toolbox to<br />
+generate some javascript code replicating our current state so we can start<br />
+coding the logic of our javascript client:</p>
+<div id="img_wrapper">
+<p><img src="/clj-plaza/images/toolbox3.png"></img></p>
+</div>
+<p>This is only a convenience since, the generated code is pretty straight forward.</p>
+<div class="highlight"><pre><code class="javascript"><span class="nx">Plaza</span><span class="p">.</span><span class="nx">setup</span><span class="p">(</span>
+    <span class="c1">// Schemas</span>
+    <span class="nx">Plaza</span><span class="p">.</span><span class="nx">TBox</span><span class="p">.</span><span class="nx">registerSchema</span><span class="p">(</span><span class="s2">&quot;http://localhost:8081/projects/_schema.json&quot;</span><span class="p">),</span>
+    <span class="nx">Plaza</span><span class="p">.</span><span class="nx">TBox</span><span class="p">.</span><span class="nx">registerSchema</span><span class="p">(</span><span class="s2">&quot;http://localhost:8081/sprints/_schema.json&quot;</span><span class="p">),</span>
+    <span class="nx">Plaza</span><span class="p">.</span><span class="nx">TBox</span><span class="p">.</span><span class="nx">registerSchema</span><span class="p">(</span><span class="s2">&quot;http://localhost:8081/stories/_schema.json&quot;</span><span class="p">),</span>
+    <span class="nx">Plaza</span><span class="p">.</span><span class="nx">TBox</span><span class="p">.</span><span class="nx">registerSchema</span><span class="p">(</span><span class="s2">&quot;http://localhost:8081/tasks/_schema.json&quot;</span><span class="p">),</span>
+
+    <span class="c1">// TripleSpaces</span>
+    <span class="nx">Plaza</span><span class="p">.</span><span class="nx">ABox</span><span class="p">.</span><span class="nx">TripleSpace</span><span class="p">.</span><span class="nx">connect</span><span class="p">(</span><span class="s2">&quot;projects&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;collectionResource&quot;</span><span class="o">:</span> <span class="s2">&quot;http://localhost:8081/projects/collection_resource_service.json&quot;</span><span class="p">,</span>
+						<span class="s2">&quot;singleResource&quot;</span><span class="o">:</span> <span class="s2">&quot;http://localhost:8081/projects/single_resource_service.json&quot;</span><span class="p">}),</span>
+    <span class="nx">Plaza</span><span class="p">.</span><span class="nx">ABox</span><span class="p">.</span><span class="nx">TripleSpace</span><span class="p">.</span><span class="nx">connect</span><span class="p">(</span><span class="s2">&quot;sprints&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;collectionResource&quot;</span><span class="o">:</span> <span class="s2">&quot;http://localhost:8081/sprints/collection_resource_service.json&quot;</span><span class="p">,</span>
+					       <span class="s2">&quot;singleResource&quot;</span><span class="o">:</span> <span class="s2">&quot;http://localhost:8081/sprints/single_resource_service.json&quot;</span><span class="p">}),</span>
+    <span class="nx">Plaza</span><span class="p">.</span><span class="nx">ABox</span><span class="p">.</span><span class="nx">TripleSpace</span><span class="p">.</span><span class="nx">connect</span><span class="p">(</span><span class="s2">&quot;stories&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;collectionResource&quot;</span><span class="o">:</span> <span class="s2">&quot;http://localhost:8081/stories/collection_resource_service.json&quot;</span><span class="p">,</span>
+					       <span class="s2">&quot;singleResource&quot;</span><span class="o">:</span> <span class="s2">&quot;http://localhost:8081/stories/single_resource_service.json&quot;</span><span class="p">}),</span>
+    <span class="nx">Plaza</span><span class="p">.</span><span class="nx">ABox</span><span class="p">.</span><span class="nx">TripleSpace</span><span class="p">.</span><span class="nx">connect</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;collectionResource&quot;</span><span class="o">:</span> <span class="s2">&quot;http://localhost:8081/tasks/collection_resource_service.json&quot;</span><span class="p">,</span>
+					     <span class="s2">&quot;singleResource&quot;</span><span class="o">:</span> <span class="s2">&quot;http://localhost:8081/tasks/single_resource_service.json&quot;</span><span class="p">}),</span>
+
+    <span class="kd">function</span><span class="p">(){</span>
+      <span class="c1">// application code here</span>
+    <span class="p">});</span>
+</code></pre>
+</div><p>The function <code>Plaza.TBox.registerSchema</code> retrieves the <span class="caps">RDF</span><br />
+description of a remote resource and inserts it into the TBox of the javascript<br />
+application. The function <code>Plaza.ABox.TripleSpace.connect</code> creates a<br />
+new triple space connected to a remote resource using the provided alias. The<br />
+hRESTS resource describing the service resource must be provided as an argument. To avoid<br />
+problems parsing <span class="caps">RDF</span> formats, only the <span class="caps">JSON</span> representation is supported at the<br />
+moment.</p>
+<p>Once this task is accomplished, we have a javascript client connected to the<br />
+back-end resources and we can start building our application using the semantic<br />
+meta-data exposed by our scrum <span class="caps">API</span>.</p>
+<p>&lt;h2 id-&quot;js_logic&quot;&gt;Building the client interface and logic</h2></p>
+<p>Our scrum board application will be built using two main <span class="caps">HTML</span> documents:<br />
+<code>index.html</code> where new scrum boards will be created and<br />
+<code>project.html</code> that will render the scrum board properly.</p>
+<p>To create a new resource, we can use the <code>Plaza.ABox.createEntity</code><br />
+function passing as a reference the triple space where the entity will be stored<br />
+and a <span class="caps">JSON</span> object with the values for the new resource as described by the <span class="caps">API</span>.</p>
+<p>Resources in the triples space can be retrieved using the function<br />
+<code>Plaza.ABox.findEntityByURI</code> function and providing the <span class="caps">URI</span> of the<br />
+resource to load.</p>
+<p>In the <code>index.html</code> document the title of the project introduced<br />
+in the new project form is used to create a new Project resource and, once the<br />
+resource is created, the browser is redirected to the <code>project.html</code><br />
+document, using the value of the<br />
+<code>http://plaza.org/vocabularies/restResourceId</code> property for the resource<br />
+to complete the <span class="caps">URI</span>:</p>
+<div class="highlight"><pre><code class="javascript"><span class="nx">Plaza</span><span class="p">.</span><span class="nx">ABox</span><span class="p">.</span><span class="nx">createEntity</span><span class="p">(</span><span class="s2">&quot;projects&quot;</span><span class="p">,{</span><span class="s2">&quot;title&quot;</span><span class="o">:</span> <span class="nx">title</span><span class="p">},</span> <span class="kd">function</span><span class="p">(</span><span class="nx">evt</span><span class="p">){</span>
+    <span class="k">if</span><span class="p">(</span><span class="nx">evt</span><span class="p">.</span><span class="nx">kind</span> <span class="o">==</span> <span class="s2">&quot;error&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">PlazaUI</span><span class="p">.</span><span class="nx">Utils</span><span class="p">.</span><span class="nx">showDialog</span><span class="p">(</span><span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;The project could not be created:&quot;</span><span class="o">+</span><span class="nx">evt</span><span class="p">.</span><span class="nx">error</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="c1">// The URIs of the created resources</span>
+        <span class="kd">var</span> <span class="nx">project</span> <span class="o">=</span> <span class="nx">Plaza</span><span class="p">.</span><span class="nx">ABox</span><span class="p">.</span><span class="nx">findEntityByURI</span><span class="p">(</span><span class="nx">evt</span><span class="p">.</span><span class="nx">uris</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+        <span class="nb">window</span><span class="p">.</span><span class="nx">location</span> <span class="o">=</span> <span class="nx">Scrummy</span><span class="p">.</span><span class="nx">domain</span> <span class="o">+</span> <span class="nx">project</span><span class="p">.</span><span class="nx">restResourceId</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">});</span>
+</code></pre>
+</div><div id="img_wrapper">
+<p><img src="/clj-plaza/images/new_project.png"></img></p>
+</div>
+<p>In the <code>project.html</code> document,  we need to load the project<br />
+resource as well as all the sprints and tasks depending on this project.</p>
+<p>We can use the functions <code>Plaza.ABox.loadInstance</code> and<br />
+<code>Plaza.ABox.loadInstances</code> to load resources from a remote<br />
+service and insert the triples in a local triple space.</p>
+<p>When <code>Story</code> and <code>Task</code> resources are retrieved and<br />
+inserted into local name spaces, the user interface must be updated to show the<br />
+new information. Instead of providing callbacks for each function, Plaza javascript<br />
+library allows you to register observers for a whole triple space or a single<br />
+entity in a triple space that will be invoked when a new entity is inserted,<br />
+removed or updated in that triple space. These observers are used to update<br />
+the user interface accordingly:</p>
+<div class="highlight"><pre><code class="javascript"><span class="nx">Plaza</span><span class="p">.</span><span class="nx">ABox</span><span class="p">.</span><span class="nx">startObservingSpace</span><span class="p">(</span><span class="s2">&quot;stories&quot;</span><span class="p">,</span> <span class="nx">Plaza</span><span class="p">.</span><span class="nx">ABox</span><span class="p">.</span><span class="nx">EVENTS</span><span class="p">.</span><span class="nx">CREATED</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span>
+                               <span class="kd">function</span><span class="p">(</span><span class="nx">_space</span><span class="p">,</span> <span class="nx">_event</span><span class="p">,</span> <span class="nx">entity</span><span class="p">)</span> <span class="p">{</span>
+                                   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Created story: &quot;</span> <span class="o">+</span> <span class="nx">entity</span><span class="p">.</span><span class="nx">_uri</span><span class="p">);</span>
+                                   <span class="c1">// UI code here</span>
+                                   <span class="nx">Scrummy</span><span class="p">.</span><span class="nx">insertStory</span><span class="p">(</span><span class="nx">entity</span><span class="p">);</span>
+                               <span class="p">});</span>
+<span class="nx">Plaza</span><span class="p">.</span><span class="nx">ABox</span><span class="p">.</span><span class="nx">startObservingSpace</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">,</span> <span class="nx">Plaza</span><span class="p">.</span><span class="nx">ABox</span><span class="p">.</span><span class="nx">EVENTS</span><span class="p">.</span><span class="nx">CREATED</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span>
+                               <span class="kd">function</span><span class="p">(</span><span class="nx">_space</span><span class="p">,</span> <span class="nx">_event</span><span class="p">,</span> <span class="nx">entity</span><span class="p">)</span> <span class="p">{</span>
+                                   <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Created task: &quot;</span> <span class="o">+</span> <span class="nx">entity</span><span class="p">.</span><span class="nx">_uri</span><span class="p">);</span>
+                                   <span class="c1">// UI code here</span>
+                                   <span class="nx">Scrummy</span><span class="p">.</span><span class="nx">insertTask</span><span class="p">(</span><span class="nx">entity</span><span class="p">);</span>
+                               <span class="p">});</span>
+</code></pre>
+</div><p>When these observers receive a new notification, the new story or the new<br />
+task are inserted into the user interface according to its priority or status properties.</p>
+<p>These mechanisms plus the capacity to associate standard semantics to the<br />
+data retrieved from the backend, makes possible writing graphical components<br />
+that can be re-used with different resources. For example, it could be possible<br />
+to build  a graphical component<br />
+capable of rendering the position in a map of every object with <span class="caps">RDF</span> properties for<br />
+longitude, latitude or a location property.</p>
+<p>Plaza javascript library offers a couple of base objects:<br />
+<code>PlazaUI.EntityWidget</code> and <code>PlazaUI.SpaceWidget</code> that can<br />
+be used as the foundation for such graphical components.</p>
+<p>These widgets can also be linked with each other, so changes in the entity that<br />
+is being rendered by one<br />
+widget can be transmitted to the linked widgets and all the graphical components<br />
+can be udpated at the same time.</p>
+<p>These classes are used by the Plaza Toolbox to build forms for creating<br />
+resources or showing the list of triples in a triple space.</p>
+<h2 id="final_result">Final result</h2>
+<p>Previous sections covered all the Plaza features required to build the<br />
+scrum board application, now the only remaining details require a little bit of jQuery magic and <span class="caps">CSS</span><br />
+voodoo to build the user interface of the application. A small video demo of the<br />
+final result can be found here:</p>
+<p><object width="600" height="465"><param name="allowfullscreen" value="true" /><param name="allowscriptaccess" value="always" /><param name="movie" value="http://vimeo.com/moogaloop.swf?clip_id=13109481&amp;server=vimeo.com&amp;show_title=1&amp;show_byline=1&amp;show_portrait=0&amp;color=00ADEF&amp;fullscreen=1" /><embed src="http://vimeo.com/moogaloop.swf?clip_id=13109481&amp;server=vimeo.com&amp;show_title=1&amp;show_byline=1&amp;show_portrait=0&amp;color=00ADEF&amp;fullscreen=1" type="application/x-shockwave-flash" allowfullscreen="true" allowscriptaccess="always" width="600" height="465"></embed></object></p>
+<p>A lot of functionality<br />
+present <a href='http://scrumy.com/'>in a real scrum board application</a> is<br />
+missing, since we were just trying to show the main ideas driving development of<br />
+Plaza. The code of the application can be downloaded from the <a
+href='http://github.com/antoniogarrote/clj-plaza'>Plaza repository in<br />
+github</a>.</p>
+</div>
+
+
+      <p id="footer">
+      </p>
+
+    </div>
+  </body>
+</html>

@@ -52,8 +52,15 @@ pageTracker._trackPageview();
         <li><a href="#final_result">Final result</a></li>
 </ul>
 </p>
+<p>In this tutorial the building process of a scrum board application using Plaza<br />
+is described.<br />
+The code of the application can be found at the <code>src/plaza/examples</code><br />
+directory of Plaza&#8217;s git repository.<br />
+Plaza is still in a very early stage of development, so the best way to test the<br />
+application is cloning Plaza repository and built Plaza and the Scrum<br />
+application using Leiningen.</p>
 <h2 id="ontology">Build an ontology describing your data model</h2>
-<p>The first step to build a Plaza web application is to formalize your data model<br />
+<p>The first step in building a Plaza web application is to formalize your data model<br />
 as an <a href='http://en.wikipedia.org/wiki/Ontology_(information_science)'>ontology</a>.</p>
 <p>In most web development frameworks the only formal description of data is<br />
 the relational model of the tables stored in the database or the definition of<br />
@@ -68,7 +75,7 @@ standard vocabulary to define ontologies.</p>
 	<ul>
 		<li>Some URIs define <span class="caps">RDF</span> Schema classes</li>
 		<li>Some URIs define <span class="caps">RDF</span> properties</li>
-	</ul><p>Properties can be seem as defining relationships between instances of different classes<br />
+	</ul><p>Properties define relationships between instances of different classes<br />
 or between instances of classes and some value of a certain data type. These<br />
 constrains can be stated using <span class="caps">RDF</span> Schema <code>range</code> and<br />
 <code>domain</code> properties.</p>
@@ -100,8 +107,7 @@ name space.</p>
 <span class="c1">;; other definitions ...</span>
 </code></pre>
 </div><p>In the previous example we introduced a new <span class="caps">URI</span> name space for our vocabulary<br />
-(scc). Then we added<br />
-some URis in the name space that will be used to define entities in our data domain: the <code>Sprint</code> class<br />
+(scc). Then we added some URis in the name space that will be used to define entities in our data domain: the <code>Sprint</code> class<br />
 and the <code>hasSprints</code> property.</p>
 <p>Finally we define a new <span class="caps">RDF</span> Schema class for the projects in the scrum board, of<br />
 type <a href='http://xmlns.com/foaf/spec/#term_Project'>Friend Of A Friend</a><br />
@@ -112,12 +118,12 @@ the first rule when building an ontology is always: <strong>don&#8217;t build an
 re-use an existing one</strong>.</p>
 <p>Nowadays every web application offering an <span class="caps">API</span> returns ad-hoc <span class="caps">XML</span> documents with their<br />
 own make up vocabulary or <span class="caps">JSON</span> object properties collisioning with a myriad of<br />
-other <span class="caps">JSON</span> objects in a flat namespace.</p>
+other <span class="caps">JSON</span> objects in a flat name-space.</p>
 <p>Working with ontologies allow us to re-use standard models for complex domains,<br />
 like <a href='http://sioc-project.org/'>Semantically-Interlinked Online<br />
 Communities (<span class="caps">SIOC</span>)</a> ontology,<br />
 so we don&#8217;t need to model once again the same problem. Besides, clients<br />
-consuming our application could safely mash up our data with data<br />
+consuming our application can safely mash up our data with data<br />
 retrieved from other data sources.</p>
 <p>Furthermore, development of ontologies can benefit from mature tools like <a
 href='http://protege.stanford.edu/'>Protege</a> to ease the modelling task.</p>
@@ -151,9 +157,9 @@ ontology (<code>foaf:Project</code>, <code>scc:Sprint</code>, <code>scc:Story</c
 <code>spawn-rest-resource!</code> function and some additional steps:</p>
 
 	<ul>
-		<li>Register the schemas we are going to use in the TBox of the application</li>
-		<li>Create some triple spaces to store the triples in the ABox of the application</li>
-		<li>Register RESTful agents with an associated <span class="caps">URI</span>, schema and triple space</li>
+		<li>Registering the schemas we are going to use in the TBox of the application</li>
+		<li>Creating some triple spaces to store the triples in the ABox of the application</li>
+		<li>Registering RESTful agents with an associated <span class="caps">URI</span>, schema and triple space</li>
 	</ul><p>We can found the required code in the <code>scrummy-clone.core</code> name-space:</p>
 <div class="highlight"><pre><code class="clojure"><span class="c1">;; We register the resources in the TBox</span>
 <span class="p">(</span><span class="nf">tbox-register-schema</span> <span class="nv">:project</span> <span class="nv">scc:Project-schema</span><span class="p">)</span>
@@ -211,14 +217,14 @@ ontology (<code>foaf:Project</code>, <code>scc:Sprint</code>, <code>scc:Story</c
 </div><p>In the previous code, we first register the <span class="caps">RDF</span> Schema classes defined into the<br />
 TBox of the application using the function <code>tbox-register-schema</code>. We<br />
 use an alias for each registered class so we can refer to them easily.</p>
-<p>Then we create a new triple space named <code>:projects</code> to store the <span class="caps">RDF</span><br />
+<p>Then we create a new triple space named <code>:projects</code> to store <span class="caps">RDF</span><br />
 graphs for the individuals of the application. In this example, we are using a<br />
 basic triple space residing in memory but we could use any other available triple<br />
 space supported by Plaza.<br />
 For instance, if we decide to use Allegro Graph to<br />
 persistently store the <span class="caps">RDF</span> data of our application we could accomplish that<br />
 changing the triple space definition, without changing the application code.</p>
-<p>Finally we create a new Compojure routes definition and add <span class="caps">REST</span> agents<br />
+<p>Finally we create a new Compojure routes definition and we add <span class="caps">REST</span> agents<br />
 using the functions <code>spawn-rest-resource!</code> and<br />
 <code>spawn-rest-collection-resource!</code> passing as parameters the TBox<br />
 registered resource that will be exposed, a Compojure<br />
@@ -226,16 +232,17 @@ registered resource that will be exposed, a Compojure<br />
 where resources will be stored.</p>
 <p>For every exposed resource, plaza adds an ID property defined by the <span class="caps">RDF</span> property<br />
 <code>http://plaza.org/vocabularies/restResourceId</code>. This property is associated to the<br />
-<code>:id</code> part of the template for single resources. By default this ID<br />
-is generated for all created resources using a new <span class="caps">UUID</span>. In the<br />
-<code>Project</code> resource, we want to change this default behaviour<br />
+<code>:id</code> part of in the template for single resources. By default this ID<br />
+is generated for all newly created resources using a generated <span class="caps">UUID</span>. In the case<br />
+of the  <code>Project</code> resource, we want to change this default behaviour<br />
 generating URIs for each new <code>Project</code> resource based on the<br />
-<code>dct:title</code> property of the resource. This is accomplished using the<br />
-<code>:id-gen-fn</code> key in the definition map of the resource.</p>
+<code>dct:title</code> property of the resource. This can be achieved using the<br />
+<code>:id-gen-fn</code> key in the definition map of the resource. This is just<br />
+one of the ways Plaza allows developers to customize the definition of <span class="caps">REST</span> resources.</p>
 <p>Finally we start the application at port 8081 using Jetty invoking the<br />
 Compojure/Ring <code>run-jetty</code> function.</p>
-<p>&lt;h2 id-&quot;api&quot;&gt;Take a look at your <span class="caps">API</span></h2></p>
-<p>The main goal Plaza tries to achieve as a web development library is to allow<br />
+<h2 id="api">Take a look at your <span class="caps">API</span></h2>
+<p>The main goal of Plaza as a web development library is to allow<br />
 developers to build beautiful RESTful APIs that can be easily consumed and<br />
 remixed by client applications, whether they are javascript clients being<br />
 executed in the browser, smartphone applications or other web application<br />
@@ -254,8 +261,7 @@ access the defined resources using familiar conventions for RESTful applications
    <span class="caps">JSONP</span> invocation of the resource.</li>
 	</ul><p>You can ignore the semantic features of plaza and just consume the<br />
 resources using <span class="caps">JSON</span> as the selected representation.<br />
-The alias used in the<br />
-definition of the resource schema will be used to identify the parameters in the <span class="caps">HTTP</span><br />
+The alias used in the definition of the resource schema are used to identify the parameters in <span class="caps">HTTP</span><br />
 requests and they will also be returned as the properties in the response <span class="caps">JSON</span> objects:</p>
 <div class="highlight"><pre><code class="clojure"><span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">POST</span> <span class="s">&quot;http://localhost:8081/projects.json?title=testproject&quot;</span>
 <span class="p">{</span><span class="s">&quot;uri&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span><span class="s">&quot;id&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span><span class="s">&quot;type&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/xmlns.com\/foaf\/0.1\/Project&quot;</span><span class="o">,</span><span class="s">&quot;title&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="p">}</span>
@@ -266,11 +272,11 @@ requests and they will also be returned as the properties in the response <span 
 <span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects.json&quot;</span>
 <span class="p">[]</span>
 </code></pre>
-</div><p>In the previous example we can see how the returned <span class="caps">JSON</span> objects include a<br />
-couple of additional properties with the <span class="caps">RDFS</span> class <span class="caps">URI</span> of the object and the<br />
+</div><p>In the previous example we can see how returned <span class="caps">JSON</span> objects include a<br />
+couple of additional properties: the <span class="caps">RDFS</span> class <span class="caps">URI</span> of the object and the<br />
 whole <span class="caps">URI</span> of the resource.</p>
-<p>Plaza uses semantic standards to offer additional possibilities when consuming<br />
-the generated <span class="caps">API</span>.</p>
+<p>Plaza uses semantic standards to offer additional possibilities in the<br />
+consumption of generated APIs.</p>
 <p>We could retrieve the <span class="caps">RDF</span> graph associated to the resource with different<br />
 encodings: N3, turtle or the standard <span class="caps">RDF</span>/<span class="caps">XML</span> serialization</p>
 <div class="highlight"><pre><code class="clojure"><span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">POST</span> <span class="s">&quot;http://localhost:8081/projects?title=testproject&quot;</span>
@@ -340,8 +346,8 @@ the resource with an additional <code>_schema</code> suffix:</p>
 </code></pre>
 </div><p>Again, this information is also available in all the possible representations,<br />
 including <span class="caps">JSON</span> and JS3.</p>
-<p>Exposing meta-information about the resources open the door to<br />
-automatically processing the resources. Plaza tries to make automation easier<br />
+<p>Exposing meta-information about resources opens the door to<br />
+automatically processing this resources. Plaza tries to make automation easier<br />
 supporting (a slightly modified version) of the <a href='http://cms-wg.sti2.org/TR/d12/v0.1/'>hRESTS</a> proposed<br />
 standard for RESTful semantic web services.</p>
 <p>hRESTS uses the W3C submitted standard proposal <a
@@ -353,14 +359,14 @@ graph important details of the resource:</p>
 		<li>the <span class="caps">URI</span> template where the resource is accessible</li>
 		<li>a set of input messages that can be passed in the request</li>
 		<li>a set of output messages returned by the service</li>
-	</ul><p>Since we are using the <span class="caps">RDF</span> data model in our resources some difficult tasks like the<br />
+	</ul><p>Since we are using the <span class="caps">RDF</span> data model in our resources some difficult tasks like<br />
 service grounding are easily accomplished.</p>
 <p>hRESTS service descriptions for resources can be retrieved using the<br />
 <code>single_resource_service</code> and<br />
-<code>collection_resource_service</code> suffixes for the resource URIs.</p>
+<code>collection_resource_service</code> suffixes for resource URIs.</p>
 <p>One interesting possibility of hRESTS is offering a <a
 href='http://www.w3.org/TR/xhtml-rdfa-primer/'>RDFa</a> encoded version of the<br />
-service description. HTML+RDFa version of the service description generated by<br />
+service description. HTML+RDFa versions of service descriptions generated by<br />
 Plaza can be used at the same time as documentation for developers consuming the<br />
 <span class="caps">API</span> as well as a description that can be automatically processed by software<br />
 applications, once they have extracted the <span class="caps">RDF</span> graph embedded in the <span class="caps">HTML</span> document:</p>
@@ -369,10 +375,10 @@ applications, once they have extracted the <span class="caps">RDF</span> graph e
 </div>
 <p>Plaza generates HTML+RDFa representations for every resource, schema and service<br />
 description, so all the resources in the <span class="caps">API</span> can be rendered with a web browser.</p>
-<h2 href="js_data">Connecting a JavaScript client to your services</h2>
+<h2 id="js_data">Connecting a JavaScript client to your services</h2>
 <p>Once we have generated our <span class="caps">API</span>, the next step is to create a client that can be<br />
 used to do interesting things with the semantic data exposed by these services.</p>
-<p>As a part of Plaza, we are developing a javascript library and some tools that can<br />
+<p>As part of Plaza, we are developing a javascript library and some tools that can<br />
 ease the development of javascript clients. The first step is to create a new<br />
 <span class="caps">HTML</span> document including jquery, jqueryUI and Plaza&#8217;s plaza.js and plaza-ui.js<br />
 libraries:</p>
@@ -394,7 +400,7 @@ libraries:</p>
 	<span class="nt">&lt;body&gt;&lt;/body&gt;</span>
 <span class="nt">&lt;/html&gt;</span>
 </code></pre>
-</div><p>We can now retrieve this document from our running Jetty server and then we can open a<br />
+</div><p>We can now retrieve this document from our running Jetty server and then, we can open a<br />
 tool like Firebug to introduce the following code:</p>
 <div class="highlight"><pre><code class="javascript"><span class="nx">PlazaUI</span><span class="p">.</span><span class="nx">Widgets</span><span class="p">.</span><span class="nx">Toolbox</span><span class="p">.</span><span class="nx">extend</span><span class="p">().</span><span class="nx">attach</span><span class="p">();</span>
 </code></pre>
@@ -448,7 +454,7 @@ moment.</p>
 <p>Once this task is accomplished, we have a javascript client connected to the<br />
 back-end resources and we can start building our application using the semantic<br />
 meta-data exposed by our scrum <span class="caps">API</span>.</p>
-<p>&lt;h2 id-&quot;js_logic&quot;&gt;Building the client interface and logic</h2></p>
+<h2 id="js_logic">Building the client interface and logic</h2>
 <p>Our scrum board application will be built using two main <span class="caps">HTML</span> documents:<br />
 <code>index.html</code> where new scrum boards will be created and<br />
 <code>project.html</code> that will render the scrum board properly.</p>
@@ -519,7 +525,7 @@ be used as the foundation for such graphical components.</p>
 <p>These widgets can also be linked with each other, so changes in the entity that<br />
 is being rendered by one<br />
 widget can be transmitted to the linked widgets and all the graphical components<br />
-can be udpated at the same time.</p>
+can be updated at the same time.</p>
 <p>These classes are used by the Plaza Toolbox to build forms for creating<br />
 resources or showing the list of triples in a triple space.</p>
 <h2 id="final_result">Final result</h2>

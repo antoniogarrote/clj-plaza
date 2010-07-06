@@ -263,88 +263,92 @@ access the defined resources using familiar conventions for RESTful applications
 resources using <span class="caps">JSON</span> as the selected representation.<br />
 The alias used in the definition of the resource schema are used to identify the parameters in <span class="caps">HTTP</span><br />
 requests and they will also be returned as the properties in the response <span class="caps">JSON</span> objects:</p>
-<div class="highlight"><pre><code class="clojure"><span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">POST</span> <span class="s">&quot;http://localhost:8081/projects.json?title=testproject&quot;</span>
-<span class="p">{</span><span class="s">&quot;uri&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span><span class="s">&quot;id&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span><span class="s">&quot;type&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/xmlns.com\/foaf\/0.1\/Project&quot;</span><span class="o">,</span><span class="s">&quot;title&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="p">}</span>
-<span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects/testproject.json&quot;</span>
-<span class="p">{</span><span class="s">&quot;uri&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span><span class="s">&quot;title&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span><span class="s">&quot;type&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/xmlns.com\/foaf\/0.1\/Project&quot;</span><span class="o">,</span><span class="s">&quot;id&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="p">}</span>
-<span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">DELETE</span> <span class="s">&quot;http://localhost:8081/projects/testproject.json&quot;</span>
-<span class="p">{</span><span class="s">&quot;uri&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span><span class="s">&quot;title&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span><span class="s">&quot;type&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/xmlns.com\/foaf\/0.1\/Project&quot;</span><span class="o">,</span><span class="s">&quot;id&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="p">}</span>
-<span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects.json&quot;</span>
-<span class="p">[]</span>
-</code></pre>
-</div><p>In the previous example we can see how returned <span class="caps">JSON</span> objects include a<br />
+<pre>
+nb-agarrote ~$ curl -X POST "http://localhost:8081/projects.json?title=testproject"
+{"uri":"http:\/\/localhost:8081\/projects\/testproject","id":"testproject","type":"http:\/\/xmlns.com\/foaf\/0.1\/Project","title":"testproject"}
+nb-agarrote ~$ curl -X GET "http://localhost:8081/projects/testproject.json"
+{"uri":"http:\/\/localhost:8081\/projects\/testproject","title":"testproject","type":"http:\/\/xmlns.com\/foaf\/0.1\/Project","id":"testproject"}
+nb-agarrote ~$ curl -X DELETE "http://localhost:8081/projects/testproject.json"
+{"uri":"http:\/\/localhost:8081\/projects\/testproject","title":"testproject","type":"http:\/\/xmlns.com\/foaf\/0.1\/Project","id":"testproject"}
+nb-agarrote ~$ curl -X GET "http://localhost:8081/projects.json"
+[]
+</pre>
+<p>In the previous example we can see how returned <span class="caps">JSON</span> objects include a<br />
 couple of additional properties: the <span class="caps">RDFS</span> class <span class="caps">URI</span> of the object and the<br />
 whole <span class="caps">URI</span> of the resource.</p>
 <p>Plaza uses semantic standards to offer additional possibilities in the<br />
 consumption of generated APIs.</p>
 <p>We could retrieve the <span class="caps">RDF</span> graph associated to the resource with different<br />
 encodings: N3, turtle or the standard <span class="caps">RDF</span>/<span class="caps">XML</span> serialization</p>
-<div class="highlight"><pre><code class="clojure"><span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">POST</span> <span class="s">&quot;http://localhost:8081/projects?title=testproject&quot;</span>
-<span class="nv">&lt;rdf:RDF</span>
-    <span class="nv">xmlns:rdf=</span><span class="s">&quot;http://www.w3.org/1999/02/22-rdf-syntax-ns#&quot;</span>
-    <span class="nv">xmlns:j</span><span class="o">.</span><span class="mi">0</span><span class="nv">=</span><span class="s">&quot;http://xmlns.com/foaf/0.1/&quot;</span>
-    <span class="nv">xmlns:j</span><span class="o">.</span><span class="mi">1</span><span class="nv">=</span><span class="s">&quot;http://purl.org/dc/terms/&quot;</span>
-    <span class="nv">xmlns:j</span><span class="o">.</span><span class="mi">2</span><span class="nv">=</span><span class="s">&quot;http://plaza.org/vocabularies/&quot;</span> <span class="nv">&gt;</span>
-  <span class="nv">&lt;rdf:Description</span> <span class="nv">rdf:about=</span><span class="s">&quot;http://localhost:8081/projects/testproject&quot;</span><span class="nv">&gt;</span>
-    <span class="nv">&lt;j</span><span class="o">.</span><span class="mi">2</span><span class="nv">:restResourceId</span> <span class="nv">rdf:datatype=</span><span class="s">&quot;http://www.w3.org/2001/XMLSchema#string&quot;</span><span class="nv">&gt;testproject&lt;/j</span><span class="o">.</span><span class="mi">2</span><span class="nv">:restResourceId&gt;</span>
-    <span class="nv">&lt;rdf:type</span> <span class="nv">rdf:resource=</span><span class="s">&quot;http://xmlns.com/foaf/0.1/Project&quot;</span><span class="nv">/&gt;</span>
-    <span class="nv">&lt;j</span><span class="o">.</span><span class="mi">1</span><span class="nv">:title</span> <span class="nv">rdf:datatype=</span><span class="s">&quot;http://www.w3.org/2001/XMLSchema#string&quot;</span><span class="nv">&gt;testproject&lt;/j</span><span class="o">.</span><span class="mi">1</span><span class="nv">:title&gt;</span>
-  <span class="nv">&lt;/rdf:Description&gt;</span>
-<span class="nv">&lt;/rdf:RDF&gt;</span>
+<pre>
+nb-agarrote ~$ curl -X POST "http://localhost:8081/projects?title=testproject"
+&lt;rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:j.0="http://xmlns.com/foaf/0.1/"
+    xmlns:j.1="http://purl.org/dc/terms/"
+    xmlns:j.2="http://plaza.org/vocabularies/" &gt;
+  &lt;rdf:Description rdf:about="http://localhost:8081/projects/testproject"&gt;
+    &lt;j.2:restResourceId rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;testproject&lt;/j.2:restResourceId&gt;
+    &lt;rdf:type rdf:resource="http://xmlns.com/foaf/0.1/Project"/&gt;
+    &lt;j.1:title rdf:datatype="http://www.w3.org/2001/XMLSchema#string"&gt;testproject&lt;/j.1:title&gt;
+  &lt;/rdf:Description&gt;
+&lt;/rdf:RDF&gt;
 
-<span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects.n3&quot;</span>
-<span class="nv">&lt;http://localhost:8081/projects/testproject&gt;</span>
-      <span class="nv">a</span>       <span class="nv">&lt;http://xmlns</span><span class="o">.</span><span class="nv">com/foaf/0</span><span class="o">.</span><span class="mi">1</span><span class="nv">/Project&gt;</span> <span class="c1">;</span>
-      <span class="nv">&lt;http://plaza</span><span class="o">.</span><span class="nv">org/vocabularies/restResourceId&gt;</span>
-              <span class="s">&quot;testproject&quot;</span><span class="nv">^^&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2001/XMLSchema</span><span class="o">#</span><span class="nv">string&gt;</span> <span class="c1">;</span>
-      <span class="nv">&lt;http://purl</span><span class="o">.</span><span class="nv">org/dc/terms/title&gt;</span>
-              <span class="s">&quot;testproject&quot;</span><span class="nv">^^&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2001/XMLSchema</span><span class="o">#</span><span class="nv">string&gt;</span> <span class="o">.</span>
-</code></pre>
-</div><p>Plaza also offers an alternative <span class="caps">JSON</span> representation for the resources where<br />
+nb-agarrote ~$ curl -X GET "http://localhost:8081/projects.n3"
+&lt;http://localhost:8081/projects/testproject&gt;
+      a       &lt;http://xmlns.com/foaf/0.1/Project&gt; ;
+      &lt;http://plaza.org/vocabularies/restResourceId&gt;
+              "testproject"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; ;
+      &lt;http://purl.org/dc/terms/title&gt;
+              "testproject"^^&lt;http://www.w3.org/2001/XMLSchema#string&gt; .
+</pre>
+<p>Plaza also offers an alternative <span class="caps">JSON</span> representation for the resources where<br />
 instead of a single <span class="caps">JSON</span> object, an array of arrays containing the set of<br />
 triples for the resource is returned. This serialization can be retrieved using<br />
 the <code>js3</code> format.</p>
-<div class="highlight"><pre><code class="clojure"><span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects.js3&quot;</span>
-<span class="p">[[</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span>
-  <span class="s">&quot;http:\/\/www.w3.org\/1999\/02\/22-rdf-syntax-ns#type&quot;</span><span class="o">,</span>
-  <span class="s">&quot;http:\/\/xmlns.com\/foaf\/0.1\/Project&quot;</span><span class="p">]</span><span class="o">,</span>
- <span class="p">[</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span>
-  <span class="s">&quot;http:\/\/purl.org\/dc\/terms\/title&quot;</span><span class="o">,</span>
-  <span class="p">{</span><span class="s">&quot;value&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span>
-   <span class="s">&quot;datatype&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/www.w3.org\/2001\/XMLSchema#string&quot;</span><span class="p">}]</span><span class="o">,</span>
- <span class="p">[</span><span class="s">&quot;http:\/\/localhost:8081\/projects\/testproject&quot;</span><span class="o">,</span>
-  <span class="s">&quot;http:\/\/plaza.org\/vocabularies\/restResourceId&quot;</span><span class="o">,</span>
-  <span class="p">{</span><span class="s">&quot;value&quot;</span><span class="nv">:</span><span class="s">&quot;testproject&quot;</span><span class="o">,</span>
-   <span class="s">&quot;datatype&quot;</span><span class="nv">:</span><span class="s">&quot;http:\/\/www.w3.org\/2001\/XMLSchema#string&quot;</span><span class="p">}]]</span>
-</code></pre>
-</div><p>These resources are retrieved from triples stored in the ABox of the<br />
+<pre>
+nb-agarrote ~$ curl -X GET "http://localhost:8081/projects.js3"
+[["http:\/\/localhost:8081\/projects\/testproject",
+  "http:\/\/www.w3.org\/1999\/02\/22-rdf-syntax-ns#type",
+  "http:\/\/xmlns.com\/foaf\/0.1\/Project"],
+ ["http:\/\/localhost:8081\/projects\/testproject",
+  "http:\/\/purl.org\/dc\/terms\/title",
+  {"value":"testproject",
+   "datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}],
+ ["http:\/\/localhost:8081\/projects\/testproject",
+  "http:\/\/plaza.org\/vocabularies\/restResourceId",
+  {"value":"testproject",
+   "datatype":"http:\/\/www.w3.org\/2001\/XMLSchema#string"}]]
+</pre>
+<p>These resources are retrieved from triples stored in the ABox of the<br />
 application. Plaza also offers the possibility to retrieve the schema<br />
 information for each resource stored in the TBox. This meta information is<br />
 exposed as an additional resource (a meta-resource?) accessible in the <span class="caps">URI</span> of<br />
 the resource with an additional <code>_schema</code> suffix:</p>
-<div class="highlight"><pre><code class="clojure"><span class="nv">nb-agarrote</span> <span class="nv">~$</span> <span class="nv">curl</span> <span class="nv">-X</span> <span class="nv">GET</span> <span class="s">&quot;http://localhost:8081/projects/_schema.n3&quot;</span>
-<span class="nv">&lt;http://purl</span><span class="o">.</span><span class="nv">org/dc/terms/title&gt;</span>
-      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">domain&gt;</span>
-              <span class="nv">&lt;http://xmlns</span><span class="o">.</span><span class="nv">com/foaf/0</span><span class="o">.</span><span class="mi">1</span><span class="nv">/Project&gt;</span> <span class="c1">;</span>
-      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">range&gt;</span>
-              <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2001/XMLSchema</span><span class="o">#</span><span class="nv">string&gt;</span> <span class="o">.</span>
+<pre>
+nb-agarrote ~$ curl -X GET "http://localhost:8081/projects/_schema.n3"
+&lt;http://purl.org/dc/terms/title&gt;
+      &lt;http://www.w3.org/2000/01/rdf-schema#domain&gt;
+              &lt;http://xmlns.com/foaf/0.1/Project&gt; ;
+      &lt;http://www.w3.org/2000/01/rdf-schema#range&gt;
+              &lt;http://www.w3.org/2001/XMLSchema#string&gt; .
 
-<span class="nv">&lt;http://plaza</span><span class="o">.</span><span class="nv">org/vocabularies/restResourceId&gt;</span>
-      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">domain&gt;</span>
-              <span class="nv">&lt;http://xmlns</span><span class="o">.</span><span class="nv">com/foaf/0</span><span class="o">.</span><span class="mi">1</span><span class="nv">/Project&gt;</span> <span class="c1">;</span>
-      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">range&gt;</span>
-              <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2001/XMLSchema</span><span class="o">#</span><span class="nv">string&gt;</span> <span class="o">.</span>
+&lt;http://plaza.org/vocabularies/restResourceId&gt;
+      &lt;http://www.w3.org/2000/01/rdf-schema#domain&gt;
+              &lt;http://xmlns.com/foaf/0.1/Project&gt; ;
+      &lt;http://www.w3.org/2000/01/rdf-schema#range&gt;
+              &lt;http://www.w3.org/2001/XMLSchema#string&gt; .
 
-<span class="nv">&lt;http://xmlns</span><span class="o">.</span><span class="nv">com/foaf/0</span><span class="o">.</span><span class="mi">1</span><span class="nv">/Project&gt;</span>
-      <span class="nv">a</span>       <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">Class&gt;</span> <span class="o">.</span>
+&lt;http://xmlns.com/foaf/0.1/Project&gt;
+      a       &lt;http://www.w3.org/2000/01/rdf-schema#Class&gt; .
 
-<span class="nv">&lt;http://scrummyclone</span><span class="o">.</span><span class="nv">com/vocabularies/hasSprints&gt;</span>
-      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">domain&gt;</span>
-              <span class="nv">&lt;http://xmlns</span><span class="o">.</span><span class="nv">com/foaf/0</span><span class="o">.</span><span class="mi">1</span><span class="nv">/Project&gt;</span> <span class="c1">;</span>
-      <span class="nv">&lt;http://www</span><span class="o">.</span><span class="nv">w3</span><span class="o">.</span><span class="nv">org/2000/01/rdf-schema</span><span class="o">#</span><span class="nv">range&gt;</span>
-              <span class="nv">&lt;http://scrummyclone</span><span class="o">.</span><span class="nv">com/vocabularies/Sprint&gt;</span> <span class="o">.</span>
-</code></pre>
-</div><p>Again, this information is also available in all the possible representations,<br />
+&lt;http://scrummyclone.com/vocabularies/hasSprints&gt;
+      &lt;http://www.w3.org/2000/01/rdf-schema#domain&gt;
+              &lt;http://xmlns.com/foaf/0.1/Project&gt; ;
+      &lt;http://www.w3.org/2000/01/rdf-schema#range&gt;
+              &lt;http://scrummyclone.com/vocabularies/Sprint&gt; .
+</pre>
+<p>Again, this information is also available in all the possible representations,<br />
 including <span class="caps">JSON</span> and JS3.</p>
 <p>Exposing meta-information about resources opens the door to<br />
 automatically processing this resources. Plaza tries to make automation easier<br />

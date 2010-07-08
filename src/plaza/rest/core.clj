@@ -26,7 +26,8 @@
         resource-map (model-to-argument-map resource)
         id-gen (if (nil? (:id-gen-fn opts)) default-uuid-gen (:id-gen-fn opts))
         id-property-alias (if (nil? (:id-property-alias opts)) :id (:id-property-alias opts))
-        id-property-uri (if (nil? (:id-property-uri opts)) plz:restResourceId (:id-property-uri opts))
+        id-property-uri (if (and (nil? (:id-property-uri opts))
+                                 (nil? (:id-property-alias opts))) plz:restResourceId (:id-property-uri opts))
         service-matcher-fn (if (nil? (:service-metadata-matcher-fn opts)) default-service-metadata-matcher-fn (:service-metadata-matcher-fn))
         schema-matcher-fn (if (nil? (:schema-metadata-matcher-fn opts)) default-schema-metadata-matcher-fn (:schema-metadata-matcher-fn))
         handle-service-metadata (if (nil? (:handle-service-metadata? opts)) true (:handle-service-metadata? opts))
@@ -40,8 +41,8 @@
         put-handle-fn (:put-handle-fn opts)
         delete-handle-fn (:delete-handle-fn opts)
         service-uri-gen-fn (if (nil? (:service-uri-gen-fn opts)) default-uri-template-for-service (:service-uri-gen-fn opts))
-        augmentated-resource (if (= (str id-property-uri) plz:restResourceId) (augmentate-resource resource) resource)
-        augmentated-resource-map (if (= (str id-property-uri) plz:restResourceId)
+        augmentated-resource (if (nil? (:id-property-alias opts)) (augmentate-resource resource id-property-uri) resource)
+        augmentated-resource-map (if (nil? (:id-property-alias opts))
                                    (model-to-argument-map augmentated-resource)
                                    resource-map)
         empty-filters {:pre-build-graph-query []
@@ -52,15 +53,12 @@
                        :post-render-triples []}
         filters (let [filters-def (:filters opts)
                       kind-filters (keys filters-def)]
-                  (log :error (str "Filters? " (count (:post-build-graph-query filters-def))))
                   (reduce (fn [flts kind]
-                            (log :error (str "Reducing for kind " kind " and " (count (get filters-def kind)) " filters "))
                             (reduce (fn [flts flt] (add-filter kind flt flts))
                                     flts
                                     (get filters-def kind)))
                           empty-filters
                           kind-filters))]
-    (log :error (str "MAKE ENV POST BUILD GRAPH QUERY FILTERS: " (count (:post-build-graph-query filters) )))
     {:resource-map augmentated-resource-map
      :resource-type resource-type
      :resource-qname-prefix resource-qname-prefix
@@ -81,7 +79,7 @@
      :delete-handle-fn delete-handle-fn
      :base-path path
      :service-uri-gen-fn service-uri-gen-fn
-     :kind :collection-resource
+     :kind :collection
      :id-property-alias id-property-alias
      :id-property-uri id-property-uri
      :filters filters}))
@@ -170,7 +168,7 @@
                       :headers {"Content-Type" (format-to-mime request)}
                       :status 200}
                      (if-let [parent-service (tbox-find-parent-service (:path environment))]
-                       (let [schema (-> (:resource environment) (deaugmentate-resource))
+                       (let [schema (-> (:resource environment) (deaugmentate-resource (:id-property-uri environment)))
                              environmentp (assoc environment :resource schema)]
                          {:body (render-format-service (assoc parent-service :uri full-request-uri) (mime-to-format request) request environmentp)
                           :headers {"Content-Type" (format-to-mime request)}
@@ -221,12 +219,12 @@
                                                                request# (parse-standard-request-params (assoc request-pre# :params params#))
                                                                tbox-metadata# (check-tbox-request request# env#)]
                                                            (if (not tbox-metadata#)
-                                                             (cond
-                                                              (should-handle-method :get request# env#) ((dispatch-to-handler :collection :get request# env#) request# env#)
-                                                              (should-handle-method :post request# env#) ((dispatch-to-handler :collection :post request# env#) request# env#)
-                                                              (should-handle-method :delete request# env#) ((dispatch-to-handler :collection :delete request# env#) request# env#)
-                                                              :else (handle-method-not-allowed request# env#))
-                                                             tbox-metadata#)))))))
+                                                               (cond
+                                                                (should-handle-method :get request# env#) ((dispatch-to-handler :collection :get request# env#) request# env#)
+                                                                (should-handle-method :post request# env#) ((dispatch-to-handler :collection :post request# env#) request# env#)
+                                                                (should-handle-method :delete request# env#) ((dispatch-to-handler :collection :delete request# env#) request# env#)
+                                                                :else (handle-method-not-allowed request# env#))
+                                                               tbox-metadata#)))))))
 
 (defmacro spawn-rest-resource! [resource path ts & opts]
   (let [opts (apply hash-map opts)]

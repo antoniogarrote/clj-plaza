@@ -288,7 +288,7 @@ Plaza.Utils = {
         return isoDate;
     },
 
-    _Letters: function(str) {
+    _letters: function(str) {
         var acum = []
         for(var i in str) {
             acum.push(str[i]);

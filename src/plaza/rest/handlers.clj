@@ -33,7 +33,6 @@
            handlers (concat pre-graph-filters build-graph-query-handler post-graph-filters
                             pre-build-filters build-triples-handler post-build-filters
                             pre-render-filters render-triples-handler post-render-filters)]
-       (log :error (str "POST BUILD GRAPH QUERY FILTERS: " (count post-graph-filters )))
        (loop [request request
               environment environment
               handlers handlers]

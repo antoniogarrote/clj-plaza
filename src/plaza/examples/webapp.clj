@@ -55,8 +55,17 @@
   (spawn-rest-resource! :celebrity "/Celebrity/:id" :celebrities
                         :filters {:post-build-graph-query
                                   [(fn [request environment]
-                                     (log :error (str "Logging filter query: " (:query environment)))
                                      (doseq [t (:query environment)] (log :error (str "q: " t))) environment)]})
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (spawn-rest-resource! :celebrity "/TestResourceOne/:id" :celebrities
+                        :id-property-uri foaf:name)
+  (spawn-rest-collection-resource! :celebrity "/TestResourceOne" :celebrities
+                                   :id-property-uri foaf:name)
+  (spawn-rest-resource! :celebrity "/TestResourceTwo/:name" :celebrities
+                        :id-property-alias :name)
+  (spawn-rest-collection-resource! :celebrity "/TestResourceTwo" :celebrities
+                                   :id-property-alias :name)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (spawn-rest-collection-resource! :celebrity "/Celebrity" :celebrities)
   (spawn-rest-resource! :foaf-agent "/CustomIds/:name" :resource
                         :id-property-alias :name
@@ -76,4 +85,4 @@
   (route/not-found "Page not found"))
 
 ;; Running the application
-;(run-jetty (var example) {:port 8081})
+(run-jetty (var example) {:port 8081})

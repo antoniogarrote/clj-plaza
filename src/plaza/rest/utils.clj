@@ -672,9 +672,12 @@
 (defn default-id-match
   "Matches a resource using the requested URI"
   ([request environment]
-     (let [port (if (= (:server-port request) 80) "" (str ":" (:server-port request)))
-           pattern (str (:resource-qname-prefix environment) port (:resource-qname-local environment))]
-       (str2/replace pattern ":id" (get (:params request) "id")))))
+     (let [id-alias (:id-property-alias environment)
+           id-alias-str (str id-alias)
+           id-alias-name (name id-alias)]
+       (let [port (if (= (:server-port request) 80) "" (str ":" (:server-port request)))
+             pattern (str (:resource-qname-prefix environment) port (:resource-qname-local environment))]
+         (str2/replace pattern id-alias-str (get (:params request) id-alias-name))))))
 
 (defn default-service-metadata-matcher-fn
   ([request environment]
@@ -759,6 +762,7 @@
 (defn hRESTS-collection-service-description
   "Builds a triple set describing the service offered by the current request"
   ([path resource environment]
+     (log :error (str "REGISTERING COLLECTION RESOURCE FOR: " path " resource: " resource " env: " environment))
      {:uri path
       :operations (map #(make-hRESTS-collection-operation %1 path resource environment) (if (nil? (:allowed-methods environment))
                                                                                           [:get :post :delete]
@@ -900,13 +904,14 @@
 
 (defn augmentate-resource
   "Add Plaza Id property from property ontology if it is not present in the resource"
-  ([resource]
-     (add-property resource :id plz:restResourceId :string)))
+  ([resource id-property-uri]
+     (add-property resource :id id-property-uri :string)))
 
 (defn deaugmentate-resource
   "Remove the Plaza Id property from property ontology if it is present in the resource"
-  ([resource]
-     (remove-property-by-uri resource plz:restResourceId)))
+  ([resource id-property-uri]
+     (if (nil? id-property-uri)
+       resource (remove-property-by-uri resource id-property-uri))))
 
 (defn add-filter
   "adds a filter to the environment"

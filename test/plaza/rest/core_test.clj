@@ -245,6 +245,8 @@
        (let [res2 (clojure-http.resourcefully/get "http://localhost:8082/CustomIds/wadus.n3")
              m2 (build-model :jena)]
          (with-model m2 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res2)))) :n3))
+         (doseq [t (model-to-triples m2)]
+           (log :error (str "TRIPLE: " t)))
          (is (= 4 (count (model-to-triples m2))))
          (is (= (str (first (first (model-to-triples m2))))
                 (str (first (first (model-to-triples m)))))))))

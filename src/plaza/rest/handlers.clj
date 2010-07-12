@@ -30,20 +30,29 @@
            build-graph-query-handler [(:build-graph-query-handler environment)]
            build-triples-handler [(:build-triples-handler environment)]
            render-triples-handler [(:render-triples-handler environment)]
+           validation-handlers (let [req-method (:request-method request)]
+                                  (if (or (= :post req-method) (= :put req-method))
+                                    (:validations environment) []))
            handlers (concat pre-graph-filters build-graph-query-handler post-graph-filters
+                            validation-handlers
                             pre-build-filters build-triples-handler post-build-filters
                             pre-render-filters render-triples-handler post-render-filters)]
        (loop [request request
               environment environment
               handlers handlers]
          (if (empty? handlers)
-             {:body (:body environment)
-              :headers (:headers environment)
-              :status (:status environment)}
-             (let [handler (first handlers)]
-               (recur request
-                      (handler request environment)
-                      (rest handlers))))))))
+           ;; all handlers already processed
+           {:body (:body environment)
+            :headers (:headers environment)
+            :status (:status environment)}
+           (let [handler (first handlers)
+                 environmentp (handler request environment)]
+             (if (or (< 200 (:status environmentp))
+                     (> 200 (:status environmentp)))
+               ;; error code returned, halting processing
+               (recur request environmentp [])
+               ;; no error code returned, continue processing
+               (recur request environmentp (rest handlers)))))))))
 
 (defn default-render-triples-handler
   ([request environment]
@@ -223,7 +232,7 @@
 (defn delete-collection-build-graph
   ([request environment]
      (let [mapping (apply-resource-argument-map (:params request) (:resource-map environment))
-        query (build-query-from-resource-map mapping (:resource-type environment))]
+           query (build-query-from-resource-map mapping (:resource-type environment))]
        (-> environment
            (assoc :mapping mapping)
            (assoc :query query)))))

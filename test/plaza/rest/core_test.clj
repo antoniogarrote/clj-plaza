@@ -10,7 +10,7 @@
   (:use [plaza.rdf.vocabularies.foaf] :reload-all)
   (:use [plaza.triple-spaces.core] :reload-all)
   (:use [plaza.rdf.implementations.stores.mulgara])
-  (:use [plaza.rest core utils handlers] :reload-all)
+  (:use [plaza.rest core utils handlers validations] :reload-all)
   (:use [clojure.test])
   (:use [clojure.contrib.logging :only [log]])
   (:require [clojure-http.resourcefully]
@@ -29,7 +29,7 @@
 (defn- build-mulgara
   ([] (build-model :mulgara :rmi "rmi://localhost/server1")))
 
-(defonce *should-test* true)
+(defonce *should-test* false)
 
 
 (when *should-test*
@@ -65,6 +65,10 @@
 
    ;; Application routes
    (defroutes example
+
+     (spawn-rest-collection-resource! :foaf-agent "/AgentTestValidatePresence" :resource
+                                      :validations [(validate-presence-property-urls [foaf:age foaf:status])])
+
      (spawn-rest-resource! :foaf-agent "/Agent/:id" :resource)
 
      (spawn-rest-collection-resource! :foaf-agent "/Agent" :resource)
@@ -273,10 +277,36 @@
    (deftest test-service_descriptions
      (println "***********************************************\n SERVICE DESCRIPTIONS \n************************************************")
      (clojure-http.resourcefully/delete "http://localhost:8082/Agent")
-     (let [res1 (clojure-http.resourcefully/get "http://localhost:8082/Agent/collection_resource_service.n3")
+     (let [res1 (clojure-http.resourcefully/get "http://localhost:8082/Agent/_collection_resource_service.n3")
            m1 (build-model :jena)]
        (with-model m1 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res1)))) :n3))
        (is (= 238 (count (model-to-triples m1))))))
+
+
+   (deftest test-del-post-get-validation-pesence-n3-ok
+     (println "**********************************************\n DELETE - POST - GET VALIDATES PRESENCE OK N3 \n*************************************************")
+     (clojure-http.resourcefully/delete "http://localhost:8082/AgentTestValidatePresence")
+     (let [res (clojure-http.resourcefully/post "http://localhost:8082/AgentTestValidatePresence?age=20&status=ok")
+           m (build-model :jena)]
+       (with-model m (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res)))) :xml))
+       (is (= 4 (count (model-to-triples m))))
+       (let [subj (str (first (first (model-to-triples m))))
+             res2 (clojure-http.resourcefully/get (str subj ".n3"))
+             m2 (build-model :jena)]
+         (with-model m2 (document-to-model (java.io.ByteArrayInputStream. (.getBytes (apply str (:body-seq res2)))) :n3))
+         (doseq [t (model-to-triples m2)] (log :error (str "*** " t)))
+         (is (= 4 (count (model-to-triples m2))))
+         (is (= (str (first (first (model-to-triples m2))))
+                (str (first (first (model-to-triples m)))))))))
+
+   (deftest test-del-post-get-validation-pesence-n3-nok
+     (println "**********************************************\n DELETE - POST - GET  VALIDATES PRESENCE NOK N3 \n*************************************************")
+     (clojure-http.resourcefully/delete "http://localhost:8082/AgentTestValidatePresence")
+     (try
+      (let [res (clojure-http.resourcefully/post "http://localhost:8082/AgentTestValidatePresence?gender=male")]
+        (is false))
+      (catch Exception ex
+        (is true))))
 
 
    (catch Exception ex (throw ex))

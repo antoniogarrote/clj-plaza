@@ -24,6 +24,7 @@
   (let [resource (if (keyword? resource-or-symbol) (tbox-find-schema resource-or-symbol) resource-or-symbol)
         resource-type (type-uri resource)
         resource-map (model-to-argument-map resource)
+        validations (if (nil? (:validations opts)) [] (:validations opts))
         id-gen (if (nil? (:id-gen-fn opts)) default-uuid-gen (:id-gen-fn opts))
         id-property-alias (if (nil? (:id-property-alias opts)) :id (:id-property-alias opts))
         id-property-uri (if (and (nil? (:id-property-uri opts))
@@ -82,7 +83,12 @@
      :kind :collection
      :id-property-alias id-property-alias
      :id-property-uri id-property-uri
-     :filters filters}))
+     ;; list with the validations to apply
+     :filters filters
+     ;; array of validations
+     :validations validations
+     ;; initial valid status
+     :status 200 }))
 
 (defn make-single-resource-environment-map [resource-or-symbol path ts opts]
   (let [coll-env (make-environment-map resource-or-symbol path ts opts)

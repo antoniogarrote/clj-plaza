@@ -5,6 +5,7 @@
 
 (init-jena-framework)
 (use 'plaza.rdf.vocabularies.foaf)
+(init-vocabularies)
 
 (defonce *test-model* (make-rdfs-schema ["http://something/" "Good"]
                                         :name   {:uri "http://test.com/name"      :range :string}

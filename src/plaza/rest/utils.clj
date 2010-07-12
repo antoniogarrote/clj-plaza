@@ -681,14 +681,14 @@
 
 (defn default-service-metadata-matcher-fn
   ([request environment]
-     (if (nil? (re-find  #"collection_resource_service(\..*)?$" (:uri request)))
-       (if (nil? (re-find  #"single_resource_service(\..*)?$" (:uri request)))
+     (if (nil? (re-find  #"_collection_resource_service(\..*)?$" (:uri request)))
+       (if (nil? (re-find  #"_single_resource_service(\..*)?$" (:uri request)))
          false :individual)
        :collection)))
 
 (defn default-schema-metadata-matcher-fn
   ([request environment]
-     (if (nil? (re-find  #"schema(\..*)?$" (:uri request))) false true)))
+     (if (nil? (re-find  #"_schema(\..*)?$" (:uri request))) false true)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Resource functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

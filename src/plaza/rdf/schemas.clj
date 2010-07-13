@@ -3,7 +3,8 @@
 ;; @date 26.05.2010
 
 (ns plaza.rdf.schemas
-  (:use (plaza.rdf core sparql predicates)
+  (:use (plaza utils)
+        (plaza.rdf core sparql predicates)
         (plaza.rdf.implementations common)
         [clojure.contrib.logging :only [log]]
         (plaza utils)))
@@ -125,6 +126,26 @@
 (defn wrap-rdfs-schema
   ([uri props ranges]
      (plaza.rdf.schemas.RDFSModel. uri props ranges)))
+
+(defn- parse-rdf-schema-from-model
+  ([model resource]
+     (let [properties (flatten-1 (model-pattern-apply model [[?s rdfs:domain resource] [?s rdfs:range ?o]]))
+           prop-ranges (reduce (fn [acum [s p o]] (if (= (str p) rdfs:range)
+                                                    (let [prop-val (if (supported-datatype? (str o)) (datatype-symbol (str o)) (str o))]
+                                                      (conj acum {:uri (str s) :range prop-val} ))
+                                                    acum))
+                               [] properties)]
+       (reduce (fn [schema prop-map]
+                 (let [prop-alias (keyword (extract-local-part-uri (:uri prop-map)))]
+                   (add-property schema prop-alias (:uri prop-map) (:range prop-map))))
+               (make-rdfs-schema (str resource)) prop-ranges))))
+
+(defn parse-rdfs-schemas-from-model
+  "Builds RDFS definition of resources from the set of triples in a RDF model"
+  ([model]
+     (let [resources-triples (flatten-1 (model-pattern-apply model [[?s rdf:type rdfs:Class]]))
+           resources (map (fn [[resource _p _o]] (str resource)) resources-triples)]
+       (map (fn [resource] (parse-rdf-schema-from-model model resource)) resources))))
 
 ;; RDFS schema
 

@@ -54,3 +54,10 @@
 (deftest test-schema-to-triples
   (let [ts (to-rdf-triples foaf:Agent-schema)]
     (is (= 37 (count ts)))))
+
+(deftest test-parse-from-rdf
+  (let [ts (to-rdf-triples foaf:Agent-schema)
+        *m* (build-model)
+        _tmp (with-model *m* (model-add-triples ts))
+        parsed (parse-rdfs-schemas-from-model *m*)]
+    (is (= (sort (aliases foaf:Agent-schema)) (sort (aliases (first parsed)))))))

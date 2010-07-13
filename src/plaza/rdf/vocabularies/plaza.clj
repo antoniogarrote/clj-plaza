@@ -13,6 +13,7 @@
 (defonce plz:RestResource "http://plaza.org/vocabularies/restResource")
 (defonce plz:restResourceId "http://plaza.org/vocabularies/restResourceId")
 (defonce plz:validationError "http://plaza.org/vocabularies/validationError")
+(defonce plz:label "http://plaza.org/vocabularies/label")
 
 (register-rdf-ns :plz plz)
 

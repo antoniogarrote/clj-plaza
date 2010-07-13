@@ -126,3 +126,10 @@
        (.print pw (. e getMessage))
        (. e (printStackTrace pw))
        (str sw))))
+
+(defn extract-local-part-uri
+  ([uri]
+     (let [uri-str (str uri)]
+       (if (not (= (.indexOf uri-str "#") -1))
+         (aget (.split uri-str "#") 1)
+         (first (reverse (vec (.split uri-str "/"))))))))

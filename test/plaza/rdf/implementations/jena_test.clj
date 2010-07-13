@@ -1,6 +1,6 @@
 (ns plaza.rdf.implementations.jena-test
   (:use [plaza.rdf core] :reload-all)
-  (:use [plaza.rdf.implementations jena] :reload-all)
+  (:use [plaza.rdf.implementations jena common] :reload-all)
   (:use [clojure.test]))
 
 ;; we'll test with jena
@@ -84,3 +84,7 @@
     (with-model *m* (model-add-triples [[:a :b :c]]))
     (is (= 1 (count (query-triples *m* query-str))))
     (is (= 3 (count (ffirst (query-triples *m* query-str)))))))
+
+(deftest test-datatype-symbol
+  (is (= :string (datatype-symbol "http://www.w3.org/2001/XMLSchema#string")))
+  (is (= nil (datatype-symbol "http://www.w3.org/anything/not/a/atatype"))))

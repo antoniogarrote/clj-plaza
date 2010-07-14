@@ -1,6 +1,7 @@
 (ns plaza.rdf.schemas-test
   (:use [plaza.rdf core sparql schemas] :reload-all)
   (:use [plaza.rdf.implementations jena] :reload-all)
+  (:use [clojure.contrib.seq-utils :only [includes?]])
   (:use [clojure.test]))
 
 (init-jena-framework)
@@ -11,6 +12,13 @@
                                         :name   {:uri "http://test.com/name"      :range :string}
                                         :price  {:uri ["http://test.com/" :price] :range :float}
                                         :number {:uri :number                     :range :int}))
+
+(deftest test-extend-schemas
+  (let [extended (extend-rdfs-schemas "http://test.com/Foo" [*test-model*])]
+    (is (= "http://test.com/Foo" (str (type-uri extended))))
+    (is (includes? (map #(str %1) (super-type-uris extended)) "http://test.com/Foo"))
+    (is (includes? (map #(str %1) (super-type-uris extended)) "http://something/Good"))
+    (is (= "http://test.com/name" (str (property-uri extended :name))))))
 
 (deftest test-props
   (is (= "http://something/Good" (str (type-uri *test-model*)))))
